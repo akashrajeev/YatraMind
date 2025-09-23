@@ -1,0 +1,65 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.sqlite3
+*.db
+*.egg-info/
+.env
+.vscode/
+venv/
+env/
+pip-log.txt
+*.log
+
+# VSCode
+.vscode/
+
+# MacOS
+.DS_Store
+
+# Node modules (for React frontend)
+frontend/node_modules/
+
+# Build/Dist folders
+frontend/build/
+dist/
+tmp/
+
+# IDE files
+.idea/
+*.iml
+
+# Python virtual environments
+venv/
+ENV/
+env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Coverage reports
+htmlcov/
+.coverage
+.tox/
+.nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.cache
+
+# Logs and temp files
+*.log
+*.pot
+*.mo
+
+# Misc
+*.swp
+*~
+
+# MongoDB config
+.mongo/
+
+# Credentials files
+credentials.json
