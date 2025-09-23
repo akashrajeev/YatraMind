@@ -5,13 +5,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-022",
-    "cleaning_type": "BASIC",
+    "assigned_trainset": null,
+    "cleaning_type": "DEEP",
     "duration_hours": 8,
-    "crew_assigned": "CREW_56",
+    "crew_assigned": "CREW_27",
     "status": "COMPLETED",
-    "cost_estimate": 2159.841337689472,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "cost_estimate": 3211.9391181039036,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250924_AFTERNOON_1",
@@ -19,13 +19,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-014",
-    "cleaning_type": "DEEP",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_98",
-    "status": "COMPLETED",
-    "cost_estimate": 7216.183562752083,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-002",
+    "cleaning_type": "BASIC",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_87",
+    "status": "CANCELLED",
+    "cost_estimate": 2458.1932267280044,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250924_NIGHT_1",
@@ -33,13 +33,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-010",
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_96",
-    "status": "SCHEDULED",
-    "cost_estimate": 2570.237630724101,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-011",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_99",
+    "status": "CANCELLED",
+    "cost_estimate": 5628.113876254367,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250924_MORNING_2",
@@ -47,13 +47,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-003",
+    "assigned_trainset": "T-007",
     "cleaning_type": "DEEP",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_81",
-    "status": "COMPLETED",
-    "cost_estimate": 4402.862026284642,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "duration_hours": 8,
+    "crew_assigned": "CREW_55",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 2597.8424991873276,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250924_AFTERNOON_2",
@@ -62,12 +62,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_96",
-    "status": "CANCELLED",
-    "cost_estimate": 7606.188037021467,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_82",
+    "status": "COMPLETED",
+    "cost_estimate": 4244.184736978095,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250924_NIGHT_2",
@@ -75,13 +75,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-009",
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_15",
-    "status": "COMPLETED",
-    "cost_estimate": 4578.745803170259,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-018",
+    "cleaning_type": "BASIC",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_63",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 2423.3531986884004,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250924_MORNING_1",
@@ -89,13 +89,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-003",
-    "cleaning_type": "DEEP",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_10",
-    "status": "CANCELLED",
-    "cost_estimate": 7761.333848459556,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-002",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_35",
+    "status": "COMPLETED",
+    "cost_estimate": 5416.822252845861,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250924_AFTERNOON_1",
@@ -104,12 +104,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
+    "cleaning_type": "MAINTENANCE",
     "duration_hours": 2,
-    "crew_assigned": "CREW_65",
-    "status": "SCHEDULED",
-    "cost_estimate": 4571.9103655383815,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "crew_assigned": "CREW_48",
+    "status": "COMPLETED",
+    "cost_estimate": 5820.995473847301,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250924_NIGHT_1",
@@ -117,13 +117,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-023",
-    "cleaning_type": "DEEP",
+    "assigned_trainset": null,
+    "cleaning_type": "MAINTENANCE",
     "duration_hours": 4,
-    "crew_assigned": "CREW_79",
+    "crew_assigned": "CREW_58",
     "status": "SCHEDULED",
-    "cost_estimate": 6359.148332477222,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "cost_estimate": 7296.618015024312,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250925_MORNING_1",
@@ -131,13 +131,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_18",
-    "status": "CANCELLED",
-    "cost_estimate": 2591.363957251171,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-004",
+    "cleaning_type": "BASIC",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_75",
+    "status": "SCHEDULED",
+    "cost_estimate": 7094.780482455571,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250925_AFTERNOON_1",
@@ -145,13 +145,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_63",
-    "status": "SCHEDULED",
-    "cost_estimate": 4170.595083359265,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-018",
+    "cleaning_type": "DEEP",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_82",
+    "status": "CANCELLED",
+    "cost_estimate": 3358.3385993151096,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250925_NIGHT_1",
@@ -159,13 +159,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-015",
-    "cleaning_type": "BASIC",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_37",
-    "status": "SCHEDULED",
-    "cost_estimate": 4582.6627836859825,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-019",
+    "cleaning_type": "DEEP",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_77",
+    "status": "COMPLETED",
+    "cost_estimate": 3581.775110332953,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250925_MORNING_2",
@@ -173,13 +173,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-005",
-    "cleaning_type": "BASIC",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_69",
+    "assigned_trainset": null,
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_75",
     "status": "IN_PROGRESS",
-    "cost_estimate": 3558.3742603717683,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "cost_estimate": 2127.660992982199,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250925_AFTERNOON_2",
@@ -187,13 +187,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_74",
-    "status": "SCHEDULED",
-    "cost_estimate": 4821.209171509083,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-008",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_79",
+    "status": "COMPLETED",
+    "cost_estimate": 6400.391355834099,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250925_NIGHT_2",
@@ -201,13 +201,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-018",
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_38",
-    "status": "COMPLETED",
-    "cost_estimate": 4362.500213811033,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-010",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_47",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 3776.69950963004,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250925_MORNING_1",
@@ -215,13 +215,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-006",
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_84",
+    "assigned_trainset": "T-013",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_45",
     "status": "IN_PROGRESS",
-    "cost_estimate": 7980.445663213703,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "cost_estimate": 5064.781862232872,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250925_AFTERNOON_1",
@@ -230,12 +230,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "DEEP",
+    "cleaning_type": "SANITIZATION",
     "duration_hours": 8,
-    "crew_assigned": "CREW_17",
+    "crew_assigned": "CREW_79",
     "status": "SCHEDULED",
-    "cost_estimate": 7297.14629645214,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "cost_estimate": 4247.757889972383,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250925_NIGHT_1",
@@ -243,13 +243,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "DEEP",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_47",
-    "status": "SCHEDULED",
-    "cost_estimate": 4318.372450922787,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-023",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_26",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 7982.658606680112,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250926_MORNING_1",
@@ -257,13 +257,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_76",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 7744.924752852409,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-009",
+    "cleaning_type": "BASIC",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_85",
+    "status": "SCHEDULED",
+    "cost_estimate": 7790.504829998776,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250926_AFTERNOON_1",
@@ -271,13 +271,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-023",
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_88",
-    "status": "CANCELLED",
-    "cost_estimate": 3290.9966773417073,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-014",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_38",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 3579.9485111663234,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250926_NIGHT_1",
@@ -285,13 +285,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-008",
-    "cleaning_type": "SANITIZATION",
+    "assigned_trainset": null,
+    "cleaning_type": "DEEP",
     "duration_hours": 2,
-    "crew_assigned": "CREW_46",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6012.787718870133,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "crew_assigned": "CREW_64",
+    "status": "CANCELLED",
+    "cost_estimate": 6614.813118206923,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250926_MORNING_2",
@@ -299,13 +299,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-003",
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_62",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6603.542218233749,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-019",
+    "cleaning_type": "BASIC",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_48",
+    "status": "SCHEDULED",
+    "cost_estimate": 3466.74358580302,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250926_AFTERNOON_2",
@@ -313,13 +313,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_72",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 4644.304924737662,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "assigned_trainset": "T-025",
+    "cleaning_type": "DEEP",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_67",
+    "status": "CANCELLED",
+    "cost_estimate": 5807.622425275723,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250926_NIGHT_2",
@@ -327,13 +327,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
+    "assigned_trainset": "T-003",
     "cleaning_type": "DEEP",
     "duration_hours": 8,
-    "crew_assigned": "CREW_63",
-    "status": "CANCELLED",
-    "cost_estimate": 6862.509412955798,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "crew_assigned": "CREW_51",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 2590.723127995116,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250926_MORNING_1",
@@ -341,13 +341,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-001",
+    "assigned_trainset": null,
     "cleaning_type": "DEEP",
     "duration_hours": 6,
-    "crew_assigned": "CREW_17",
+    "crew_assigned": "CREW_77",
     "status": "CANCELLED",
-    "cost_estimate": 4442.872224859144,
-    "created_at": "2025-09-24T02:48:40.757466"
+    "cost_estimate": 5212.399583407174,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250926_AFTERNOON_1",
@@ -355,13 +355,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-012",
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_19",
-    "status": "CANCELLED",
-    "cost_estimate": 2176.3762167734344,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-006",
+    "cleaning_type": "DEEP",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_40",
+    "status": "SCHEDULED",
+    "cost_estimate": 3346.5025909054543,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250926_NIGHT_1",
@@ -369,13 +369,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "BASIC",
+    "assigned_trainset": "T-011",
+    "cleaning_type": "DEEP",
     "duration_hours": 4,
-    "crew_assigned": "CREW_28",
-    "status": "SCHEDULED",
-    "cost_estimate": 6612.991621145062,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_39",
+    "status": "COMPLETED",
+    "cost_estimate": 3066.592325196746,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250927_MORNING_1",
@@ -383,13 +383,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-005",
+    "assigned_trainset": "T-012",
     "cleaning_type": "SANITIZATION",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_50",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_70",
     "status": "CANCELLED",
-    "cost_estimate": 2042.7638283860824,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 5331.835338607602,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250927_AFTERNOON_1",
@@ -397,13 +397,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-020",
-    "cleaning_type": "DEEP",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_93",
-    "status": "SCHEDULED",
-    "cost_estimate": 7777.740128895918,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-003",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_27",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 4472.961951626408,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250927_NIGHT_1",
@@ -411,13 +411,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
+    "assigned_trainset": "T-018",
     "cleaning_type": "SANITIZATION",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_97",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_61",
     "status": "IN_PROGRESS",
-    "cost_estimate": 6991.273781838963,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 4324.641604194733,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250927_MORNING_2",
@@ -425,13 +425,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-025",
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_44",
+    "assigned_trainset": null,
+    "cleaning_type": "DEEP",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_78",
     "status": "IN_PROGRESS",
-    "cost_estimate": 5228.569194442549,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 5640.873527477135,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250927_AFTERNOON_2",
@@ -439,13 +439,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-010",
-    "cleaning_type": "DEEP",
+    "assigned_trainset": "T-013",
+    "cleaning_type": "BASIC",
     "duration_hours": 6,
-    "crew_assigned": "CREW_52",
-    "status": "CANCELLED",
-    "cost_estimate": 5843.634919129443,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_41",
+    "status": "COMPLETED",
+    "cost_estimate": 5287.14078976775,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250927_NIGHT_2",
@@ -453,13 +453,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_97",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 4065.9486124951222,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-023",
+    "cleaning_type": "BASIC",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_31",
+    "status": "SCHEDULED",
+    "cost_estimate": 6547.289552798377,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250927_MORNING_1",
@@ -469,11 +469,11 @@
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
     "cleaning_type": "MAINTENANCE",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_29",
-    "status": "SCHEDULED",
-    "cost_estimate": 6835.890292643558,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "duration_hours": 6,
+    "crew_assigned": "CREW_10",
+    "status": "CANCELLED",
+    "cost_estimate": 7033.105449399187,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250927_AFTERNOON_1",
@@ -482,12 +482,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_61",
+    "cleaning_type": "DEEP",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_41",
     "status": "SCHEDULED",
-    "cost_estimate": 7795.701263762522,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 2999.9500567261093,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Petta_20250927_NIGHT_1",
@@ -495,13 +495,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-006",
-    "cleaning_type": "DEEP",
+    "assigned_trainset": "T-005",
+    "cleaning_type": "BASIC",
     "duration_hours": 6,
-    "crew_assigned": "CREW_18",
-    "status": "COMPLETED",
-    "cost_estimate": 2170.7836815275587,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_25",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 7784.60838304724,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250928_MORNING_1",
@@ -509,13 +509,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-009",
+    "assigned_trainset": null,
     "cleaning_type": "MAINTENANCE",
     "duration_hours": 4,
-    "crew_assigned": "CREW_82",
-    "status": "COMPLETED",
-    "cost_estimate": 5096.1309332803685,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_65",
+    "status": "SCHEDULED",
+    "cost_estimate": 4449.111385496048,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250928_AFTERNOON_1",
@@ -523,13 +523,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-022",
-    "cleaning_type": "SANITIZATION",
+    "assigned_trainset": null,
+    "cleaning_type": "BASIC",
     "duration_hours": 4,
-    "crew_assigned": "CREW_73",
+    "crew_assigned": "CREW_16",
     "status": "SCHEDULED",
-    "cost_estimate": 5071.981883650424,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 3000.837449429737,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250928_NIGHT_1",
@@ -537,13 +537,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-001",
+    "assigned_trainset": null,
     "cleaning_type": "BASIC",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_39",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_20",
     "status": "CANCELLED",
-    "cost_estimate": 4139.7664014835445,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 5125.625409903532,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250928_MORNING_2",
@@ -552,12 +552,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
+    "cleaning_type": "MAINTENANCE",
     "duration_hours": 2,
-    "crew_assigned": "CREW_93",
-    "status": "SCHEDULED",
-    "cost_estimate": 7835.106871788948,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_70",
+    "status": "COMPLETED",
+    "cost_estimate": 2542.67194420868,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250928_AFTERNOON_2",
@@ -565,13 +565,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-018",
-    "cleaning_type": "BASIC",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_65",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6531.98476022392,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": null,
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_90",
+    "status": "SCHEDULED",
+    "cost_estimate": 2887.128646294156,
+    "created_at": "2025-09-24T03:48:19.310433"
   },
   {
     "slot_id": "CLN_Aluva_20250928_NIGHT_2",
@@ -579,13 +579,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-020",
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_15",
+    "assigned_trainset": "T-024",
+    "cleaning_type": "BASIC",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_43",
     "status": "COMPLETED",
-    "cost_estimate": 7346.274721249576,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 5241.198471360482,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250928_MORNING_1",
@@ -593,13 +593,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": null,
+    "assigned_trainset": "T-015",
     "cleaning_type": "MAINTENANCE",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_72",
-    "status": "CANCELLED",
-    "cost_estimate": 7438.055628761994,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "duration_hours": 4,
+    "crew_assigned": "CREW_37",
+    "status": "COMPLETED",
+    "cost_estimate": 3425.2798830387183,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250928_AFTERNOON_1",
@@ -607,13 +607,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-021",
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_63",
-    "status": "CANCELLED",
-    "cost_estimate": 2802.483327186873,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-008",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_30",
+    "status": "SCHEDULED",
+    "cost_estimate": 3069.325789987465,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250928_NIGHT_1",
@@ -621,13 +621,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-017",
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_93",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 2252.752972904253,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-006",
+    "cleaning_type": "BASIC",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_39",
+    "status": "COMPLETED",
+    "cost_estimate": 2207.9325033371597,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250929_MORNING_1",
@@ -635,13 +635,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-002",
+    "assigned_trainset": "T-015",
     "cleaning_type": "MAINTENANCE",
     "duration_hours": 2,
-    "crew_assigned": "CREW_59",
-    "status": "COMPLETED",
-    "cost_estimate": 7615.827260775029,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_81",
+    "status": "SCHEDULED",
+    "cost_estimate": 6718.668165032182,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250929_AFTERNOON_1",
@@ -649,13 +649,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
+    "assigned_trainset": "T-018",
     "cleaning_type": "DEEP",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_52",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 4101.787789279842,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "duration_hours": 4,
+    "crew_assigned": "CREW_82",
+    "status": "COMPLETED",
+    "cost_estimate": 3897.9295486009705,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250929_NIGHT_1",
@@ -663,13 +663,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-020",
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_84",
+    "assigned_trainset": "T-010",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_58",
     "status": "CANCELLED",
-    "cost_estimate": 7950.5205026943595,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 4507.773542553133,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250929_MORNING_2",
@@ -678,12 +678,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_86",
-    "status": "COMPLETED",
-    "cost_estimate": 3304.21777743878,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_63",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 3949.639939687978,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250929_AFTERNOON_2",
@@ -691,13 +691,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_63",
-    "status": "COMPLETED",
-    "cost_estimate": 5094.650231509206,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-006",
+    "cleaning_type": "DEEP",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_36",
+    "status": "CANCELLED",
+    "cost_estimate": 6882.974933620098,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250929_NIGHT_2",
@@ -705,13 +705,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-006",
+    "assigned_trainset": null,
     "cleaning_type": "MAINTENANCE",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_18",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_68",
     "status": "CANCELLED",
-    "cost_estimate": 4315.375441045646,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 4327.279057736645,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250929_MORNING_1",
@@ -719,13 +719,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-018",
-    "cleaning_type": "BASIC",
+    "assigned_trainset": null,
+    "cleaning_type": "DEEP",
     "duration_hours": 8,
     "crew_assigned": "CREW_55",
-    "status": "SCHEDULED",
-    "cost_estimate": 5316.132485679342,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "status": "IN_PROGRESS",
+    "cost_estimate": 6365.579668195915,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250929_AFTERNOON_1",
@@ -733,13 +733,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-025",
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_52",
-    "status": "SCHEDULED",
-    "cost_estimate": 7537.115196557698,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-013",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_81",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 2407.3502445913578,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250929_NIGHT_1",
@@ -747,13 +747,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-021",
-    "cleaning_type": "DEEP",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_47",
-    "status": "SCHEDULED",
-    "cost_estimate": 2911.7019701234167,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-022",
+    "cleaning_type": "BASIC",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_98",
+    "status": "COMPLETED",
+    "cost_estimate": 3650.639551278953,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250930_MORNING_1",
@@ -761,13 +761,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
+    "assigned_trainset": "T-023",
+    "cleaning_type": "MAINTENANCE",
     "duration_hours": 8,
-    "crew_assigned": "CREW_13",
-    "status": "CANCELLED",
-    "cost_estimate": 6373.354595227188,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_40",
+    "status": "SCHEDULED",
+    "cost_estimate": 4614.281952830665,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250930_AFTERNOON_1",
@@ -775,13 +775,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-016",
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_58",
+    "assigned_trainset": "T-007",
+    "cleaning_type": "DEEP",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_46",
     "status": "CANCELLED",
-    "cost_estimate": 4773.656763438388,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 4948.239648568364,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250930_NIGHT_1",
@@ -789,13 +789,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-009",
-    "cleaning_type": "DEEP",
+    "assigned_trainset": "T-018",
+    "cleaning_type": "BASIC",
     "duration_hours": 2,
-    "crew_assigned": "CREW_13",
-    "status": "SCHEDULED",
-    "cost_estimate": 2900.2136401390458,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_22",
+    "status": "CANCELLED",
+    "cost_estimate": 2578.7822539678373,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250930_MORNING_2",
@@ -803,13 +803,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-021",
-    "cleaning_type": "DEEP",
+    "assigned_trainset": "T-009",
+    "cleaning_type": "BASIC",
     "duration_hours": 2,
-    "crew_assigned": "CREW_85",
-    "status": "CANCELLED",
-    "cost_estimate": 3568.049097822761,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_76",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 3180.2789243781517,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250930_AFTERNOON_2",
@@ -817,13 +817,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-007",
-    "cleaning_type": "MAINTENANCE",
+    "assigned_trainset": "T-023",
+    "cleaning_type": "DEEP",
     "duration_hours": 2,
-    "crew_assigned": "CREW_83",
-    "status": "COMPLETED",
-    "cost_estimate": 4976.199458210057,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_52",
+    "status": "SCHEDULED",
+    "cost_estimate": 3876.080986897269,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20250930_NIGHT_2",
@@ -832,12 +832,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_64",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 7705.494820364381,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_43",
+    "status": "SCHEDULED",
+    "cost_estimate": 6936.821063018309,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250930_MORNING_1",
@@ -845,13 +845,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-013",
-    "cleaning_type": "DEEP",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_82",
-    "status": "CANCELLED",
-    "cost_estimate": 5956.445473983855,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": null,
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_88",
+    "status": "COMPLETED",
+    "cost_estimate": 3365.157636093231,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250930_AFTERNOON_1",
@@ -861,11 +861,11 @@
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
     "cleaning_type": "MAINTENANCE",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_41",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 3794.270376706977,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "duration_hours": 8,
+    "crew_assigned": "CREW_92",
+    "status": "SCHEDULED",
+    "cost_estimate": 2172.8677892771807,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20250930_NIGHT_1",
@@ -874,12 +874,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_78",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6663.56575855074,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_32",
+    "status": "COMPLETED",
+    "cost_estimate": 5681.275876337159,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251001_MORNING_1",
@@ -887,13 +887,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-022",
-    "cleaning_type": "DEEP",
+    "assigned_trainset": "T-018",
+    "cleaning_type": "BASIC",
     "duration_hours": 8,
-    "crew_assigned": "CREW_18",
-    "status": "COMPLETED",
-    "cost_estimate": 5713.113143726601,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "crew_assigned": "CREW_23",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 3328.2032917590705,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251001_AFTERNOON_1",
@@ -901,13 +901,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-008",
-    "cleaning_type": "BASIC",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_89",
-    "status": "CANCELLED",
-    "cost_estimate": 3395.7206711169024,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-006",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_44",
+    "status": "COMPLETED",
+    "cost_estimate": 2170.918201436922,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251001_NIGHT_1",
@@ -915,13 +915,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-004",
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_70",
-    "status": "COMPLETED",
-    "cost_estimate": 6105.20727521957,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-006",
+    "cleaning_type": "DEEP",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_77",
+    "status": "SCHEDULED",
+    "cost_estimate": 3650.126788062181,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251001_MORNING_2",
@@ -929,13 +929,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 8,
+    "assigned_trainset": "T-018",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 6,
     "crew_assigned": "CREW_89",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 3250.3830653687855,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "status": "SCHEDULED",
+    "cost_estimate": 5405.025125969421,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251001_AFTERNOON_2",
@@ -944,12 +944,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_61",
-    "status": "CANCELLED",
-    "cost_estimate": 4677.77645411122,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_70",
+    "status": "SCHEDULED",
+    "cost_estimate": 5435.926985028977,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251001_NIGHT_2",
@@ -957,13 +957,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_32",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 4487.236946562553,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-024",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_40",
+    "status": "SCHEDULED",
+    "cost_estimate": 2173.6281100909937,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251001_MORNING_1",
@@ -971,13 +971,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-016",
-    "cleaning_type": "DEEP",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_18",
+    "assigned_trainset": "T-015",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_36",
     "status": "COMPLETED",
-    "cost_estimate": 6395.544069459683,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 5953.594736991706,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251001_AFTERNOON_1",
@@ -985,13 +985,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-012",
+    "assigned_trainset": "T-014",
     "cleaning_type": "MAINTENANCE",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_53",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6726.37537201806,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "duration_hours": 4,
+    "crew_assigned": "CREW_46",
+    "status": "COMPLETED",
+    "cost_estimate": 7537.265117761534,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251001_NIGHT_1",
@@ -1002,10 +1002,10 @@
     "assigned_trainset": null,
     "cleaning_type": "DEEP",
     "duration_hours": 6,
-    "crew_assigned": "CREW_69",
+    "crew_assigned": "CREW_37",
     "status": "IN_PROGRESS",
-    "cost_estimate": 6512.798663851595,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cost_estimate": 6425.816907041178,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251002_MORNING_1",
@@ -1013,13 +1013,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_58",
-    "status": "SCHEDULED",
-    "cost_estimate": 7038.966541226032,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "assigned_trainset": "T-012",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_53",
+    "status": "CANCELLED",
+    "cost_estimate": 6402.628505927697,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251002_AFTERNOON_1",
@@ -1028,12 +1028,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_83",
-    "status": "CANCELLED",
-    "cost_estimate": 3328.3058004527493,
-    "created_at": "2025-09-24T02:48:40.758463"
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_31",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 3390.3965346096534,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251002_NIGHT_1",
@@ -1041,13 +1041,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-017",
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_69",
-    "status": "COMPLETED",
-    "cost_estimate": 3375.2770681927223,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-023",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_14",
+    "status": "CANCELLED",
+    "cost_estimate": 3026.007120785609,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251002_MORNING_2",
@@ -1055,13 +1055,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-018",
-    "cleaning_type": "DEEP",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_44",
-    "status": "CANCELLED",
-    "cost_estimate": 7985.515908508537,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-016",
+    "cleaning_type": "BASIC",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_86",
+    "status": "SCHEDULED",
+    "cost_estimate": 2530.171796677004,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251002_AFTERNOON_2",
@@ -1069,13 +1069,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "BASIC",
+    "assigned_trainset": "T-021",
+    "cleaning_type": "MAINTENANCE",
     "duration_hours": 4,
-    "crew_assigned": "CREW_71",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6713.451695976951,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_19",
+    "status": "CANCELLED",
+    "cost_estimate": 2259.0118774650823,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251002_NIGHT_2",
@@ -1083,13 +1083,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-004",
-    "cleaning_type": "MAINTENANCE",
+    "assigned_trainset": "T-019",
+    "cleaning_type": "DEEP",
     "duration_hours": 8,
-    "crew_assigned": "CREW_55",
-    "status": "SCHEDULED",
-    "cost_estimate": 5556.64038743428,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_70",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 4029.743770441438,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251002_MORNING_1",
@@ -1098,12 +1098,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_43",
-    "status": "COMPLETED",
-    "cost_estimate": 6376.939576225926,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_36",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 6125.779893942672,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251002_AFTERNOON_1",
@@ -1111,13 +1111,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-001",
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_28",
-    "status": "CANCELLED",
-    "cost_estimate": 3651.780900698742,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-013",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_51",
+    "status": "SCHEDULED",
+    "cost_estimate": 4374.436126544822,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251002_NIGHT_1",
@@ -1125,13 +1125,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_96",
-    "status": "COMPLETED",
-    "cost_estimate": 7702.502829258536,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-006",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_63",
+    "status": "SCHEDULED",
+    "cost_estimate": 7085.864524108795,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251003_MORNING_1",
@@ -1139,13 +1139,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
+    "assigned_trainset": "T-024",
     "cleaning_type": "BASIC",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_88",
-    "status": "SCHEDULED",
-    "cost_estimate": 2491.258359916805,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "duration_hours": 8,
+    "crew_assigned": "CREW_67",
+    "status": "COMPLETED",
+    "cost_estimate": 4791.665816509285,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251003_AFTERNOON_1",
@@ -1153,13 +1153,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-013",
+    "assigned_trainset": null,
     "cleaning_type": "MAINTENANCE",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_40",
-    "status": "SCHEDULED",
-    "cost_estimate": 6005.187784259764,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "duration_hours": 4,
+    "crew_assigned": "CREW_39",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 7918.292328924771,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251003_NIGHT_1",
@@ -1167,13 +1167,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
+    "assigned_trainset": "T-008",
+    "cleaning_type": "BASIC",
     "duration_hours": 2,
-    "crew_assigned": "CREW_51",
+    "crew_assigned": "CREW_13",
     "status": "IN_PROGRESS",
-    "cost_estimate": 5625.302239731949,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 4221.428499643825,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251003_MORNING_2",
@@ -1182,12 +1182,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_39",
+    "cleaning_type": "DEEP",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_42",
     "status": "SCHEDULED",
-    "cost_estimate": 4935.494003554179,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 6723.165344585737,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251003_AFTERNOON_2",
@@ -1195,13 +1195,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-001",
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_10",
-    "status": "SCHEDULED",
-    "cost_estimate": 7839.933472087859,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-004",
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_93",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 3713.7127336604644,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251003_NIGHT_2",
@@ -1209,13 +1209,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
+    "assigned_trainset": "T-002",
+    "cleaning_type": "DEEP",
     "duration_hours": 6,
-    "crew_assigned": "CREW_95",
-    "status": "CANCELLED",
-    "cost_estimate": 6423.698686879685,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_73",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 2055.72000613164,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251003_MORNING_1",
@@ -1223,13 +1223,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
+    "assigned_trainset": "T-006",
+    "cleaning_type": "DEEP",
     "duration_hours": 2,
-    "crew_assigned": "CREW_83",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 7094.9235237758585,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_23",
+    "status": "SCHEDULED",
+    "cost_estimate": 5192.675515403478,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251003_AFTERNOON_1",
@@ -1237,13 +1237,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-015",
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_49",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 4926.092655388284,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-009",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_89",
+    "status": "SCHEDULED",
+    "cost_estimate": 3530.6523900007123,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251003_NIGHT_1",
@@ -1254,10 +1254,10 @@
     "assigned_trainset": null,
     "cleaning_type": "DEEP",
     "duration_hours": 6,
-    "crew_assigned": "CREW_29",
-    "status": "CANCELLED",
-    "cost_estimate": 5308.944063980485,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_27",
+    "status": "COMPLETED",
+    "cost_estimate": 6391.174678982729,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251004_MORNING_1",
@@ -1265,13 +1265,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-018",
-    "cleaning_type": "BASIC",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_34",
-    "status": "SCHEDULED",
-    "cost_estimate": 4365.450915579238,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-024",
+    "cleaning_type": "DEEP",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_37",
+    "status": "COMPLETED",
+    "cost_estimate": 5194.661981252639,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251004_AFTERNOON_1",
@@ -1280,12 +1280,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_54",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 2782.522631562096,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_64",
+    "status": "COMPLETED",
+    "cost_estimate": 6117.921011251855,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251004_NIGHT_1",
@@ -1294,12 +1294,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "BASIC",
+    "cleaning_type": "MAINTENANCE",
     "duration_hours": 2,
-    "crew_assigned": "CREW_88",
-    "status": "SCHEDULED",
-    "cost_estimate": 6640.300269499318,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_96",
+    "status": "CANCELLED",
+    "cost_estimate": 5692.942684487509,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251004_MORNING_2",
@@ -1308,12 +1308,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_94",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 3950.3777005438924,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "DEEP",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_17",
+    "status": "SCHEDULED",
+    "cost_estimate": 2611.5046380102226,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251004_AFTERNOON_2",
@@ -1322,12 +1322,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
+    "cleaning_type": "SANITIZATION",
     "duration_hours": 2,
-    "crew_assigned": "CREW_59",
+    "crew_assigned": "CREW_51",
     "status": "CANCELLED",
-    "cost_estimate": 3507.856656719695,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 5426.352672311495,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251004_NIGHT_2",
@@ -1335,13 +1335,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-019",
-    "cleaning_type": "BASIC",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_80",
-    "status": "COMPLETED",
-    "cost_estimate": 7907.3164451437915,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": null,
+    "cleaning_type": "DEEP",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_56",
+    "status": "CANCELLED",
+    "cost_estimate": 2182.7245679495586,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251004_MORNING_1",
@@ -1349,13 +1349,13 @@
     "shift": "MORNING",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": null,
+    "assigned_trainset": "T-005",
     "cleaning_type": "BASIC",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_31",
-    "status": "COMPLETED",
-    "cost_estimate": 3282.466804918404,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "duration_hours": 6,
+    "crew_assigned": "CREW_97",
+    "status": "SCHEDULED",
+    "cost_estimate": 5969.049430195364,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251004_AFTERNOON_1",
@@ -1363,13 +1363,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-005",
-    "cleaning_type": "DEEP",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_27",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6774.942495255305,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": null,
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_65",
+    "status": "COMPLETED",
+    "cost_estimate": 4916.669915244903,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Petta_20251004_NIGHT_1",
@@ -1377,13 +1377,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-004",
+    "assigned_trainset": null,
     "cleaning_type": "SANITIZATION",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_49",
-    "status": "CANCELLED",
-    "cost_estimate": 5488.603341132314,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "duration_hours": 6,
+    "crew_assigned": "CREW_60",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 6185.5797008412255,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251005_MORNING_1",
@@ -1391,13 +1391,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-015",
+    "assigned_trainset": null,
     "cleaning_type": "MAINTENANCE",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_27",
-    "status": "SCHEDULED",
-    "cost_estimate": 6655.534490954846,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "duration_hours": 6,
+    "crew_assigned": "CREW_91",
+    "status": "CANCELLED",
+    "cost_estimate": 5055.059152441172,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251005_AFTERNOON_1",
@@ -1405,13 +1405,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "DEEP",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_38",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6545.106157688231,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-005",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_26",
+    "status": "COMPLETED",
+    "cost_estimate": 5920.793530035457,
+    "created_at": "2025-09-24T03:48:19.320344"
   },
   {
     "slot_id": "CLN_Aluva_20251005_NIGHT_1",
@@ -1420,12 +1420,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_52",
-    "status": "CANCELLED",
-    "cost_estimate": 4466.657798853865,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "BASIC",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_19",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 5627.7448717209745,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Aluva_20251005_MORNING_2",
@@ -1434,12 +1434,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_69",
-    "status": "COMPLETED",
-    "cost_estimate": 6782.6746441922005,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "DEEP",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_98",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 4100.900366101421,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Aluva_20251005_AFTERNOON_2",
@@ -1447,13 +1447,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "DEEP",
+    "assigned_trainset": "T-013",
+    "cleaning_type": "SANITIZATION",
     "duration_hours": 4,
-    "crew_assigned": "CREW_41",
-    "status": "COMPLETED",
-    "cost_estimate": 5400.1382862704595,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_45",
+    "status": "SCHEDULED",
+    "cost_estimate": 2981.7962792795665,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Aluva_20251005_NIGHT_2",
@@ -1461,13 +1461,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-005",
+    "assigned_trainset": "T-006",
     "cleaning_type": "MAINTENANCE",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_30",
-    "status": "SCHEDULED",
-    "cost_estimate": 5437.519930711318,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "duration_hours": 2,
+    "crew_assigned": "CREW_51",
+    "status": "CANCELLED",
+    "cost_estimate": 5697.914120039422,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Petta_20251005_MORNING_1",
@@ -1476,12 +1476,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_51",
-    "status": "SCHEDULED",
-    "cost_estimate": 7317.495542929883,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_85",
+    "status": "CANCELLED",
+    "cost_estimate": 2020.7171237760767,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Petta_20251005_AFTERNOON_1",
@@ -1489,13 +1489,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_84",
-    "status": "SCHEDULED",
-    "cost_estimate": 7006.160504084512,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-008",
+    "cleaning_type": "DEEP",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_47",
+    "status": "CANCELLED",
+    "cost_estimate": 5954.516622905536,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Petta_20251005_NIGHT_1",
@@ -1503,13 +1503,13 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-001",
-    "cleaning_type": "BASIC",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_97",
+    "assigned_trainset": "T-025",
+    "cleaning_type": "DEEP",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_92",
     "status": "SCHEDULED",
-    "cost_estimate": 3036.8781140227666,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 7249.806174856113,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Aluva_20251006_MORNING_1",
@@ -1518,12 +1518,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
+    "cleaning_type": "BASIC",
     "duration_hours": 2,
-    "crew_assigned": "CREW_16",
-    "status": "CANCELLED",
-    "cost_estimate": 5483.447387516959,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_21",
+    "status": "SCHEDULED",
+    "cost_estimate": 7996.018035858617,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Aluva_20251006_AFTERNOON_1",
@@ -1532,12 +1532,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "BASIC",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_30",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 7843.264064235244,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "DEEP",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_14",
+    "status": "SCHEDULED",
+    "cost_estimate": 4334.717115376001,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Aluva_20251006_NIGHT_1",
@@ -1545,13 +1545,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_48",
+    "assigned_trainset": "T-001",
+    "cleaning_type": "BASIC",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_83",
     "status": "COMPLETED",
-    "cost_estimate": 2154.8605029611667,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 4291.266736007914,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Aluva_20251006_MORNING_2",
@@ -1559,13 +1559,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-021",
-    "cleaning_type": "BASIC",
+    "assigned_trainset": null,
+    "cleaning_type": "DEEP",
     "duration_hours": 6,
-    "crew_assigned": "CREW_77",
+    "crew_assigned": "CREW_23",
     "status": "CANCELLED",
-    "cost_estimate": 4269.258768147673,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 7664.872212291528,
+    "created_at": "2025-09-24T03:48:19.321383"
   },
   {
     "slot_id": "CLN_Aluva_20251006_AFTERNOON_2",
@@ -1573,13 +1573,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-003",
-    "cleaning_type": "MAINTENANCE",
+    "assigned_trainset": null,
+    "cleaning_type": "SANITIZATION",
     "duration_hours": 2,
-    "crew_assigned": "CREW_33",
-    "status": "COMPLETED",
-    "cost_estimate": 4881.507478744927,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_43",
+    "status": "SCHEDULED",
+    "cost_estimate": 5775.109031840698,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Aluva_20251006_NIGHT_2",
@@ -1587,13 +1587,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-006",
-    "cleaning_type": "DEEP",
+    "assigned_trainset": null,
+    "cleaning_type": "MAINTENANCE",
     "duration_hours": 8,
-    "crew_assigned": "CREW_30",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 2391.4209406191876,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "crew_assigned": "CREW_99",
+    "status": "CANCELLED",
+    "cost_estimate": 7179.175809042957,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Petta_20251006_MORNING_1",
@@ -1602,12 +1602,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "SANITIZATION",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_16",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 5276.204172492624,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_95",
+    "status": "SCHEDULED",
+    "cost_estimate": 7568.258818791009,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Petta_20251006_AFTERNOON_1",
@@ -1615,13 +1615,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-025",
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_76",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 2605.666723483364,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-006",
+    "cleaning_type": "DEEP",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_32",
+    "status": "SCHEDULED",
+    "cost_estimate": 7684.012650824655,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Petta_20251006_NIGHT_1",
@@ -1630,12 +1630,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": null,
-    "cleaning_type": "DEEP",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_20",
-    "status": "COMPLETED",
-    "cost_estimate": 3307.6523308061587,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_53",
+    "status": "CANCELLED",
+    "cost_estimate": 7208.6245211981095,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Aluva_20251007_MORNING_1",
@@ -1643,13 +1643,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-006",
+    "assigned_trainset": "T-025",
     "cleaning_type": "BASIC",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_44",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_26",
     "status": "IN_PROGRESS",
-    "cost_estimate": 7193.153528777764,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 3246.9778316754146,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Aluva_20251007_AFTERNOON_1",
@@ -1657,13 +1657,13 @@
     "shift": "AFTERNOON",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_01",
-    "assigned_trainset": "T-008",
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_17",
+    "assigned_trainset": "T-019",
+    "cleaning_type": "DEEP",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_48",
     "status": "IN_PROGRESS",
-    "cost_estimate": 6360.950533704615,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 5833.056478295866,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Aluva_20251007_NIGHT_1",
@@ -1673,11 +1673,11 @@
     "bay_id": "Aluva_CLEANING_BAY_01",
     "assigned_trainset": null,
     "cleaning_type": "SANITIZATION",
-    "duration_hours": 2,
-    "crew_assigned": "CREW_35",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_41",
     "status": "SCHEDULED",
-    "cost_estimate": 6848.424960852883,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cost_estimate": 2199.535109826951,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Aluva_20251007_MORNING_2",
@@ -1685,13 +1685,13 @@
     "shift": "MORNING",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": null,
-    "cleaning_type": "DEEP",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_40",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 7633.609605941106,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "assigned_trainset": "T-019",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 8,
+    "crew_assigned": "CREW_42",
+    "status": "COMPLETED",
+    "cost_estimate": 5032.2336084733015,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Aluva_20251007_AFTERNOON_2",
@@ -1700,12 +1700,12 @@
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
     "assigned_trainset": null,
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 8,
-    "crew_assigned": "CREW_18",
-    "status": "IN_PROGRESS",
-    "cost_estimate": 6762.366065778225,
-    "created_at": "2025-09-24T02:48:40.759460"
+    "cleaning_type": "SANITIZATION",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_29",
+    "status": "COMPLETED",
+    "cost_estimate": 4516.925607522353,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Aluva_20251007_NIGHT_2",
@@ -1713,13 +1713,13 @@
     "shift": "NIGHT",
     "depot": "Aluva",
     "bay_id": "Aluva_CLEANING_BAY_02",
-    "assigned_trainset": "T-012",
-    "cleaning_type": "DEEP",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_60",
+    "assigned_trainset": "T-011",
+    "cleaning_type": "MAINTENANCE",
+    "duration_hours": 6,
+    "crew_assigned": "CREW_59",
     "status": "COMPLETED",
-    "cost_estimate": 4850.13943165264,
-    "created_at": "2025-09-24T02:48:40.760458"
+    "cost_estimate": 5357.984284681645,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Petta_20251007_MORNING_1",
@@ -1728,12 +1728,12 @@
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
     "assigned_trainset": "T-008",
-    "cleaning_type": "DEEP",
+    "cleaning_type": "MAINTENANCE",
     "duration_hours": 8,
-    "crew_assigned": "CREW_86",
-    "status": "CANCELLED",
-    "cost_estimate": 3213.1042037178727,
-    "created_at": "2025-09-24T02:48:40.760458"
+    "crew_assigned": "CREW_92",
+    "status": "IN_PROGRESS",
+    "cost_estimate": 3969.53589850086,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Petta_20251007_AFTERNOON_1",
@@ -1741,13 +1741,13 @@
     "shift": "AFTERNOON",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-013",
-    "cleaning_type": "MAINTENANCE",
-    "duration_hours": 6,
-    "crew_assigned": "CREW_48",
+    "assigned_trainset": null,
+    "cleaning_type": "BASIC",
+    "duration_hours": 4,
+    "crew_assigned": "CREW_89",
     "status": "IN_PROGRESS",
-    "cost_estimate": 6095.706232224427,
-    "created_at": "2025-09-24T02:48:40.760458"
+    "cost_estimate": 5931.524620630122,
+    "created_at": "2025-09-24T03:48:19.321601"
   },
   {
     "slot_id": "CLN_Petta_20251007_NIGHT_1",
@@ -1755,12 +1755,12 @@
     "shift": "NIGHT",
     "depot": "Petta",
     "bay_id": "Petta_CLEANING_BAY_01",
-    "assigned_trainset": "T-019",
-    "cleaning_type": "BASIC",
-    "duration_hours": 4,
-    "crew_assigned": "CREW_91",
+    "assigned_trainset": "T-015",
+    "cleaning_type": "DEEP",
+    "duration_hours": 2,
+    "crew_assigned": "CREW_45",
     "status": "SCHEDULED",
-    "cost_estimate": 5863.430703483711,
-    "created_at": "2025-09-24T02:48:40.760458"
+    "cost_estimate": 7888.635009335825,
+    "created_at": "2025-09-24T03:48:19.321601"
   }
 ]

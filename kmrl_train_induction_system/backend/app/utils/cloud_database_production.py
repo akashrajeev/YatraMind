@@ -62,15 +62,13 @@ class ProductionCloudDatabaseManager:
             )
             self.influxdb_write_api = self.influxdb_client.write_api()
             
-            # Test connection by writing a test point
-            test_point = Point("connection_test").field("test", 1.0)
-            self.influxdb_write_api.write(
-                bucket=settings.influxdb_bucket,
-                org=settings.influxdb_org,
-                record=test_point
-            )
-            self.connections["influxdb"] = True
-            logger.info("✅ InfluxDB Cloud connected successfully")
+            # Test connection
+            health = self.influxdb_client.health()
+            if health.status == "pass":
+                self.connections["influxdb"] = True
+                logger.info("✅ InfluxDB Cloud connected successfully")
+            else:
+                raise Exception(f"InfluxDB health check failed: {health.message}")
                 
         except Exception as e:
             logger.error(f"❌ InfluxDB Cloud connection failed: {e}")
@@ -285,4 +283,4 @@ class ProductionCloudDatabaseManager:
         return health_status
 
 # Create production instance
-cloud_db_manager = ProductionCloudDatabaseManager()
+production_cloud_db_manager = ProductionCloudDatabaseManager()

@@ -10,7 +10,7 @@ import time
 from datetime import datetime
 
 # Configuration
-BASE_URL = "http://127.0.0.1:8005"
+BASE_URL = "http://127.0.0.1:8000"
 TIMEOUT = 30
 
 def test_endpoint(method, endpoint, data=None, description=""):
