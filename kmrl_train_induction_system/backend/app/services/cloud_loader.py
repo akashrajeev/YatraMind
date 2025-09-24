@@ -8,6 +8,7 @@ from typing import Any, Dict, List, Tuple
 from motor.motor_asyncio import AsyncIOMotorClient
 from influxdb_client import InfluxDBClient, Point, WritePrecision
 from redis.asyncio import Redis
+from app.config import settings
 
 logger = logging.getLogger(__name__)
 
@@ -117,14 +118,7 @@ async def cache_to_redis(
 
 # --------------------------- Orchestrator --------------------------- #
 async def load_all_cloud_dbs(
-    mongodb_uri: str,
-    mongodb_db: str,
-    influx_url: str,
-    influx_token: str,
-    influx_org: str,
-    influx_bucket: str,
-    redis_url: str,
-    # Data
+    # Data (required)
     trainsets: List[Dict[str, Any]],
     job_cards: List[Dict[str, Any]],
     branding_contracts: List[Dict[str, Any]],
@@ -132,6 +126,13 @@ async def load_all_cloud_dbs(
     historical_operations: List[Dict[str, Any]],
     depot_layout: Dict[str, Any] | List[Dict[str, Any]],
     sensor_data: List[Dict[str, Any]],
+    # Connection overrides (optional)
+    mongodb_uri: str | None = None,
+    mongodb_db: str | None = None,
+    influx_url: str | None = None,
+    influx_token: str | None = None,
+    influx_org: str | None = None,
+    influx_bucket: str | None = None,
 ) -> None:
     collections = {
         "trainsets": trainsets,
@@ -142,9 +143,14 @@ async def load_all_cloud_dbs(
         "depot_layout": [depot_layout] if isinstance(depot_layout, dict) else depot_layout,
     }
 
-    await load_to_mongodb(mongodb_uri, mongodb_db, collections)
-    await load_to_influxdb(influx_url, influx_token, influx_org, influx_bucket, sensor_data)
+    # Use settings if params are not provided
+    mongo_uri = mongodb_uri or settings.mongodb_url
+    mongo_db = mongodb_db or settings.database_name
+    inf_url = influx_url or settings.influxdb_url
+    inf_token = influx_token or settings.influxdb_token
+    inf_org = influx_org or settings.influxdb_org
+    inf_bucket = influx_bucket or settings.influxdb_bucket
 
-    active = [t for t in trainsets if str(t.get("status", "")).upper() == "ACTIVE"]
-    extras = [("depot_info", json.dumps({"total_trainsets": len(trainsets)}), 86400)]
-    await cache_to_redis(redis_url, active, extra_pairs=extras)
+    await load_to_mongodb(mongo_uri, mongo_db, collections)
+    await load_to_influxdb(inf_url, inf_token, inf_org, inf_bucket, sensor_data)
+    # Skipping Redis caching for now

@@ -7,6 +7,7 @@ from app.services.optimizer import TrainInductionOptimizer
 from app.services.rule_engine import DurableRulesEngine
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.utils.cloud_database import cloud_db_manager
+from app.config import settings
 import asyncio
 import json
 import logging
@@ -47,15 +48,7 @@ async def run_optimization(
             validated_trainsets, [decision.dict() for decision in optimization_result]
         )
         
-        # Cache results in Redis Cloud
-        cache_key = f"optimization::{request.target_date.isoformat()}"
-        cache_data = json.dumps([decision.dict() for decision in optimization_result])
-        await cloud_db_manager.cache_set(cache_key, cache_data, expiry=3600)  # 1 hour
-        
-        # Cache stabling geometry results
-        stabling_key = f"stabling::{request.target_date.isoformat()}"
-        stabling_data = json.dumps(stabling_geometry)
-        await cloud_db_manager.cache_set(stabling_key, stabling_data, expiry=3600)
+        # Skip Redis caching for now
         
         # Store optimization history in MongoDB
         background_tasks.add_task(store_optimization_history, request, optimization_result)
@@ -160,6 +153,18 @@ async def simulate_what_if(
         logger.error(f"Simulation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Simulation failed: {str(e)}")
 
+@router.get("/latest", response_model=List[InductionDecision])
+async def get_latest_ranked_list():
+    """Get latest ranked induction list stored in MongoDB"""
+    try:
+        latest_collection = await cloud_db_manager.get_collection("latest_induction")
+        doc = await latest_collection.find_one({})
+        if not doc:
+            raise HTTPException(status_code=404, detail="No latest induction list available")
+        return [InductionDecision(**d) for d in doc.get("decisions", [])]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch latest list: {str(e)}")
+
 @router.get("/stabling-geometry")
 async def get_stabling_geometry_optimization():
     """Get optimized stabling geometry to minimize shunting and turn-out time"""
@@ -248,7 +253,14 @@ async def store_optimization_history(request: OptimizationRequest, result: List[
             "decisions": [d.dict() for d in result]
         }
         
-        await collection.insert_one(history_record)
+        insert_result = await collection.insert_one(history_record)
+        # Also persist latest ranked list separately for quick access
+        latest_collection = await cloud_db_manager.get_collection("latest_induction")
+        await latest_collection.delete_many({})
+        await latest_collection.insert_one({
+            "_meta": {"updated_at": datetime.now().isoformat()},
+            "decisions": [d.dict() for d in result]
+        })
         logger.info("Optimization history stored in MongoDB")
         
     except Exception as e:

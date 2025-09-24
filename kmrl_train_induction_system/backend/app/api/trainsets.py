@@ -41,10 +41,6 @@ async def get_all_trainsets(
             # Simple data cleaning - remove any invalid entries
             trainsets = [t for t in trainsets if t.get('trainset_id')]
         
-        # Cache in Redis Cloud
-        cache_key = f"trainsets:{status}:{depot}:{clean_data}"
-        await cloud_db_manager.cache_set(cache_key, json.dumps(trainsets), expiry=300)  # 5min cache
-        
         logger.info(f"Retrieved {len(trainsets)} trainsets from MongoDB Atlas")
         return trainsets
         

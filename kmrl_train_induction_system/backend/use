@@ -1,0 +1,56 @@
+# =============================================================================
+# MONGODB ATLAS CONFIGURATION
+# =============================================================================
+MONGODB_URL=mongodb+srv://akashrajeev313_db_user:LGPYxaw580r1ZcPp@kmrl-cluster.bezazzi.mongodb.net/kmrl_db?retryWrites=true&w=majority&appName=kmrl-cluster
+DATABASE_NAME=kmrl_db
+
+# =============================================================================
+# INFLUXDB CLOUD CONFIGURATION
+# =============================================================================
+INFLUXDB_URL=https://us-east-1-1.aws.cloud2.influxdata.com
+INFLUXDB_TOKEN=vyFSVC4cl9lehcpFGz3z_Kd4qT_JUMWp4jtmXmZcnneI75lqwqNvQMojnvutzSECoJd22Wegl7rxJJemAnKJTA==
+INFLUXDB_ORG=kmrl
+INFLUXDB_BUCKET=kmrl-data
+
+# =============================================================================
+# REDIS CLOUD CONFIGURATION
+# =============================================================================
+REDIS_URL=rediss://default:hpY5e%23W4wapSsjb@redis-12279.crce206.ap-south-1-1.ec2.redns.redis-cloud.com:12279
+
+# =============================================================================
+# MQTT BROKER CONFIGURATION
+# =============================================================================
+MQTT_BROKER=e71006d0dd4d4a3b9a383eb5d8f2b9d8.s1.eu.hivemq.cloud
+MQTT_BROKER_HOST=e71006d0dd4d4a3b9a383eb5d8f2b9d8.s1.eu.hivemq.cloud
+MQTT_BROKER_PORT=8883
+MQTT_USE_TLS=true
+MQTT_USERNAME=kmrl_iot_client
+MQTT_PASSWORD=hpY5e#W4wapSsjb
+
+# =============================================================================
+# API CONFIGURATION
+# =============================================================================
+API_HOST=127.0.0.1
+API_PORT=8000
+API_KEY=kmrl_api_key_2024
+SECRET_KEY=kmrl_secret_key_2024
+ENVIRONMENT=production
+DEBUG=false
+
+# =============================================================================
+# ML MODEL CONFIGURATION
+# =============================================================================
+MODEL_PATH=models/
+CONFIDENCE_THRESHOLD=0.8
+
+# =============================================================================
+# SECURITY CONFIGURATION
+# =============================================================================
+JWT_SECRET_KEY=kmrl_jwt_secret_2024
+ENCRYPTION_KEY=kmrl_encryption_key_2024
+
+# =============================================================================
+# LOGGING CONFIGURATION
+# =============================================================================
+LOG_LEVEL=INFO
+LOG_FILE=logs/kmrl_system.log

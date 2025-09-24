@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 @router.get("/overview")
 async def get_dashboard_overview():
-    """Fleet overview with real-time data from MongoDB + InfluxDB"""
+    """Fleet overview with real-time data from MongoDB (Influx used for metrics elsewhere)."""
     try:
         # Get trainsets from MongoDB Atlas
         collection = await cloud_db_manager.get_collection("trainsets")

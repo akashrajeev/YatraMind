@@ -29,18 +29,8 @@ async def test_connections():
     except Exception as e:
         print(f"   ❌ MongoDB failed: {e}")
     
-    # Test Redis
-    try:
-        print("\n🔄 Testing Redis Cloud...")
-        await cloud_db_manager.connect_redis()
-        
-        # Test basic operations
-        await cloud_db_manager.cache_set("test_key", "test_value", expiry=60)
-        value = await cloud_db_manager.cache_get("test_key")
-        print(f"   ✅ Redis: Set/Get successful - {value}")
-        
-    except Exception as e:
-        print(f"   ❌ Redis failed: {e}")
+    # Skip Redis test for now
+    print("\n⏭️  Skipping Redis Cloud test (disabled)")
     
     # Test InfluxDB
     try:

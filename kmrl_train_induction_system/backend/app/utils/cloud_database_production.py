@@ -79,7 +79,25 @@ class ProductionCloudDatabaseManager:
         """Connect to Redis Cloud"""
         try:
             logger.info("Connecting to Redis Cloud...")
-            self.redis_client = Redis.from_url(settings.redis_url, decode_responses=True)
+            # For rediss:// endpoints, relax cert verification on Windows if needed
+            common_kwargs = {
+                "decode_responses": True,
+                "socket_connect_timeout": 10.0,
+                "socket_timeout": 10.0,
+                "health_check_interval": 30,
+                "retry_on_timeout": True,
+            }
+            if str(settings.redis_url).startswith("rediss://"):
+                self.redis_client = Redis.from_url(
+                    settings.redis_url,
+                    ssl_cert_reqs=None,
+                    **common_kwargs,
+                )
+            else:
+                self.redis_client = Redis.from_url(
+                    settings.redis_url,
+                    **common_kwargs,
+                )
             
             # Test connection
             await self.redis_client.ping()
@@ -96,13 +114,20 @@ class ProductionCloudDatabaseManager:
         try:
             logger.info("Connecting to MQTT broker...")
             self.mqtt_client = paho_mqtt.Client(client_id="kmrl_system", protocol=paho_mqtt.MQTTv5)
-            
+
             # Set credentials if provided
             if settings.mqtt_username and settings.mqtt_password:
                 self.mqtt_client.username_pw_set(settings.mqtt_username, settings.mqtt_password)
-            
+
+            # Resolve host/port and TLS
+            broker_host = getattr(settings, "mqtt_broker_host", None) or settings.mqtt_broker
+            broker_port = int(getattr(settings, "mqtt_broker_port", settings.mqtt_port))
+            use_tls = str(getattr(settings, "mqtt_use_tls", "")).lower() == "true"
+            if use_tls:
+                self.mqtt_client.tls_set()
+
             # Connect to broker
-            self.mqtt_client.connect(settings.mqtt_broker, settings.mqtt_port, 60)
+            self.mqtt_client.connect(broker_host, broker_port, 60)
             self.mqtt_client.loop_start()
             
             self.connections["mqtt"] = True

@@ -39,8 +39,10 @@ async def startup_event():
     """Initialize cloud database connections on startup"""
     try:
         logger.info("Starting KMRL Train Induction System...")
-        await cloud_db_manager.connect_all()
-        logger.info("Cloud database connections established")
+        # Connect only to MongoDB and InfluxDB for now (skip Redis/MQTT)
+        await cloud_db_manager.connect_mongodb()
+        await cloud_db_manager.connect_influxdb()
+        logger.info("MongoDB and InfluxDB connections established")
     except Exception as e:
         logger.error(f"Startup failed: {e}")
 
@@ -68,12 +70,13 @@ async def root():
 async def health_check():
     """Health check endpoint"""
     try:
-        # Check database connectivity
-        await cloud_db_manager.connect_all()
+        # Check MongoDB and InfluxDB connectivity only
+        await cloud_db_manager.connect_mongodb()
+        await cloud_db_manager.connect_influxdb()
         
         return {
             "status": "healthy",
-            "database": "connected",
+            "database": "mongo+influx connected",
             "timestamp": "2024-01-01T00:00:00Z"  # Would use actual timestamp
         }
     except Exception as e:
