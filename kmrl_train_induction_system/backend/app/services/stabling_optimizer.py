@@ -89,7 +89,21 @@ class StablingGeometryOptimizer:
             
         except Exception as e:
             logger.error(f"Stabling geometry optimization failed: {e}")
-            raise
+            # Return a safe empty response instead of raising to avoid API 500s
+            return {
+                "optimized_layout": {},
+                "efficiency_metrics": {
+                    "overall_efficiency": 0.0,
+                    "shunting_efficiency": 0.0,
+                    "energy_savings": 0.0,
+                    "time_savings": 0.0,
+                    "depot_scores": {}
+                },
+                "total_shunting_time": 0,
+                "total_turnout_time": 0,
+                "optimization_timestamp": datetime.now().isoformat(),
+                "error": str(e)
+            }
     
     def _group_trainsets_by_depot(self, trainsets: List[Dict[str, Any]], 
                                 decisions: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
@@ -97,13 +111,15 @@ class StablingGeometryOptimizer:
         depot_groups = {}
         
         for trainset in trainsets:
-            depot = trainset.get("current_location", {}).get("depot", "Aluva")
+            current_loc = trainset.get("current_location") or {}
+            depot = current_loc.get("depot", "Aluva")
             if depot not in depot_groups:
                 depot_groups[depot] = []
             
             # Add decision information
-            decision = next((d for d in decisions if d["trainset_id"] == trainset["trainset_id"]), None)
-            trainset["induction_decision"] = decision
+            decision = next((d for d in decisions if d.get("trainset_id") == trainset.get("trainset_id")), None)
+            # Ensure dict to avoid NoneType errors downstream
+            trainset["induction_decision"] = decision or {}
             depot_groups[depot].append(trainset)
         
         return depot_groups
@@ -187,7 +203,8 @@ class StablingGeometryOptimizer:
         operations = []
         
         for trainset in trainsets:
-            current_bay = self._extract_bay_number(trainset.get("current_location", {}).get("bay", ""))
+            current_loc = trainset.get("current_location") or {}
+            current_bay = self._extract_bay_number(current_loc.get("bay", ""))
             assigned_bay = bay_assignments.get(trainset["trainset_id"])
             
             if current_bay and assigned_bay and current_bay != assigned_bay:
@@ -251,8 +268,17 @@ class StablingGeometryOptimizer:
     def _calculate_efficiency_metrics(self, optimized_layout: Dict[str, Any], 
                                    total_shunting_time: int, total_turnout_time: int) -> Dict[str, Any]:
         """Calculate overall efficiency metrics"""
-        total_trainsets = sum(len(depot["bay_assignments"]) for depot in optimized_layout.values())
-        
+        total_trainsets = sum(len(depot.get("bay_assignments", {})) for depot in optimized_layout.values())
+
+        if total_trainsets == 0:
+            return {
+                "overall_efficiency": 0.0,
+                "shunting_efficiency": 0.0,
+                "energy_savings": 0.0,
+                "time_savings": 0.0,
+                "depot_scores": {depot: layout.get("efficiency_score", 0.0) for depot, layout in optimized_layout.items()}
+            }
+
         return {
             "overall_efficiency": round(1 - (total_turnout_time / (total_trainsets * 15)), 3),
             "shunting_efficiency": round(1 - (total_shunting_time / (total_trainsets * 10)), 3),

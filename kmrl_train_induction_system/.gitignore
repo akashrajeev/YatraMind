@@ -7,6 +7,7 @@ __pycache__/
 *.db
 *.egg-info/
 .env
+
 .vscode/
 venv/
 env/
@@ -63,3 +64,4 @@ coverage.xml
 
 # Credentials files
 credentials.json
+

@@ -169,14 +169,7 @@ async def get_latest_ranked_list():
 async def get_stabling_geometry_optimization():
     """Get optimized stabling geometry to minimize shunting and turn-out time"""
     try:
-        # Get cached stabling geometry results
-        stabling_key = f"stabling::{datetime.now().strftime('%Y-%m-%d')}"
-        cached_stabling = await cloud_db_manager.cache_get(stabling_key)
-        
-        if cached_stabling:
-            return json.loads(cached_stabling)
-        
-        # If no cached results, run optimization
+        # Directly compute optimization (Redis disabled)
         collection = await cloud_db_manager.get_collection("trainsets")
         cursor = collection.find({})
         trainsets_data = []
@@ -204,20 +197,20 @@ async def get_stabling_geometry_optimization():
 async def get_shunting_schedule():
     """Get detailed shunting schedule for operations team"""
     try:
-        # Get stabling geometry results
-        stabling_key = f"stabling::{datetime.now().strftime('%Y-%m-%d')}"
-        cached_stabling = await cloud_db_manager.cache_get(stabling_key)
-        
-        if not cached_stabling:
-            raise HTTPException(status_code=404, detail="No stabling geometry data found")
-        
-        stabling_data = json.loads(cached_stabling)
+        # Compute stabling geometry on the fly (Redis disabled)
+        collection = await cloud_db_manager.get_collection("trainsets")
+        cursor = collection.find({})
+        trainsets_data = []
+        async for trainset_doc in cursor:
+            trainset_doc.pop('_id', None)
+            trainsets_data.append(trainset_doc)
+        if not trainsets_data:
+            raise HTTPException(status_code=404, detail="No trainsets found")
+        stabling_optimizer = StablingGeometryOptimizer()
+        stabling_data = await stabling_optimizer.optimize_stabling_geometry(trainsets_data, [])
         
         # Generate shunting schedule
-        stabling_optimizer = StablingGeometryOptimizer()
-        shunting_schedule = await stabling_optimizer.get_shunting_schedule(
-            stabling_data["optimized_layout"]
-        )
+        shunting_schedule = await stabling_optimizer.get_shunting_schedule(stabling_data["optimized_layout"])
         
         return {
             "shunting_schedule": shunting_schedule,

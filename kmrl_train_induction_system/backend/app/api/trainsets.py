@@ -52,17 +52,6 @@ async def get_all_trainsets(
 async def get_trainset(trainset_id: str):
     """Get specific trainset by ID with caching"""
     try:
-        # Check Redis cache first
-        cache_key = f"trainset:{trainset_id}"
-        cached_result = await cloud_db_manager.cache_get(cache_key)
-        
-        if cached_result:
-            logger.info(f"Cache hit for trainset {trainset_id}")
-            try:
-                return json.loads(cached_result)
-            except Exception:
-                return {"error": "cache_corrupt"}
-        
         # Fetch from MongoDB Atlas
         collection = await cloud_db_manager.get_collection("trainsets")
         trainset_doc = await collection.find_one({"trainset_id": trainset_id})
@@ -71,9 +60,6 @@ async def get_trainset(trainset_id: str):
             raise HTTPException(status_code=404, detail=f"Trainset {trainset_id} not found")
         
         trainset_doc.pop('_id', None)
-        
-        # Cache the result
-        await cloud_db_manager.cache_set(cache_key, json.dumps(trainset_doc), expiry=600)
         
         logger.info(f"Retrieved trainset {trainset_id} from MongoDB Atlas")
         return trainset_doc
@@ -110,10 +96,6 @@ async def update_trainset(trainset_id: str, update_data: TrainsetUpdate, backgro
         
         if result.modified_count == 0:
             raise HTTPException(status_code=400, detail="No changes made")
-        
-        # Invalidate cache
-        cache_key = f"trainset:{trainset_id}"
-        await cloud_db_manager.cache_set(cache_key, "", expiry=1)  # Expire immediately
         
         # Trigger ML feedback loop (background task)
         background_tasks.add_task(trigger_ml_feedback, trainset_id, update_payload)
