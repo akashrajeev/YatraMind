@@ -7,7 +7,8 @@ from typing import Any, Dict, List, Tuple
 
 from motor.motor_asyncio import AsyncIOMotorClient
 from influxdb_client import InfluxDBClient, Point, WritePrecision
-from redis.asyncio import Redis
+# Redis disabled for now
+# from redis.asyncio import Redis
 from app.config import settings
 
 logger = logging.getLogger(__name__)
@@ -90,7 +91,7 @@ async def load_to_influxdb(
         client.close()
         logger.info("InfluxDB: done")
 
-# --------------------------- Redis (async) --------------------------- #
+# --------------------------- Redis (disabled) --------------------------- #
 async def cache_to_redis(
     redis_url: str,
     active_trainsets: List[Dict[str, Any]],
@@ -98,23 +99,7 @@ async def cache_to_redis(
     active_key: str = "active_trainsets",
     ttl_seconds: int = 3600,
 ) -> None:
-    redis: Redis = Redis.from_url(redis_url, decode_responses=True)
-    try:
-        payload = json.dumps(active_trainsets)
-        await redis.setex(active_key, ttl_seconds, payload)
-        logger.info(
-            f"Redis: cached {len(active_trainsets)} active trainsets at {active_key}"
-        )
-
-        if extra_pairs:
-            for key, value, ttl in extra_pairs:
-                try:
-                    await redis.setex(key, ttl, value)
-                except Exception as exc:
-                    logger.exception(f"Redis: setex failed for {key}: {exc}")
-    finally:
-        await redis.close()
-        logger.info("Redis: done")
+    logger.info("Redis caching skipped (disabled)")
 
 # --------------------------- Orchestrator --------------------------- #
 async def load_all_cloud_dbs(

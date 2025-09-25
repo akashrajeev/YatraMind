@@ -7,6 +7,8 @@ from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from datetime import datetime
 import logging
+from app.celery_app import celery_app
+from app.tasks import nightly_run_optimization, ingestion_refresh_all, train_model
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -63,6 +65,8 @@ async def startup_event():
         if sheet_url:
             scheduler.add_job(lambda: svc.ingest_cleaning_google_sheet(sheet_url), "interval", minutes=30, id="cleaning_ingest", max_instances=1, coalesce=True)
 
+        # Nightly optimization at 4:30 AM IST (Asia/Kolkata) -> convert to server TZ by cron
+        scheduler.add_job(lambda: celery_app.send_task("optimization.nightly_run"), "cron", hour=23, minute=59, id="nightly_opt")
         scheduler.start()
     except Exception as e:
         logger.error(f"Startup failed: {e}")
@@ -102,6 +106,24 @@ async def health_check():
             "database": "mongo+influx connected",
             "timestamp": "2024-01-01T00:00:00Z"  # Would use actual timestamp
         }
+
+@app.post("/tasks/optimization/run")
+async def trigger_optimization_task():
+    """Enqueue nightly optimization task to Celery."""
+    celery_app.send_task("optimization.nightly_run")
+    return {"status": "queued"}
+
+@app.post("/tasks/ingestion/refresh")
+async def trigger_ingestion_refresh():
+    """Enqueue ingestion refresh task."""
+    celery_app.send_task("ingestion.refresh_all")
+    return {"status": "queued"}
+
+@app.post("/tasks/ml/train")
+async def trigger_model_training():
+    """Enqueue model training task."""
+    celery_app.send_task("ml.train_model")
+    return {"status": "queued"}
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return {

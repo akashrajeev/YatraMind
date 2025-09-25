@@ -46,6 +46,57 @@ async def ingest_maximo_data(background_tasks: BackgroundTasks):
         logger.error(f"Maximo ingestion failed: {e}")
         raise HTTPException(status_code=500, detail=f"Maximo ingestion failed: {str(e)}")
 
+@router.post("/ingest/timeseries/upload")
+async def upload_timeseries(file: UploadFile = File(...)):
+    """Upload time-series CSV and persist to InfluxDB; store downsample in MongoDB."""
+    try:
+        svc = DataIngestionService()
+        content = await file.read()
+        import pandas as pd
+        import io
+        df = pd.read_csv(io.BytesIO(content))
+        df.columns = df.columns.str.lower()
+        required = {"trainset_id", "sensor_type", "timestamp"}
+        if not required.issubset(set(df.columns)):
+            raise HTTPException(status_code=400, detail="Missing required columns in time-series CSV")
+
+        # Write each row to InfluxDB via cloud_db_manager
+        records = df.to_dict(orient="records")
+        from app.utils.cloud_database import cloud_db_manager
+        written = 0
+        for r in records:
+            metric = {
+                "trainset_id": r.get("trainset_id"),
+                "sensor_type": r.get("sensor_type", "uploaded"),
+                "health_score": float(r.get("health_score", 0.0)),
+                "temperature": float(r.get("temperature", 0.0)),
+                "timestamp": str(r.get("timestamp")),
+            }
+            ok = await cloud_db_manager.write_sensor_data(metric)
+            written += 1 if ok else 0
+
+        # Downsampled copy (mean by trainset_id, sensor_type per hour)
+        if "timestamp" in df.columns:
+            df["timestamp"] = pd.to_datetime(df["timestamp"])
+            grouped = (
+                df.set_index("timestamp")
+                .groupby([pd.Grouper(freq="1H"), "trainset_id", "sensor_type"]).mean(numeric_only=True)
+                .reset_index()
+            )
+            col = await cloud_db_manager.get_collection("timeseries_downsample")
+            docs = grouped.to_dict(orient="records")
+            for d in docs:
+                d["ingested_at"] = pd.Timestamp.utcnow().isoformat()
+            if docs:
+                await col.insert_many(docs)
+
+        return {"status": "ok", "written_influx": written}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Time-series upload failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/ingest/maximo/rest")
 async def ingest_maximo_via_rest(background_tasks: BackgroundTasks):
     """Ingest job cards from IBM Maximo REST API (uses .env config)."""

@@ -141,16 +141,15 @@ class ProductionCloudDatabaseManager:
             raise
     
     async def connect_all(self):
-        """Connect to all cloud services"""
+        """Connect only to MongoDB and InfluxDB (Redis/MQTT disabled)"""
         try:
-            logger.info("Connecting to all cloud services...")
+            logger.info("Connecting to MongoDB and InfluxDB (Redis/MQTT disabled)...")
             await self.connect_mongodb()
             await self.connect_influxdb()
-            await self.connect_redis()
-            await self.connect_mqtt()
-            logger.info("✅ All cloud services connected successfully")
+            # Redis and MQTT intentionally skipped
+            logger.info("✅ MongoDB and InfluxDB connected successfully")
         except Exception as e:
-            logger.error(f"❌ Failed to connect to cloud services: {e}")
+            logger.error(f"❌ Failed to connect to required services: {e}")
             raise
     
     async def close_all(self):
@@ -183,16 +182,13 @@ class ProductionCloudDatabaseManager:
         return self.mongodb_db[name]
     
     async def cache_get(self, key: str) -> Optional[str]:
-        """Get value from Redis cache"""
-        if not self.connections["redis"]:
-            raise Exception("Redis not connected")
-        return await self.redis_client.get(key)
+        """Get value from cache (Redis disabled -> always returns None)."""
+        logger.info("Cache get skipped (Redis disabled): %s", key)
+        return None
     
     async def cache_set(self, key: str, value: str, expiry: int = 300):
-        """Set value in Redis cache"""
-        if not self.connections["redis"]:
-            raise Exception("Redis not connected")
-        await self.redis_client.setex(key, expiry, value)
+        """Set value in cache (Redis disabled -> no-op)."""
+        logger.info("Cache set skipped (Redis disabled): %s", key)
     
     async def write_sensor_data(self, data: Dict[str, Any]) -> bool:
         """Write sensor data to InfluxDB"""
@@ -233,16 +229,8 @@ class ProductionCloudDatabaseManager:
             return False
     
     async def publish_mqtt_message(self, topic: str, message: Dict[str, Any]):
-        """Publish message to MQTT broker"""
-        if not self.connections["mqtt"]:
-            raise Exception("MQTT not connected")
-        
-        try:
-            payload = json.dumps(message)
-            self.mqtt_client.publish(topic, payload)
-            logger.debug(f"Published MQTT message to {topic}")
-        except Exception as e:
-            logger.error(f"Failed to publish MQTT message: {e}")
+        """Publish message to MQTT broker (disabled -> no-op)."""
+        logger.info("MQTT publish skipped (MQTT disabled): %s", topic)
     
     def get_connection_status(self) -> Dict[str, bool]:
         """Get connection status for all services"""
@@ -284,28 +272,11 @@ class ProductionCloudDatabaseManager:
             health_status["services"]["influxdb"] = {"status": "unhealthy", "details": str(e)}
             health_status["overall"] = False
         
-        # Check Redis
-        try:
-            if self.connections["redis"]:
-                await self.redis_client.ping()
-                health_status["services"]["redis"] = {"status": "healthy", "details": "Connected"}
-            else:
-                health_status["services"]["redis"] = {"status": "unhealthy", "details": "Not connected"}
-                health_status["overall"] = False
-        except Exception as e:
-            health_status["services"]["redis"] = {"status": "unhealthy", "details": str(e)}
-            health_status["overall"] = False
+        # Redis is disabled
+        health_status["services"]["redis"] = {"status": "skipped", "details": "Disabled"}
         
-        # Check MQTT
-        try:
-            if self.connections["mqtt"] and self.mqtt_client.is_connected():
-                health_status["services"]["mqtt"] = {"status": "healthy", "details": "Connected"}
-            else:
-                health_status["services"]["mqtt"] = {"status": "unhealthy", "details": "Not connected"}
-                health_status["overall"] = False
-        except Exception as e:
-            health_status["services"]["mqtt"] = {"status": "unhealthy", "details": str(e)}
-            health_status["overall"] = False
+        # MQTT is disabled
+        health_status["services"]["mqtt"] = {"status": "skipped", "details": "Disabled"}
         
         return health_status
 

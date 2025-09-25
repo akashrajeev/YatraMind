@@ -7,6 +7,7 @@ from typing import Dict, Any, List
 from app.utils.cloud_database import cloud_db_manager
 from app.services.data_cleaning import DataCleaningService
 from app.config import settings
+from app.utils.uns_recorder import record_uns_event
 import io
 import pandas as pd
 import json as _json
@@ -67,10 +68,14 @@ class DataIngestionService:
             # Clean and validate data
             cleaned_data = self.cleaning_service.clean_trainset_data(maximo_data)
             
-            # Store in MongoDB
-            collection = await cloud_db_manager.get_collection("job_cards")
-            await collection.delete_many({})  # Clear existing
-            await collection.insert_many(cleaned_data)
+            # Record UNS envelope and normalized docs
+            await record_uns_event(
+                source="maximo_poller",
+                target_collection="job_cards",
+                raw_payload={"count": len(maximo_data)},
+                normalized_docs=cleaned_data,
+                metadata={"mode": "api" if settings.maximo_base_url else "simulated"},
+            )
             
             return {"count": len(cleaned_data), "source": "maximo"}
             
@@ -257,6 +262,12 @@ class DataIngestionService:
                 upsert=True,
             )
             ops += 1
+        await record_uns_event(
+            source="file_upload_service",
+            target_collection="fitness_certificates",
+            raw_payload={"filename": filename, "count": len(records)},
+            normalized_docs=None,
+        )
         return {"count": ops}
 
     async def ingest_branding_file(self, content: bytes, filename: str) -> Dict[str, Any]:
@@ -277,6 +288,12 @@ class DataIngestionService:
                 upsert=True,
             )
             ops += 1
+        await record_uns_event(
+            source="branding_contracts_parser",
+            target_collection="branding_contracts",
+            raw_payload={"filename": filename, "count": len(records)},
+            normalized_docs=None,
+        )
         return {"count": ops}
 
     async def ingest_depot_geojson(self, content: bytes) -> Dict[str, Any]:
@@ -287,7 +304,19 @@ class DataIngestionService:
             raise ValueError("Invalid GeoJSON")
         col = await cloud_db_manager.get_collection("depot_layout")
         await col.delete_many({})
-        await col.insert_one({"layout": data, "ingested_at": datetime.now().isoformat()})
+        version_tag = datetime.now().strftime("%Y%m%d%H%M%S")
+        await col.insert_one({
+            "layout": data,
+            "version": version_tag,
+            "ingested_at": datetime.now().isoformat()
+        })
+        await record_uns_event(
+            source="geojson_ingest",
+            target_collection="depot_layout",
+            raw_payload={"objects": len(data.get("features", []))},
+            normalized_docs=None,
+            metadata={"version": version_tag},
+        )
         return {"objects": len(data.get("features", []))}
 
     async def ingest_cleaning_google_sheet(self, sheet_url: str) -> Dict[str, Any]:

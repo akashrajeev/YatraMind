@@ -1,0 +1,34 @@
+<div class="explanation">
+  <h3>Rake {{ trainset_id }} — Role: {{ role }}</h3>
+  <p>Composite score: <strong>{{ score | round(3) }}</strong></p>
+  <h4>Top Reasons</h4>
+  <ul>
+  {% for r in top_reasons %}
+    <li>{{ r }}</li>
+  {% endfor %}
+  </ul>
+  <h4>Top Risks</h4>
+  <ul>
+  {% for r in top_risks %}
+    <li>{{ r }}</li>
+  {% endfor %}
+  </ul>
+  {% if shap_values %}
+  <h4>Feature Attributions</h4>
+  <ul>
+  {% for f in shap_values %}
+    <li>{{ f.name }}: {{ f.value | round(4) }}</li>
+  {% endfor %}
+  </ul>
+  {% endif %}
+  {% if violations %}
+  <h4>Violations</h4>
+  <ul>
+  {% for v in violations %}
+    <li>{{ v }}</li>
+  {% endfor %}
+  </ul>
+  {% endif %}
+</div>
+
+

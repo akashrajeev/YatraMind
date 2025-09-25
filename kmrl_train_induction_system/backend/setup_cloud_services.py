@@ -109,42 +109,16 @@ class CloudServiceSetup:
             return False
     
     async def test_redis_connection(self) -> bool:
-        """Skip Redis test for now"""
+        """Skip Redis test (disabled)"""
         print("⏭️  Skipping Redis Cloud test (disabled)")
-        self.results["redis"] = {"status": "skipped", "details": "Disabled by configuration"}
+        self.results["redis"] = {"status": "skipped", "details": "Disabled"}
         return True
     
     async def test_mqtt_connection(self) -> bool:
-        """Test MQTT broker connection"""
-        try:
-            print("🔍 Testing MQTT broker connection...")
-            print(f"   Broker: {settings.mqtt_broker}")
-            print(f"   Port: {getattr(settings, 'mqtt_broker_port', settings.mqtt_port)}")
-            
-            from app.services.mqtt_client import MQTTClient
-            mqtt_client = MQTTClient()
-            
-            # Connect using configured TLS/credentials
-            await mqtt_client.connect()
-            
-            if mqtt_client.connected:
-                print("   ✅ MQTT connection successful")
-                await mqtt_client.disconnect()
-                self.results["mqtt"] = {
-                    "status": "success",
-                    "details": "Connected to MQTT broker successfully"
-                }
-                return True
-            else:
-                raise Exception("MQTT client not connected")
-                
-        except Exception as e:
-            print(f"   ❌ MQTT connection failed: {e}")
-            self.results["mqtt"] = {
-                "status": "failed",
-                "details": str(e)
-            }
-            return False
+        """Skip MQTT test (disabled)"""
+        print("⏭️  Skipping MQTT broker test (disabled)")
+        self.results["mqtt"] = {"status": "skipped", "details": "Disabled"}
+        return True
     
     async def load_production_data(self) -> bool:
         """Load production data into cloud services"""
@@ -214,7 +188,7 @@ async def main():
     
     setup = CloudServiceSetup()
     
-    # Test all cloud service connections
+    # Test required cloud service connections
     print("\n🔍 Testing Cloud Service Connections...")
     await setup.test_mongodb_connection()
     await setup.test_influxdb_connection()

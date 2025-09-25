@@ -51,6 +51,9 @@ class Settings(BaseSettings):
     maximo_username: Optional[str] = Field(default=None, env="MAXIMO_USERNAME")
     maximo_password: Optional[str] = Field(default=None, env="MAXIMO_PASSWORD")
     
+    # Optional external Drools service
+    drools_service_url: Optional[str] = Field(default=None, env="DROOLS_SERVICE_URL")
+    
     # pydantic-settings v2 style configuration
     model_config = SettingsConfigDict(
         env_file=".env",

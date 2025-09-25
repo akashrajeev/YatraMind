@@ -4,6 +4,7 @@ from typing import List
 from datetime import datetime
 from app.models.trainset import OptimizationRequest, InductionDecision
 from app.services.optimizer import TrainInductionOptimizer
+from app.services.solver import RoleAssignmentSolver, SolverWeights
 from app.services.rule_engine import DurableRulesEngine
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.utils.cloud_database import cloud_db_manager
@@ -106,7 +107,13 @@ async def check_constraints():
 @router.get("/simulate")
 async def simulate_what_if(
     exclude_trainsets: str = "",
-    force_induct: str = ""
+    force_induct: str = "",
+    required_service_count: int = 14,
+    w_readiness: float = 0.35,
+    w_reliability: float = 0.30,
+    w_branding: float = 0.20,
+    w_shunt: float = 0.10,
+    w_mileage_balance: float = 0.05,
 ):
     """What-if simulation with ML models"""
     try:
@@ -130,22 +137,39 @@ async def simulate_what_if(
             elif trainset["trainset_id"] in forced:
                 trainset["simulation_constraint"] = "FORCED_INDUCT"
         
-        # Run simulation with ML models
-        optimizer = TrainInductionOptimizer()
-        simulation_request = OptimizationRequest(
-            target_date=datetime.now(),
-            required_service_hours=14,
-            override_constraints={"simulation": True}
+        # Build features for solver
+        features = []
+        for t in trainsets_data:
+            features.append({
+                "trainset_id": t["trainset_id"],
+                "allowed_service": True,  # could call DurableRulesEngine here
+                "must_ibl": False,
+                "cleaning_available": True,
+                "readiness": 1.0,  # plug-in ML readiness
+                "reliability": t.get("sensor_health_score", 0.8),
+                "branding": 1.0 if t.get("branding", {}).get("priority") == "HIGH" else 0.5,
+                "shunt_cost_norm": 0.2,
+                "km_30d_norm": 0.5,
+            })
+
+        weights = SolverWeights(
+            readiness=w_readiness,
+            reliability=w_reliability,
+            branding=w_branding,
+            shunt=w_shunt,
+            mileage_balance=w_mileage_balance,
         )
-        
-        simulation_result = await optimizer.optimize(trainsets_data, simulation_request)
+        solver = RoleAssignmentSolver(required_service_count=required_service_count, weights=weights)
+        solve_out = solver.solve(features)
         
         return {
             "scenario": {
                 "excluded_trainsets": excluded,
-                "forced_inductions": forced
+                "forced_inductions": forced,
+                "required_service_count": required_service_count,
+                "weights": weights.__dict__,
             },
-            "results": simulation_result,
+            "results": solve_out,
             "simulation_timestamp": datetime.now().isoformat()
         }
     
