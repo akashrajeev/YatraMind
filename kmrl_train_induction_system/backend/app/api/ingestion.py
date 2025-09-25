@@ -1,6 +1,6 @@
 # backend/app/api/ingestion.py
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from typing import Dict, Any, List
+from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
+from typing import Dict, Any, List, Optional
 from app.services.data_ingestion import DataIngestionService
 from app.services.mqtt_client import iot_streamer
 import logging
@@ -45,6 +45,34 @@ async def ingest_maximo_data(background_tasks: BackgroundTasks):
     except Exception as e:
         logger.error(f"Maximo ingestion failed: {e}")
         raise HTTPException(status_code=500, detail=f"Maximo ingestion failed: {str(e)}")
+
+@router.post("/ingest/maximo/rest")
+async def ingest_maximo_via_rest(background_tasks: BackgroundTasks):
+    """Ingest job cards from IBM Maximo REST API (uses .env config)."""
+    try:
+        ingestion_service = DataIngestionService()
+        # Force the REST path by calling the internal method directly
+        background_tasks.add_task(ingestion_service._ingest_maximo_data)
+        return {"message": "Maximo REST ingestion started", "status": "processing"}
+    except Exception as e:
+        logger.error(f"Maximo REST ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/ingest/maximo/google")
+async def ingest_maximo_from_google(sheet_url: str = Form(...)):
+    """Upload Google Sheets (published CSV/TSV) as Maximo job cards."""
+    try:
+        svc = DataIngestionService()
+        # Reuse generic tabular path via fitness (columns must match expected schema)
+        import requests
+        r = requests.get(sheet_url, timeout=30)
+        r.raise_for_status()
+        # Expect columns similar to simulated job_cards fields
+        df_result = await svc.ingest_fitness_file(r.content, "jobcards.csv")
+        return {"status": "ok", "records_processed": df_result.get("count", 0)}
+    except Exception as e:
+        logger.error(f"Maximo Google Sheets ingestion failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/ingest/iot")
 async def ingest_iot_data(background_tasks: BackgroundTasks):
@@ -128,3 +156,52 @@ async def get_mqtt_status():
     except Exception as e:
         logger.error(f"MQTT status check failed: {e}")
         raise HTTPException(status_code=500, detail=f"MQTT status check failed: {str(e)}")
+
+# --------------------------- New Upload & Source Endpoints --------------------------- #
+
+@router.post("/fitness/upload")
+async def upload_fitness_certificates(file: UploadFile = File(...)):
+    """Upload fitness certificates (CSV/XLSX)."""
+    try:
+        svc = DataIngestionService()
+        content = await file.read()
+        result = await svc.ingest_fitness_file(content, file.filename)
+        return {"status": "ok", "records_processed": result.get("count", 0)}
+    except Exception as e:
+        logger.error(f"Fitness upload failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/branding/upload")
+async def upload_branding_contracts(file: UploadFile = File(...)):
+    """Upload branding contract records (CSV/XLSX)."""
+    try:
+        svc = DataIngestionService()
+        content = await file.read()
+        result = await svc.ingest_branding_file(content, file.filename)
+        return {"status": "ok", "records_processed": result.get("count", 0)}
+    except Exception as e:
+        logger.error(f"Branding upload failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/depot/upload")
+async def upload_depot_layout(file: UploadFile = File(...)):
+    """Upload depot layout GeoJSON file."""
+    try:
+        svc = DataIngestionService()
+        content = await file.read()
+        result = await svc.ingest_depot_geojson(content)
+        return {"status": "ok", "objects": result.get("objects", 0)}
+    except Exception as e:
+        logger.error(f"Depot layout upload failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/cleaning/google")
+async def ingest_cleaning_from_google(sheet_url: str = Form(...)):
+    """Ingest cleaning schedule from a Google Sheets published CSV/TSV URL."""
+    try:
+        svc = DataIngestionService()
+        result = await svc.ingest_cleaning_google_sheet(sheet_url)
+        return {"status": "ok", "records_processed": result.get("count", 0)}
+    except Exception as e:
+        logger.error(f"Cleaning sheet ingestion failed: {e}")
+        raise HTTPException(status_code=400, detail=str(e))

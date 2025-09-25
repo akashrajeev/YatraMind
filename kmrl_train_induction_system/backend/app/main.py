@@ -4,6 +4,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api import trainsets, optimization, dashboard, ingestion
 from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from datetime import datetime
 import logging
 
 # Configure logging
@@ -34,6 +36,8 @@ app.include_router(optimization.router, prefix="/api/optimization", tags=["Optim
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(ingestion.router, prefix="/api/ingestion", tags=["Data Ingestion"])
 
+scheduler: AsyncIOScheduler | None = None
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize cloud database connections on startup"""
@@ -43,6 +47,23 @@ async def startup_event():
         await cloud_db_manager.connect_mongodb()
         await cloud_db_manager.connect_influxdb()
         logger.info("MongoDB and InfluxDB connections established")
+
+        # Start APScheduler for periodic ingestions
+        global scheduler
+        scheduler = AsyncIOScheduler()
+
+        from app.services.data_ingestion import DataIngestionService
+        svc = DataIngestionService()
+
+        # Maximo every 15 minutes
+        scheduler.add_job(svc._ingest_maximo_data, "interval", minutes=15, id="maximo_ingest", max_instances=1, coalesce=True)
+        # Cleaning schedule every 30 minutes (requires CLEANING_SHEET_URL in .env or skip)
+        import os
+        sheet_url = os.environ.get("CLEANING_SHEET_URL")
+        if sheet_url:
+            scheduler.add_job(lambda: svc.ingest_cleaning_google_sheet(sheet_url), "interval", minutes=30, id="cleaning_ingest", max_instances=1, coalesce=True)
+
+        scheduler.start()
     except Exception as e:
         logger.error(f"Startup failed: {e}")
 
@@ -50,6 +71,8 @@ async def startup_event():
 async def shutdown_event():
     """Close cloud database connections on shutdown"""
     try:
+        if scheduler:
+            scheduler.shutdown(wait=False)
         await cloud_db_manager.close_all()
         logger.info("Cloud database connections closed")
     except Exception as e:

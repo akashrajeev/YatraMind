@@ -6,6 +6,10 @@ from datetime import datetime
 from typing import Dict, Any, List
 from app.utils.cloud_database import cloud_db_manager
 from app.services.data_cleaning import DataCleaningService
+from app.config import settings
+import io
+import pandas as pd
+import json as _json
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +58,11 @@ class DataIngestionService:
     async def _ingest_maximo_data(self) -> Dict[str, Any]:
         """Ingest job card data from IBM Maximo"""
         try:
-            # Simulate Maximo data ingestion
-            maximo_data = await self._fetch_maximo_job_cards()
+            # Prefer real Maximo API if configured; fallback to simulated
+            if settings.maximo_base_url and (settings.maximo_api_key or (settings.maximo_username and settings.maximo_password)):
+                maximo_data = await self._fetch_maximo_job_cards_api()
+            else:
+                maximo_data = await self._fetch_maximo_job_cards()
             
             # Clean and validate data
             cleaned_data = self.cleaning_service.clean_trainset_data(maximo_data)
@@ -71,21 +78,23 @@ class DataIngestionService:
             logger.error(f"Maximo ingestion error: {e}")
             raise
     
+    async def _ingest_iot_sensor_data_to_influx(self, sensor_data: List[Dict[str, Any]]) -> int:
+        count = 0
+        for sensor_reading in sensor_data:
+            try:
+                await cloud_db_manager.write_sensor_data(sensor_reading)
+                count += 1
+            except Exception as e:
+                logger.exception(f"Failed to write sensor reading: {e}")
+        return count
+
     async def _ingest_iot_data(self) -> Dict[str, Any]:
         """Ingest IoT sensor data"""
         try:
-            # Simulate IoT sensor data ingestion
             sensor_data = await self._fetch_iot_sensor_data()
-            
-            # Clean sensor data
             cleaned_sensor_data = self.cleaning_service.clean_sensor_data(sensor_data)
-            
-            # Write to InfluxDB
-            for sensor_reading in cleaned_sensor_data:
-                await cloud_db_manager.write_sensor_data(sensor_reading)
-            
-            return {"count": len(cleaned_sensor_data), "source": "iot_sensors"}
-            
+            written = await self._ingest_iot_sensor_data_to_influx(cleaned_sensor_data)
+            return {"count": written, "source": "iot_sensors"}
         except Exception as e:
             logger.error(f"IoT ingestion error: {e}")
             raise
@@ -93,15 +102,10 @@ class DataIngestionService:
     async def _ingest_manual_data(self) -> Dict[str, Any]:
         """Ingest manual override data"""
         try:
-            # Simulate manual data entry
             manual_data = await self._fetch_manual_overrides()
-            
-            # Process manual overrides
             collection = await cloud_db_manager.get_collection("manual_overrides")
             await collection.insert_many(manual_data)
-            
             return {"count": len(manual_data), "source": "manual_override"}
-            
         except Exception as e:
             logger.error(f"Manual data ingestion error: {e}")
             raise
@@ -109,15 +113,10 @@ class DataIngestionService:
     async def _ingest_uns_data(self) -> Dict[str, Any]:
         """Ingest UNS (Unified Notification System) streams"""
         try:
-            # Simulate UNS data ingestion
             uns_data = await self._fetch_uns_streams()
-            
-            # Process UNS notifications
             collection = await cloud_db_manager.get_collection("uns_notifications")
             await collection.insert_many(uns_data)
-            
             return {"count": len(uns_data), "source": "uns_streams"}
-            
         except Exception as e:
             logger.error(f"UNS ingestion error: {e}")
             raise
@@ -140,6 +139,54 @@ class DataIngestionService:
             }
             for i in range(10)  # Simulate 10 new job cards
         ]
+
+    async def _fetch_maximo_job_cards_api(self) -> List[Dict[str, Any]]:
+        """Fetch job cards from IBM Maximo REST API with pagination."""
+        import requests
+        base = settings.maximo_base_url.rstrip("/")
+        url = f"{base}/maximo/oslc/os/wo"  # Example path; adjust to your Maximo object structure
+        headers = {"Accept": "application/json"}
+        auth = None
+        if settings.maximo_api_key:
+            headers["apikey"] = settings.maximo_api_key
+        elif settings.maximo_username and settings.maximo_password:
+            auth = (settings.maximo_username, settings.maximo_password)
+        params = {"_limit": 200, "status": "!COMP"}  # open work orders; adjust as needed
+
+        results: List[Dict[str, Any]] = []
+        session = requests.Session()
+        session.headers.update(headers)
+        next_url = url
+        while next_url:
+            resp = session.get(next_url, params=params if next_url == url else None, auth=auth, timeout=20)
+            resp.raise_for_status()
+            data = resp.json()
+            # Map to internal schema
+            for item in data.get("member", data.get("rdfs:member", [])):
+                results.append({
+                    "job_card_id": item.get("wonum") or item.get("wonum").strip() if item.get("wonum") else None,
+                    "trainset_id": item.get("assetnum") or "",
+                    "work_order_type": item.get("wotype") or item.get("worktype") or "",
+                    "priority": item.get("wopriority") or item.get("priority") or "NORMAL",
+                    "status": item.get("status") or "OPEN",
+                    "description": item.get("description") or "",
+                    "created_date": item.get("reportdate") or datetime.now().isoformat(),
+                    "estimated_duration_hours": float(item.get("estdur", 0)) or 0,
+                    "assigned_technician": item.get("owner") or "",
+                    "estimated_cost": float(item.get("estcost", 0)) or 0.0,
+                })
+            # Discover next page link
+            next_url = None
+            for link in data.get("link", []):
+                if link.get("rel") == "next":
+                    next_url = link.get("href")
+                    break
+
+            # Stop if no 'member' found (defensive)
+            if not data.get("member") and not data.get("rdfs:member"):
+                break
+
+        return results
     
     async def _fetch_iot_sensor_data(self) -> List[Dict[str, Any]]:
         """Fetch IoT sensor data (simulated)"""
@@ -189,3 +236,86 @@ class DataIngestionService:
             }
             for i in range(5)  # Simulate 5 UNS notifications
         ]
+
+    # --------------------------- New ingestion helpers --------------------------- #
+
+    async def ingest_fitness_file(self, content: bytes, filename: str) -> Dict[str, Any]:
+        """Parse CSV/XLSX fitness certificates and upsert into MongoDB."""
+        df = self._read_tabular(content, filename)
+        df.columns = df.columns.str.lower()
+        required = {"trainset_id", "dept", "certificate", "status", "valid_from", "valid_to"}
+        if not required.issubset(set(df.columns)):
+            raise ValueError("Missing required columns for fitness certificates")
+        records = df.to_dict(orient="records")
+        collection = await cloud_db_manager.get_collection("fitness_certificates")
+        ops = 0
+        for r in records:
+            r["ingested_at"] = datetime.now().isoformat()
+            await collection.update_one(
+                {"trainset_id": r["trainset_id"], "certificate": r["certificate"]},
+                {"$set": r},
+                upsert=True,
+            )
+            ops += 1
+        return {"count": ops}
+
+    async def ingest_branding_file(self, content: bytes, filename: str) -> Dict[str, Any]:
+        """Parse CSV/XLSX branding contracts and upsert into MongoDB."""
+        df = self._read_tabular(content, filename)
+        df.columns = df.columns.str.lower()
+        required = {"trainset_id", "current_advertiser", "priority", "start_date", "end_date"}
+        if not required.issubset(set(df.columns)):
+            raise ValueError("Missing required columns for branding records")
+        records = df.to_dict(orient="records")
+        col = await cloud_db_manager.get_collection("branding_contracts")
+        ops = 0
+        for r in records:
+            r["ingested_at"] = datetime.now().isoformat()
+            await col.update_one(
+                {"trainset_id": r["trainset_id"], "current_advertiser": r["current_advertiser"]},
+                {"$set": r},
+                upsert=True,
+            )
+            ops += 1
+        return {"count": ops}
+
+    async def ingest_depot_geojson(self, content: bytes) -> Dict[str, Any]:
+        """Parse GeoJSON depot layout and store in MongoDB."""
+        try:
+            data = _json.loads(content.decode("utf-8"))
+        except Exception:
+            raise ValueError("Invalid GeoJSON")
+        col = await cloud_db_manager.get_collection("depot_layout")
+        await col.delete_many({})
+        await col.insert_one({"layout": data, "ingested_at": datetime.now().isoformat()})
+        return {"objects": len(data.get("features", []))}
+
+    async def ingest_cleaning_google_sheet(self, sheet_url: str) -> Dict[str, Any]:
+        """Pull cleaning schedule from published Google Sheets CSV/TSV URL and upsert."""
+        try:
+            df = pd.read_csv(sheet_url)
+        except Exception:
+            df = pd.read_csv(sheet_url, sep="\t")
+        df.columns = df.columns.str.lower()
+        required = {"trainset_id", "date", "slot", "bay", "manpower"}
+        if not required.issubset(set(df.columns)):
+            raise ValueError("Missing required columns for cleaning schedule")
+        recs = df.to_dict(orient="records")
+        col = await cloud_db_manager.get_collection("cleaning_schedule")
+        ops = 0
+        for r in recs:
+            r["ingested_at"] = datetime.now().isoformat()
+            await col.update_one(
+                {"trainset_id": r["trainset_id"], "date": r["date"], "slot": r["slot"]},
+                {"$set": r},
+                upsert=True,
+            )
+            ops += 1
+        return {"count": ops}
+
+    def _read_tabular(self, content: bytes, filename: str) -> pd.DataFrame:
+        """Read CSV/XLSX into a DataFrame from bytes."""
+        bio = io.BytesIO(content)
+        if filename.lower().endswith(".xlsx") or filename.lower().endswith(".xls"):
+            return pd.read_excel(bio)
+        return pd.read_csv(bio)

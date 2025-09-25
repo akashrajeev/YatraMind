@@ -88,8 +88,13 @@ class TrainInductionOptimizer:
             
             # Check mileage limits
             mileage_ok = trainset["current_mileage"] < trainset["max_mileage_before_maintenance"]
+
+            # Cleaning slot hard constraint (if fields provided)
+            requires_cleaning = bool(trainset.get("requires_cleaning", False))
+            has_cleaning_slot = bool(trainset.get("has_cleaning_slot", False))
+            cleaning_ok = (not requires_cleaning) or (requires_cleaning and has_cleaning_slot)
             
-            if fitness_valid and no_critical_cards and mileage_ok:
+            if fitness_valid and no_critical_cards and mileage_ok and cleaning_ok:
                 eligible.append(trainset)
         
         return eligible

@@ -45,6 +45,12 @@ class Settings(BaseSettings):
     model_path: str = Field(default="models/", env="MODEL_PATH")
     confidence_threshold: float = Field(default=0.8, env="CONFIDENCE_THRESHOLD")
     
+    # Maximo API Configuration
+    maximo_base_url: Optional[str] = Field(default=None, env="MAXIMO_BASE_URL")
+    maximo_api_key: Optional[str] = Field(default=None, env="MAXIMO_API_KEY")
+    maximo_username: Optional[str] = Field(default=None, env="MAXIMO_USERNAME")
+    maximo_password: Optional[str] = Field(default=None, env="MAXIMO_PASSWORD")
+    
     # pydantic-settings v2 style configuration
     model_config = SettingsConfigDict(
         env_file=".env",
