@@ -1,30 +1,34 @@
-# Minimal FastAPI setup for Vercel
 fastapi==0.104.1
-uvicorn==0.24.0
+uvicorn[standard]==0.24.0
 pydantic==2.5.0
 pydantic-settings==2.1.0
-
-# Database clients
 pymongo==4.6.0
 motor==3.3.2
+redis==5.0.1
 influxdb-client==1.38.0
-
-# Google API
+paho-mqtt==1.6.1
 google-api-python-client==2.108.0
 google-auth-httplib2==0.1.1
 google-auth-oauthlib==1.1.0
-
-# Data processing (minimal)
+ortools==9.8.3296
 pandas==2.1.4
 numpy==1.25.2
-
-# Security and utilities
+scikit-learn==1.3.2
+torch==2.1.0
+tensorflow==2.14.0
+durable-rules==2.0.28
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.6
 python-dotenv==1.0.0
 requests==2.31.0
 aiofiles==23.2.1
+# Celery and Redis for background tasks
+celery==5.3.4
+kombu==5.3.4
+# Testing dependencies
+pytest==8.4.2
+pytest-asyncio==0.23.2
 httpx==0.27.0
-
-# Production server
+# Production dependencies
 gunicorn==21.2.0
+prometheus-fastapi-instrumentator==7.0.0
