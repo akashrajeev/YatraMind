@@ -53,13 +53,28 @@ class RoleAssignmentSolver:
             if f.get("must_ibl", False):
                 model.Add(x[(i, "IBL")] == 1)
 
-        # Optional bay capacities (cleaning bay, stabling) - simplified aggregate
+        # Capacity constraints
         if capacities:
+            # Cleaning capacity gating
             if "cleaning" in capacities:
-                # Only rakes with cleaning_available can be service; others cannot
                 for i, f in enumerate(features):
                     if not f.get("cleaning_available", False):
                         model.Add(x[(i, "service")] == 0)
+            # Bay capacities per target_bay
+            if "bay" in capacities:
+                # sum of service assignments to a bay cannot exceed capacity
+                bay_caps = capacities["bay"] if isinstance(capacities["bay"], dict) else {}
+                for bay, cap in bay_caps.items():
+                    idxs = [i for i, f in enumerate(features) if f.get("target_bay") == bay]
+                    if idxs:
+                        model.Add(sum(x[(i, "service")] for i in idxs) <= int(cap))
+
+        # Mileage hard bounds (if provided in features)
+        for i, f in enumerate(features):
+            max_km = f.get("max_km_period")
+            planned_km = f.get("planned_km_period")
+            if max_km is not None and planned_km is not None and planned_km > max_km:
+                model.Add(x[(i, "service")] == 0)
 
         # Objective: weighted sum
         # Normalize components to scaled ints for CP-SAT

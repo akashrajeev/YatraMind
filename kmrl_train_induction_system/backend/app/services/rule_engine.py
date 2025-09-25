@@ -199,7 +199,12 @@ class DroolsAdapterEngine:
         # For now, check if trainset is in maintenance status
         if trainset["status"] == "MAINTENANCE":
             return "Currently in maintenance"
-        
+        # Withdrawal-required job-card
+        if any(bool(j.get("requires_withdrawal", False)) for j in (trainset.get("job_cards_list") or [])):
+            return "Job-card requires withdrawal"
+        # Cleaning compliance
+        if trainset.get("requires_cleaning", False) and not trainset.get("has_cleaning_slot", False):
+            return "No cleaning slot before departure"
         return None
     
     async def _check_branding_contracts(self, trainset: Dict[str, Any]) -> str:
@@ -207,8 +212,15 @@ class DroolsAdapterEngine:
         branding = trainset.get("branding", {})
         
         if branding.get("current_advertiser") != "None":
-            # Check if contract is expiring soon
-            # This would parse the contract_expiry date and check
-            return None  # Placeholder - would implement date checking
+            # Check exposure requirement
+            try:
+                required_hours = float(branding.get("required_hours_next_n", 0))
+                n_days = int(branding.get("window_days", 7))
+                # Heuristic available hours if in service each day
+                planned_hours = float(branding.get("planned_service_hours", 0))
+                if planned_hours < required_hours:
+                    return "Branding exposure shortfall in window"
+            except Exception:
+                return None
         
         return None

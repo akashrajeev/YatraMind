@@ -76,7 +76,7 @@ def ingestion_refresh_all() -> dict:
 
 @celery_app.task(name="ml.train_model")
 def train_model() -> dict:
-    """Trigger ML model retraining (placeholder)."""
+    """Trigger ML model retraining."""
     import asyncio
     async def _run():
         try:

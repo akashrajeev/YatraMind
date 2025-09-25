@@ -147,13 +147,20 @@ class DataCleaningService:
         # Convert to UTC timestamps
         def _to_utc(series: pd.Series) -> pd.Series:
             ts = pd.to_datetime(series, errors="coerce")
-            # Assume local Asia/Kolkata if naive
-            ts = ts.dt.tz_localize(ZoneInfo("Asia/Kolkata"), ambiguous="NaT", nonexistent="NaT", nonexistent="shift_forward", errors="ignore").where(ts.dt.tz is None, ts)
-            # For already tz-aware, convert; for still naive, localize to UTC directly
+            # Localize naive timestamps to Asia/Kolkata and convert to UTC
+            try:
+                ts = ts.dt.tz_localize("Asia/Kolkata")
+            except TypeError:
+                # Already tz-aware
+                pass
             try:
                 ts = ts.dt.tz_convert("UTC")
             except Exception:
-                ts = ts.dt.tz_localize("UTC", nonexistent="shift_forward", ambiguous="NaT")
+                # If still naive, localize to UTC directly
+                try:
+                    ts = ts.dt.tz_localize("UTC")
+                except Exception:
+                    pass
             return ts
 
         df["valid_from_utc"] = _to_utc(df["valid_from"]).astype("datetime64[ns, UTC]")

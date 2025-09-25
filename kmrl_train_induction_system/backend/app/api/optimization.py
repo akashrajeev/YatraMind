@@ -1,5 +1,6 @@
 # backend/app/api/optimization.py
 from fastapi import APIRouter, HTTPException, BackgroundTasks
+from fastapi import Depends
 from typing import List
 from datetime import datetime
 from app.models.trainset import OptimizationRequest, InductionDecision
@@ -9,6 +10,7 @@ from app.services.rule_engine import DurableRulesEngine
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
+from app.security import require_api_key
 import asyncio
 import json
 import logging
@@ -19,7 +21,8 @@ logger = logging.getLogger(__name__)
 @router.post("/run", response_model=List[InductionDecision])
 async def run_optimization(
     background_tasks: BackgroundTasks,
-    request: OptimizationRequest
+    request: OptimizationRequest,
+    _auth=Depends(require_api_key),
 ):
     """Run AI/ML optimization with rule-based constraints (OR-Tools + Drools)"""
     try:
@@ -35,9 +38,18 @@ async def run_optimization(
         if not trainsets_data:
             raise HTTPException(status_code=404, detail="No trainsets found")
         
-        # Rule-based constraint engine (Durable Rules)
-        rule_engine = DurableRulesEngine()
-        validated_trainsets = await rule_engine.apply_constraints(trainsets_data)
+        # Rule-based constraint engine (Durable Rules) with safe fallback
+        try:
+            rule_engine = DurableRulesEngine()
+            validated_trainsets = await rule_engine.apply_constraints(trainsets_data)
+        except Exception as re_err:
+            logger.warning(f"Rule engine unavailable, falling back to basic filter: {re_err}")
+            # Basic filter fallback: require all certs VALID and no critical cards
+            validated_trainsets = [
+                t for t in trainsets_data
+                if all(c.get("status") == "VALID" for c in t.get("fitness_certificates", {}).values())
+                and t.get("job_cards", {}).get("critical_cards", 0) == 0
+            ]
         
         # AI/ML Optimization (Google OR-Tools + PyTorch)
         optimizer = TrainInductionOptimizer()
@@ -65,7 +77,7 @@ async def run_optimization(
         raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
 
 @router.get("/constraints/check")
-async def check_constraints():
+async def check_constraints(_auth=Depends(require_api_key)):
     """Real-time constraint validation using rule engine"""
     try:
         collection = await cloud_db_manager.get_collection("trainsets")
@@ -74,20 +86,30 @@ async def check_constraints():
         violations = []
         valid_trainsets = 0
         
-        # Rule-based validation
-        rule_engine = DurableRulesEngine()
-        
+        # Rule-based validation with safe fallback per trainset
+        try:
+            rule_engine = DurableRulesEngine()
+        except Exception as e:
+            rule_engine = None
+
         async for trainset_doc in cursor:
-            trainset_id = trainset_doc["trainset_id"]
-            
-            # Apply constraint rules
-            constraint_violations = await rule_engine.check_constraints(trainset_doc)
-            
+            trainset_id = trainset_doc.get("trainset_id")
+            try:
+                if rule_engine:
+                    constraint_violations = await rule_engine.check_constraints(trainset_doc)
+                else:
+                    # Fallback: quick checks
+                    fc_ok = all(c.get("status") == "VALID" for c in trainset_doc.get("fitness_certificates", {}).values())
+                    jc_ok = trainset_doc.get("job_cards", {}).get("critical_cards", 0) == 0
+                    constraint_violations = [] if (fc_ok and jc_ok) else ["basic_constraints_failed"]
+            except Exception as e:
+                constraint_violations = [f"engine_error: {e}"]
+
             if constraint_violations:
                 violations.append({
                     "trainset_id": trainset_id,
                     "violations": constraint_violations,
-                    "severity": "CRITICAL" if any("expired" in v or "critical" in v for v in constraint_violations) else "WARNING"
+                    "severity": "CRITICAL" if any(("expired" in v) or ("critical" in v) for v in constraint_violations) else "WARNING"
                 })
             else:
                 valid_trainsets += 1
@@ -114,6 +136,7 @@ async def simulate_what_if(
     w_branding: float = 0.20,
     w_shunt: float = 0.10,
     w_mileage_balance: float = 0.05,
+    _auth=Depends(require_api_key),
 ):
     """What-if simulation with ML models"""
     try:

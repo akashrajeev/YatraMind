@@ -1,15 +1,16 @@
 # backend/app/api/ingestion.py
-from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
+from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form, Depends
 from typing import Dict, Any, List, Optional
 from app.services.data_ingestion import DataIngestionService
 from app.services.mqtt_client import iot_streamer
+from app.security import require_api_key
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/ingest/all")
-async def ingest_all_sources(background_tasks: BackgroundTasks):
+async def ingest_all_sources(background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
     """Ingest data from all configured sources (Maximo, IoT, Manual, UNS)"""
     try:
         ingestion_service = DataIngestionService()
@@ -28,7 +29,7 @@ async def ingest_all_sources(background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
 
 @router.post("/ingest/maximo")
-async def ingest_maximo_data(background_tasks: BackgroundTasks):
+async def ingest_maximo_data(background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
     """Ingest job card data from IBM Maximo"""
     try:
         ingestion_service = DataIngestionService()
@@ -98,7 +99,7 @@ async def upload_timeseries(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/ingest/maximo/rest")
-async def ingest_maximo_via_rest(background_tasks: BackgroundTasks):
+async def ingest_maximo_via_rest(background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
     """Ingest job cards from IBM Maximo REST API (uses .env config)."""
     try:
         ingestion_service = DataIngestionService()
@@ -110,7 +111,7 @@ async def ingest_maximo_via_rest(background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/ingest/maximo/google")
-async def ingest_maximo_from_google(sheet_url: str = Form(...)):
+async def ingest_maximo_from_google(sheet_url: str = Form(...), _auth=Depends(require_api_key)):
     """Upload Google Sheets (published CSV/TSV) as Maximo job cards."""
     try:
         svc = DataIngestionService()
@@ -126,7 +127,7 @@ async def ingest_maximo_from_google(sheet_url: str = Form(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/ingest/iot")
-async def ingest_iot_data(background_tasks: BackgroundTasks):
+async def ingest_iot_data(background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
     """Ingest IoT sensor data"""
     try:
         ingestion_service = DataIngestionService()
@@ -145,7 +146,7 @@ async def ingest_iot_data(background_tasks: BackgroundTasks):
         raise HTTPException(status_code=500, detail=f"IoT ingestion failed: {str(e)}")
 
 @router.get("/status")
-async def get_ingestion_status():
+async def get_ingestion_status(_auth=Depends(require_api_key)):
     """Get current ingestion status"""
     try:
         return {
@@ -164,7 +165,7 @@ async def get_ingestion_status():
         raise HTTPException(status_code=500, detail=f"Status check failed: {str(e)}")
 
 @router.post("/mqtt/start")
-async def start_mqtt_streaming():
+async def start_mqtt_streaming(_auth=Depends(require_api_key)):
     """Start MQTT IoT data streaming"""
     try:
         await iot_streamer.start_streaming()
@@ -180,7 +181,7 @@ async def start_mqtt_streaming():
         raise HTTPException(status_code=500, detail=f"MQTT streaming failed: {str(e)}")
 
 @router.post("/mqtt/stop")
-async def stop_mqtt_streaming():
+async def stop_mqtt_streaming(_auth=Depends(require_api_key)):
     """Stop MQTT IoT data streaming"""
     try:
         await iot_streamer.stop_streaming()
@@ -195,7 +196,7 @@ async def stop_mqtt_streaming():
         raise HTTPException(status_code=500, detail=f"MQTT streaming stop failed: {str(e)}")
 
 @router.get("/mqtt/status")
-async def get_mqtt_status():
+async def get_mqtt_status(_auth=Depends(require_api_key)):
     """Get MQTT streaming status"""
     try:
         return {
@@ -211,7 +212,7 @@ async def get_mqtt_status():
 # --------------------------- New Upload & Source Endpoints --------------------------- #
 
 @router.post("/fitness/upload")
-async def upload_fitness_certificates(file: UploadFile = File(...)):
+async def upload_fitness_certificates(file: UploadFile = File(...), _auth=Depends(require_api_key)):
     """Upload fitness certificates (CSV/XLSX)."""
     try:
         svc = DataIngestionService()
@@ -223,7 +224,7 @@ async def upload_fitness_certificates(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/branding/upload")
-async def upload_branding_contracts(file: UploadFile = File(...)):
+async def upload_branding_contracts(file: UploadFile = File(...), _auth=Depends(require_api_key)):
     """Upload branding contract records (CSV/XLSX)."""
     try:
         svc = DataIngestionService()
@@ -235,7 +236,7 @@ async def upload_branding_contracts(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/depot/upload")
-async def upload_depot_layout(file: UploadFile = File(...)):
+async def upload_depot_layout(file: UploadFile = File(...), _auth=Depends(require_api_key)):
     """Upload depot layout GeoJSON file."""
     try:
         svc = DataIngestionService()
@@ -247,7 +248,7 @@ async def upload_depot_layout(file: UploadFile = File(...)):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/cleaning/google")
-async def ingest_cleaning_from_google(sheet_url: str = Form(...)):
+async def ingest_cleaning_from_google(sheet_url: str = Form(...), _auth=Depends(require_api_key)):
     """Ingest cleaning schedule from a Google Sheets published CSV/TSV URL."""
     try:
         svc = DataIngestionService()

@@ -1,5 +1,6 @@
 # backend/app/api/trainsets.py
-from fastapi import APIRouter, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends
+from app.security import require_api_key
 from typing import List, Optional
 from datetime import datetime
 from app.models.trainset import Trainset, TrainsetUpdate, TrainsetStatus
@@ -15,7 +16,8 @@ router = APIRouter()
 async def get_all_trainsets(
     status: Optional[TrainsetStatus] = None,
     depot: Optional[str] = None,
-    clean_data: bool = Query(True, description="Apply data cleaning")
+    clean_data: bool = Query(True, description="Apply data cleaning"),
+    _auth=Depends(require_api_key)
 ):
     """Get all trainsets with data cleaning pipeline (Pandas + NumPy)"""
     try:
@@ -49,7 +51,7 @@ async def get_all_trainsets(
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.get("/{trainset_id}", response_model=Trainset)
-async def get_trainset(trainset_id: str):
+async def get_trainset(trainset_id: str, _auth=Depends(require_api_key)):
     """Get specific trainset by ID with caching"""
     try:
         # Fetch from MongoDB Atlas
@@ -71,7 +73,7 @@ async def get_trainset(trainset_id: str):
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
 
 @router.put("/{trainset_id}")
-async def update_trainset(trainset_id: str, update_data: TrainsetUpdate, background_tasks: BackgroundTasks):
+async def update_trainset(trainset_id: str, update_data: TrainsetUpdate, background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
     """Update trainset with ML feedback loop trigger"""
     try:
         collection = await cloud_db_manager.get_collection("trainsets")
@@ -110,7 +112,7 @@ async def update_trainset(trainset_id: str, update_data: TrainsetUpdate, backgro
         raise HTTPException(status_code=500, detail=f"Update error: {str(e)}")
 
 @router.get("/{trainset_id}/fitness")
-async def get_trainset_fitness(trainset_id: str):
+async def get_trainset_fitness(trainset_id: str, _auth=Depends(require_api_key)):
     """Get fitness certificate status with rule-based validation"""
     try:
         collection = await cloud_db_manager.get_collection("trainsets")
