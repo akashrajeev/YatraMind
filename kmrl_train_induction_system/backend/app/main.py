@@ -153,9 +153,18 @@ async def trigger_model_training():
 @app.get("/tasks/status/{task_id}")
 async def get_task_status(task_id: str):
     """Return Celery task status/result."""
-    async_result = celery_app.AsyncResult(task_id)
-    return {
-        "task_id": task_id,
-        "state": async_result.state,
-        "result": async_result.result if async_result.ready() else None,
-    }
+    try:
+        async_result = celery_app.AsyncResult(task_id)
+        payload = {
+            "task_id": task_id,
+            "state": async_result.state,
+        }
+        try:
+            if async_result.ready():
+                payload["result"] = async_result.result
+        except Exception:
+            # Some backends or states may not allow result access
+            payload["result"] = None
+        return payload
+    except Exception as e:
+        return {"task_id": task_id, "state": "UNKNOWN", "error": str(e)}
