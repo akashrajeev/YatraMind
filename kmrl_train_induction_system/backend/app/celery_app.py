@@ -11,27 +11,25 @@ def _is_srv_mongo(url: str | None) -> bool:
 
 
 def _broker_url() -> str:
-    # Check for Redis URL from environment (Railway)
-    redis_url = os.getenv("REDIS_URL")
-    if redis_url:
-        return redis_url
-    # On Windows/dev with mongodb+srv, use in-memory broker
+    """Return Celery broker URL.
+
+    Redis is intentionally not used. Prefer in-memory broker for local/dev,
+    otherwise fall back to MongoDB if not using mongodb+srv.
+    """
+    # Always use in-memory broker for local/dev scenarios to avoid Redis
     if _is_srv_mongo(settings.mongodb_url):
         return "memory://"
+    # If not using SRV, still avoid Redis and prefer Mongo as broker
     return settings.mongodb_url
 
 
 def _result_backend_url() -> str:
-    # Celery MongoDB backend doesn't support mongodb+srv reliably.
-    # Use SQLite file backend for cross-process result persistence in dev/Windows.
+    """Return Celery result backend URL.
+
+    Avoid Redis entirely. Use SQLite when mongodb+srv is present; otherwise use MongoDB.
+    """
     if _is_srv_mongo(settings.mongodb_url):
-        # Store results in local file within backend directory
         return "db+sqlite:///celery_results.sqlite3"
-    # Check for Redis URL from environment (Railway)
-    redis_url = os.getenv("REDIS_URL")
-    if redis_url:
-        return redis_url
-    # Otherwise, use MongoDB result backend URL
     return settings.mongodb_url
 
 

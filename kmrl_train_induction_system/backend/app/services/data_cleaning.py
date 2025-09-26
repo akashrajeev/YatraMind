@@ -58,25 +58,36 @@ class DataCleaningService:
     
     def _handle_missing_values(self, df: pd.DataFrame) -> pd.DataFrame:
         """Handle missing values in the dataset"""
-        # Fill missing status with 'STANDBY'
-        df['status'] = df['status'].fillna('STANDBY')
-        
-        # Fill missing mileage with 0
-        df['current_mileage'] = df['current_mileage'].fillna(0)
-        
-        # Fill missing max_mileage with default
-        df['max_mileage_before_maintenance'] = df['max_mileage_before_maintenance'].fillna(50000)
+        # Ensure expected columns exist
+        for col, default in (
+            ('status', 'STANDBY'),
+            ('current_mileage', 0),
+            ('max_mileage_before_maintenance', 50000),
+        ):
+            if col not in df.columns:
+                df[col] = default
+            else:
+                df[col] = df[col].fillna(default)
         
         return df
     
     def _validate_data_types(self, df: pd.DataFrame) -> pd.DataFrame:
         """Validate and convert data types"""
-        # Ensure mileage is numeric
-        df['current_mileage'] = pd.to_numeric(df['current_mileage'], errors='coerce')
-        df['max_mileage_before_maintenance'] = pd.to_numeric(df['max_mileage_before_maintenance'], errors='coerce')
+        # Ensure mileage is numeric (coerce missing/new columns safely)
+        if 'current_mileage' in df.columns:
+            df['current_mileage'] = pd.to_numeric(df['current_mileage'], errors='coerce').fillna(0)
+        else:
+            df['current_mileage'] = 0
+        if 'max_mileage_before_maintenance' in df.columns:
+            df['max_mileage_before_maintenance'] = pd.to_numeric(df['max_mileage_before_maintenance'], errors='coerce').fillna(50000)
+        else:
+            df['max_mileage_before_maintenance'] = 50000
         
         # Ensure status is string
-        df['status'] = df['status'].astype(str)
+        if 'status' in df.columns:
+            df['status'] = df['status'].astype(str)
+        else:
+            df['status'] = 'STANDBY'
         
         return df
     

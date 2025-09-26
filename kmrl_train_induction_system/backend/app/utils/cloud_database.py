@@ -35,19 +35,19 @@ class ProductionCloudDatabaseManager:
         }
     
     async def connect_mongodb(self):
-        """Connect to MongoDB Atlas"""
+        """Connect to MongoDB using the configured MONGODB_URL only."""
         try:
-            logger.info("Connecting to MongoDB Atlas...")
+            logger.info("Connecting to MongoDB...")
             self.mongodb_client = AsyncIOMotorClient(settings.mongodb_url)
             self.mongodb_db = self.mongodb_client[settings.database_name]
-            
+
             # Test connection
             await self.mongodb_client.admin.command('ping')
             self.connections["mongodb"] = True
-            logger.info("✅ MongoDB Atlas connected successfully")
-            
+            logger.info("✅ MongoDB connected successfully")
+
         except Exception as e:
-            logger.error(f"❌ MongoDB Atlas connection failed: {e}")
+            logger.error(f"❌ MongoDB connection failed: {e}")
             self.connections["mongodb"] = False
             raise
     
