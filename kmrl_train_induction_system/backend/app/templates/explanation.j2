@@ -1,34 +1,156 @@
 <div class="explanation">
-  <h3>Rake {{ trainset_id }} — Role: {{ role }}</h3>
+  <h3>Trainset {{ trainset_id }} — Role: {{ role }}</h3>
   <p>Composite score: <strong>{{ score | round(3) }}</strong></p>
-  <h4>Top Reasons</h4>
+  
+  <h4>Top Contributing Reasons</h4>
   <ul>
   {% for r in top_reasons %}
-    <li>{{ r }}</li>
+    <li class="positive-reason">{{ r }}</li>
   {% endfor %}
+  {% if not top_reasons %}
+    <li class="no-reasons">No specific positive factors identified</li>
+  {% endif %}
   </ul>
+  
   <h4>Top Risks</h4>
   <ul>
   {% for r in top_risks %}
-    <li>{{ r }}</li>
+    <li class="risk-item">{{ r }}</li>
   {% endfor %}
-  </ul>
-  {% if shap_values %}
-  <h4>Feature Attributions</h4>
-  <ul>
-  {% for f in shap_values %}
-    <li>{{ f.name }}: {{ f.value | round(4) }}</li>
-  {% endfor %}
-  </ul>
+  {% if not top_risks %}
+    <li class="no-risks">No significant risks identified</li>
   {% endif %}
+  </ul>
+  
   {% if violations %}
-  <h4>Violations</h4>
-  <ul>
+  <h4>Rule Violations</h4>
+  <ul class="violations">
   {% for v in violations %}
-    <li>{{ v }}</li>
+    <li class="violation-item">{{ v }}</li>
   {% endfor %}
   </ul>
   {% endif %}
+  
+  {% if shap_values %}
+  <h4>Feature Impact Analysis</h4>
+  <ul class="shap-features">
+  {% for f in shap_values %}
+    <li class="shap-feature">
+      <span class="feature-name">{{ f.name }}</span>: 
+      <span class="feature-value">{{ f.value | round(4) }}</span>
+      <span class="feature-impact impact-{{ f.impact }}">
+        {% if f.impact == 'positive' %}↑{% elif f.impact == 'negative' %}↓{% else %}→{% endif %}
+      </span>
+    </li>
+  {% endfor %}
+  </ul>
+  {% endif %}
+  
+  <div class="explanation-footer">
+    <small>Generated on {{ timestamp | default('now') | strftime('%Y-%m-%d %H:%M:%S') }}</small>
+  </div>
 </div>
+
+<style>
+.explanation {
+  font-family: Arial, sans-serif;
+  max-width: 600px;
+  margin: 20px;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.explanation h3 {
+  color: #333;
+  margin-top: 0;
+  border-bottom: 2px solid #007bff;
+  padding-bottom: 10px;
+}
+
+.explanation h4 {
+  color: #555;
+  margin-top: 20px;
+  margin-bottom: 10px;
+}
+
+.explanation ul {
+  margin: 0;
+  padding-left: 20px;
+}
+
+.explanation li {
+  margin-bottom: 5px;
+}
+
+.positive-reason {
+  color: #28a745;
+}
+
+.risk-item {
+  color: #dc3545;
+}
+
+.violation-item {
+  color: #dc3545;
+  font-weight: bold;
+}
+
+.shap-feature {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.feature-name {
+  font-weight: bold;
+  min-width: 150px;
+}
+
+.feature-value {
+  font-family: monospace;
+  background-color: #e9ecef;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.feature-impact {
+  font-weight: bold;
+  font-size: 1.2em;
+}
+
+.impact-positive {
+  color: #28a745;
+}
+
+.impact-negative {
+  color: #dc3545;
+}
+
+.impact-neutral {
+  color: #6c757d;
+}
+
+.no-reasons, .no-risks {
+  color: #6c757d;
+  font-style: italic;
+}
+
+.explanation-footer {
+  margin-top: 20px;
+  padding-top: 10px;
+  border-top: 1px solid #ddd;
+  text-align: right;
+}
+
+@media print {
+  .explanation {
+    border: none;
+    background-color: white;
+    box-shadow: none;
+  }
+}
+</style>
 
 

@@ -1,7 +1,7 @@
 # backend/app/api/optimization.py
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi import Depends
-from typing import List
+from typing import List, Dict, Any
 from datetime import datetime
 from app.models.trainset import OptimizationRequest, InductionDecision
 from app.services.optimizer import TrainInductionOptimizer
@@ -9,6 +9,11 @@ from app.services.solver import RoleAssignmentSolver, SolverWeights
 from app.services.rule_engine import DurableRulesEngine
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.utils.cloud_database import cloud_db_manager
+from app.utils.explainability import (
+    generate_comprehensive_explanation,
+    render_explanation_html,
+    render_explanation_text
+)
 from app.config import settings
 from app.security import require_api_key
 import asyncio
@@ -125,6 +130,117 @@ async def check_constraints(_auth=Depends(require_api_key)):
     except Exception as e:
         logger.error(f"Constraint check failed: {e}")
         raise HTTPException(status_code=500, detail=f"Error checking constraints: {str(e)}")
+
+
+@router.get("/explain/{trainset_id}")
+async def explain_assignment(
+    trainset_id: str,
+    decision: str = "INDUCT",
+    format: str = "json",
+    _auth=Depends(require_api_key)
+):
+    """Generate comprehensive explanation for a specific trainset assignment"""
+    try:
+        # Get trainset data
+        collection = await cloud_db_manager.get_collection("trainsets")
+        trainset_doc = await collection.find_one({"trainset_id": trainset_id})
+        
+        if not trainset_doc:
+            raise HTTPException(status_code=404, detail=f"Trainset {trainset_id} not found")
+        
+        trainset_doc.pop('_id', None)
+        
+        # Generate comprehensive explanation
+        explanation = generate_comprehensive_explanation(trainset_doc, decision)
+        
+        # Add metadata
+        explanation.update({
+            "trainset_id": trainset_id,
+            "role": decision,
+            "timestamp": datetime.utcnow().isoformat()
+        })
+        
+        if format == "html":
+            html_content = render_explanation_html(explanation)
+            return {"html": html_content, "data": explanation}
+        elif format == "text":
+            text_content = render_explanation_text(explanation)
+            return {"text": text_content, "data": explanation}
+        else:
+            return explanation
+            
+    except Exception as e:
+        logger.error(f"Error generating explanation: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating explanation: {str(e)}")
+
+
+@router.post("/explain/batch")
+async def explain_batch_assignments(
+    assignments: List[Dict[str, Any]],
+    format: str = "json",
+    _auth=Depends(require_api_key)
+):
+    """Generate explanations for multiple trainset assignments"""
+    try:
+        explanations = []
+        
+        for assignment in assignments:
+            trainset_id = assignment.get("trainset_id")
+            decision = assignment.get("decision", "INDUCT")
+            
+            if not trainset_id:
+                continue
+                
+            # Get trainset data
+            collection = await cloud_db_manager.get_collection("trainsets")
+            trainset_doc = await collection.find_one({"trainset_id": trainset_id})
+            
+            if not trainset_doc:
+                explanations.append({
+                    "trainset_id": trainset_id,
+                    "error": "Trainset not found"
+                })
+                continue
+            
+            trainset_doc.pop('_id', None)
+            
+            # Generate comprehensive explanation
+            explanation = generate_comprehensive_explanation(trainset_doc, decision)
+            explanation.update({
+                "trainset_id": trainset_id,
+                "role": decision,
+                "timestamp": datetime.utcnow().isoformat()
+            })
+            
+            explanations.append(explanation)
+        
+        if format == "html":
+            html_explanations = []
+            for explanation in explanations:
+                if "error" not in explanation:
+                    html_content = render_explanation_html(explanation)
+                    html_explanations.append({
+                        "trainset_id": explanation["trainset_id"],
+                        "html": html_content
+                    })
+            return {"explanations": html_explanations, "data": explanations}
+        elif format == "text":
+            text_explanations = []
+            for explanation in explanations:
+                if "error" not in explanation:
+                    text_content = render_explanation_text(explanation)
+                    text_explanations.append({
+                        "trainset_id": explanation["trainset_id"],
+                        "text": text_content
+                    })
+            return {"explanations": text_explanations, "data": explanations}
+        else:
+            return {"explanations": explanations}
+            
+    except Exception as e:
+        logger.error(f"Error generating batch explanations: {e}")
+        raise HTTPException(status_code=500, detail=f"Error generating batch explanations: {str(e)}")
+
 
 @router.get("/simulate")
 async def simulate_what_if(

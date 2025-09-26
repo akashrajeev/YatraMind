@@ -3,7 +3,11 @@ from typing import List, Dict, Any
 from app.models.trainset import OptimizationRequest, InductionDecision
 from ortools.linear_solver import pywraplp
 import logging
-from app.utils.explainability import top_reasons_and_risks
+from app.utils.explainability import (
+    top_reasons_and_risks, 
+    generate_comprehensive_explanation,
+    calculate_composite_score
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,34 +91,52 @@ class TrainInductionOptimizer:
                     chosen = x_vars[i].solution_value() > 0.5
                     if chosen:
                         score = float(objective_terms[i].Evaluate()) if hasattr(objective_terms[i], 'Evaluate') else 0.85
-                        reasons_risks = top_reasons_and_risks(t)
+                        # Generate comprehensive explanation
+                        explanation = generate_comprehensive_explanation(t, "INDUCT")
                         decisions.append(
                             InductionDecision(
                                 trainset_id=t["trainset_id"],
                                 decision="INDUCT",
                                 confidence_score=min(1.0, max(0.5, score)),
-                                reasons=self._get_induction_reasons(t, score) + reasons_risks.get("top_reasons", []),
+                                reasons=self._get_induction_reasons(t, score) + explanation["top_reasons"],
+                                score=explanation["score"],
+                                top_reasons=explanation["top_reasons"],
+                                top_risks=explanation["top_risks"],
+                                violations=explanation["violations"],
+                                shap_values=explanation["shap_values"]
                             )
                         )
                 # Non chosen items
                 for i, t in enumerate(trainsets):
                     if x_vars[i].solution_value() <= 0.5:
                         if self._needs_maintenance(t):
+                            explanation = generate_comprehensive_explanation(t, "MAINTENANCE")
                             decisions.append(
                                 InductionDecision(
                                     trainset_id=t["trainset_id"],
                                     decision="MAINTENANCE",
                                     confidence_score=0.9,
                                     reasons=["Maintenance required based on constraints"],
+                                    score=explanation["score"],
+                                    top_reasons=explanation["top_reasons"],
+                                    top_risks=explanation["top_risks"],
+                                    violations=explanation["violations"],
+                                    shap_values=explanation["shap_values"]
                                 )
                             )
                         else:
+                            explanation = generate_comprehensive_explanation(t, "STANDBY")
                             decisions.append(
                                 InductionDecision(
                                     trainset_id=t["trainset_id"],
                                     decision="STANDBY",
                                     confidence_score=0.7,
                                     reasons=["Standby due to lower composite score"],
+                                    score=explanation["score"],
+                                    top_reasons=explanation["top_reasons"],
+                                    top_risks=explanation["top_risks"],
+                                    violations=explanation["violations"],
+                                    shap_values=explanation["shap_values"]
                                 )
                             )
             else:
@@ -194,26 +216,44 @@ class TrainInductionOptimizer:
         inducted = 0
         for trainset, score in scored_trainsets:
             if inducted < target_inductions and self._can_induct(trainset):
+                explanation = generate_comprehensive_explanation(trainset, "INDUCT")
                 decisions.append(InductionDecision(
                     trainset_id=trainset["trainset_id"],
                     decision="INDUCT",
                     confidence_score=min(score, 1.0),
                     reasons=self._get_induction_reasons(trainset, score),
+                    score=explanation["score"],
+                    top_reasons=explanation["top_reasons"],
+                    top_risks=explanation["top_risks"],
+                    violations=explanation["violations"],
+                    shap_values=explanation["shap_values"]
                 ))
                 inducted += 1
             elif self._needs_maintenance(trainset):
+                explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
                 decisions.append(InductionDecision(
                     trainset_id=trainset["trainset_id"],
                     decision="MAINTENANCE",
                     confidence_score=0.9,
                     reasons=["Maintenance required based on constraints"],
+                    score=explanation["score"],
+                    top_reasons=explanation["top_reasons"],
+                    top_risks=explanation["top_risks"],
+                    violations=explanation["violations"],
+                    shap_values=explanation["shap_values"]
                 ))
             else:
+                explanation = generate_comprehensive_explanation(trainset, "STANDBY")
                 decisions.append(InductionDecision(
                     trainset_id=trainset["trainset_id"],
                     decision="STANDBY",
                     confidence_score=0.7,
                     reasons=["Standby due to lower priority"],
+                    score=explanation["score"],
+                    top_reasons=explanation["top_reasons"],
+                    top_risks=explanation["top_risks"],
+                    violations=explanation["violations"],
+                    shap_values=explanation["shap_values"]
                 ))
         return decisions
 

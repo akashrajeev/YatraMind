@@ -40,8 +40,20 @@ class OptimizationRequest(BaseModel):
     override_constraints: Optional[Dict[str, Any]] = None
 
 
+class ShapFeature(BaseModel):
+    name: str
+    value: float
+    impact: str  # "positive" | "negative" | "neutral"
+
+
 class InductionDecision(BaseModel):
     trainset_id: str
     decision: str  # INDUCT | STANDBY | MAINTENANCE
     confidence_score: float = 0.8
     reasons: List[str] = Field(default_factory=list)
+    # Enhanced explainability fields
+    score: float = Field(default=0.0, description="Composite score for this assignment")
+    top_reasons: List[str] = Field(default_factory=list, description="Top 3 contributing positive reasons")
+    top_risks: List[str] = Field(default_factory=list, description="Top 3 negative reasons")
+    violations: List[str] = Field(default_factory=list, description="List of rule violations if assignment chosen despite violation")
+    shap_values: List[ShapFeature] = Field(default_factory=list, description="Top 5 features and their impact if ML used")

@@ -22,6 +22,8 @@ python-multipart==0.0.6
 python-dotenv==1.0.0
 requests==2.31.0
 aiofiles==23.2.1
+jinja2==3.1.2
+shap==0.42.1
 # Celery and Redis for background tasks
 celery==5.3.4
 kombu==5.3.4
