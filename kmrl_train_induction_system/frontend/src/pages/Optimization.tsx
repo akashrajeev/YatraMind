@@ -41,6 +41,8 @@ const Optimization = () => {
     w_shunt: 0.10,
     w_mileage_balance: 0.05
   });
+  const [simulationResults, setSimulationResults] = useState<any>(null);
+  const [showSimulationResults, setShowSimulationResults] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -78,11 +80,22 @@ const Optimization = () => {
 
   const runSimulationMutation = useMutation({
     mutationFn: optimizationApi.simulate,
+    onSuccess: (data) => {
+      setSimulationResults(data.data);
+      setShowSimulationResults(true);
+    },
   });
+
+  const [explanationData, setExplanationData] = useState<any>(null);
+  const [showExplanation, setShowExplanation] = useState(false);
 
   const explainMutation = useMutation({
     mutationFn: ({ trainsetId, decision }: { trainsetId: string; decision: string }) =>
       optimizationApi.explainAssignment(trainsetId, decision, 'json'),
+    onSuccess: (data) => {
+      setExplanationData(data.data);
+      setShowExplanation(true);
+    },
   });
 
   return (
@@ -529,6 +542,213 @@ const Optimization = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Simulation Results Modal */}
+      {showSimulationResults && simulationResults && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl">What-If Simulation Results</CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowSimulationResults(false)}
+                >
+                  ×
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-3">Simulation Parameters</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Excluded Trainsets:</span>
+                      <span>{simulationResults.scenario?.excluded_trainsets?.join(', ') || 'None'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Forced Inductions:</span>
+                      <span>{simulationResults.scenario?.forced_inductions?.join(', ') || 'None'}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Required Service Count:</span>
+                      <span>{simulationResults.scenario?.required_service_count}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Weights:</span>
+                      <span className="text-xs">
+                        R:{simulationResults.scenario?.weights?.readiness} 
+                        R:{simulationResults.scenario?.weights?.reliability}
+                        B:{simulationResults.scenario?.weights?.branding}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-3">Simulation Summary</h3>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Total Decisions:</span>
+                      <span>{simulationResults.results?.length || 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Inducted:</span>
+                      <span className="text-green-600">
+                        {simulationResults.results?.filter((r: any) => r.decision === 'INDUCT').length || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Standby:</span>
+                      <span className="text-yellow-600">
+                        {simulationResults.results?.filter((r: any) => r.decision === 'STANDBY').length || 0}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Maintenance:</span>
+                      <span className="text-red-600">
+                        {simulationResults.results?.filter((r: any) => r.decision === 'MAINTENANCE').length || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="font-semibold text-lg mb-3">Detailed Results</h3>
+                <div className="space-y-2 max-h-96 overflow-y-auto">
+                  {simulationResults.results?.map((result: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
+                          {index + 1}
+                        </div>
+                        <span className="font-medium">{result.trainset_id}</span>
+                        <Badge variant={result.decision === 'INDUCT' ? 'success' : 'secondary'}>
+                          {result.decision}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span>Score: {Math.round((result.score || 0) * 100)}%</span>
+                        <span>Confidence: {Math.round((result.confidence_score || 0) * 100)}%</span>
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => explainMutation.mutate({ 
+                            trainsetId: result.trainset_id, 
+                            decision: result.decision 
+                          })}
+                        >
+                          <Eye className="h-3 w-3 mr-1" />
+                          Explain
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowSimulationResults(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => window.print()}>
+                  Print Results
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Explanation Modal */}
+      {showExplanation && explanationData && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl">
+                  AI Decision Explanation - {explanationData.trainset_id}
+                </CardTitle>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  onClick={() => setShowExplanation(false)}
+                >
+                  ×
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold text-lg mb-3 text-green-600">Top Reasons</h3>
+                  <ul className="space-y-2">
+                    {explanationData.top_reasons?.map((reason: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{reason}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                
+                <div>
+                  <h3 className="font-semibold text-lg mb-3 text-red-600">Risks & Violations</h3>
+                  <ul className="space-y-2">
+                    {explanationData.top_risks?.map((risk: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm">{risk}</span>
+                      </li>
+                    ))}
+                    {explanationData.violations?.map((violation: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-red-600">{violation}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              {explanationData.shap_values && explanationData.shap_values.length > 0 && (
+                <div>
+                  <h3 className="font-semibold text-lg mb-3">Feature Impact Analysis</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {explanationData.shap_values.map((feature: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <span className="text-sm font-medium">{feature.name}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm">{feature.value}</span>
+                          <span className={`text-xs px-2 py-1 rounded ${
+                            feature.impact === 'positive' 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {feature.impact === 'positive' ? '↑' : '↓'}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setShowExplanation(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => window.print()}>
+                  Print Explanation
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 };

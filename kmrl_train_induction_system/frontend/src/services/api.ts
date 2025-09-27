@@ -1,8 +1,9 @@
 import axios from 'axios';
+import { API_BASE_URL, API_KEY } from '@/config/api';
 
 // Create axios instance with base configuration
 const api = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,7 +13,7 @@ const api = axios.create({
 // Add request interceptor for API key
 api.interceptors.request.use((config) => {
   // Add API key to all requests
-  config.headers['X-API-Key'] = 'your-api-key-here'; // This should come from environment or auth
+  config.headers['X-API-Key'] = API_KEY;
   return config;
 });
 
@@ -34,37 +35,37 @@ export const dashboardApi = {
 
 // Assignments API
 export const assignmentApi = {
-  getAll: (params?: any) => api.get('/assignments', { params }),
-  getById: (id: string) => api.get(`/assignments/${id}`),
-  create: (data: any) => api.post('/assignments', data),
-  approve: (data: any) => api.post('/assignments/approve', data),
-  override: (data: any) => api.post('/assignments/override', data),
-  getSummary: () => api.get('/assignments/summary'),
+  getAll: (params?: any) => api.get('/v1/assignments/', { params }),
+  getById: (id: string) => api.get(`/v1/assignments/${id}`),
+  create: (data: any) => api.post('/v1/assignments/', data),
+  approve: (data: any) => api.post('/v1/assignments/approve', data),
+  override: (data: any) => api.post('/v1/assignments/override', data),
+  getSummary: () => api.get('/v1/assignments/summary'),
 };
 
 // Reports API
 export const reportsApi = {
-  getDailyBriefing: (date?: string) => api.get('/reports/daily-briefing', { 
+  getDailyBriefing: (date?: string) => api.get('/v1/reports/daily-briefing', { 
     params: { date },
     responseType: 'blob' 
   }),
-  exportAssignments: (format: string, filters?: any) => api.get('/reports/assignments', {
+  exportAssignments: (format: string, filters?: any) => api.get('/v1/reports/assignments', {
     params: { format, ...filters },
     responseType: 'blob'
   }),
-  exportAuditLogs: (filters?: any) => api.get('/reports/audit-logs', {
+  exportAuditLogs: (filters?: any) => api.get('/v1/reports/audit-logs', {
     params: filters,
     responseType: 'blob'
   }),
-  getFleetStatus: (format: string = 'pdf') => api.get('/reports/fleet-status', {
+  getFleetStatus: (format: string = 'pdf') => api.get('/v1/reports/fleet-status', {
     params: { format },
     responseType: 'blob'
   }),
-  getPerformanceAnalysis: (days: number = 30) => api.get('/reports/performance-analysis', {
+  getPerformanceAnalysis: (days: number = 30) => api.get('/v1/reports/performance-analysis', {
     params: { days },
     responseType: 'blob'
   }),
-  getComplianceReport: (startDate?: string, endDate?: string) => api.get('/reports/compliance-report', {
+  getComplianceReport: (startDate?: string, endDate?: string) => api.get('/v1/reports/compliance-report', {
     params: { start_date: startDate, end_date: endDate },
     responseType: 'blob'
   }),
@@ -90,7 +91,7 @@ export const optimizationApi = {
 
 // Trainsets API
 export const trainsetsApi = {
-  getAll: (params?: any) => api.get('/trainsets', { params }),
+  getAll: (params?: any) => api.get('/trainsets/', { params }),
   getById: (id: string) => api.get(`/trainsets/${id}`),
   update: (id: string, data: any) => api.put(`/trainsets/${id}`, data),
   getFitness: (id: string) => api.get(`/trainsets/${id}/fitness`),
