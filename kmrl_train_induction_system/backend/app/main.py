@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.api import trainsets, optimization, dashboard, ingestion
+from app.api import trainsets, optimization, dashboard, ingestion, assignments, reports, auth
 from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -11,6 +11,14 @@ import logging
 from app.celery_app import celery_app
 from app.tasks import nightly_run_optimization, ingestion_refresh_all, train_model
 from fastapi import Header, HTTPException
+try:
+    from fastapi_socketio import SocketManager
+    import socketio
+    _HAS_SOCKETIO = True
+except ImportError:
+    _HAS_SOCKETIO = False
+    SocketManager = None
+    socketio = None
 try:
     from prometheus_fastapi_instrumentator import Instrumentator
     _HAS_PROM = True
@@ -29,6 +37,10 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc"
 )
+
+# Initialize Socket.IO (temporarily disabled for compatibility)
+sio = None
+socket_manager = None
 # GZip for responses
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
@@ -51,8 +63,42 @@ app.include_router(trainsets.router, prefix="/api/trainsets", tags=["Trainsets"]
 app.include_router(optimization.router, prefix="/api/optimization", tags=["Optimization"])
 app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
 app.include_router(ingestion.router, prefix="/api/ingestion", tags=["Data Ingestion"])
+app.include_router(assignments.router, prefix="/api/v1/assignments", tags=["Assignments"])
+app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
 
 scheduler: AsyncIOScheduler | None = None
+
+# Socket.IO event handlers
+if _HAS_SOCKETIO and sio:
+    @sio.event
+    async def connect(sid, environ):
+        """Handle client connection"""
+        logger.info(f"Client connected: {sid}")
+        await sio.emit("status", {"message": "Connected to KMRL Operations Dashboard"}, room=sid)
+
+    @sio.event
+    async def disconnect(sid):
+        """Handle client disconnection"""
+        logger.info(f"Client disconnected: {sid}")
+
+    @sio.event
+    async def join_room(sid, data):
+        """Handle client joining a room (e.g., user-specific room)"""
+        room = data.get("room", "general")
+        sio.enter_room(sid, room)
+        await sio.emit("joined_room", {"room": room}, room=sid)
+
+    @sio.event
+    async def leave_room(sid, data):
+        """Handle client leaving a room"""
+        room = data.get("room", "general")
+        sio.leave_room(sid, room)
+        await sio.emit("left_room", {"room": room}, room=sid)
+
+# Global socket instance for use in other modules
+def get_socket():
+    return sio if _HAS_SOCKETIO else None
 
 @app.on_event("startup")
 async def startup_event():

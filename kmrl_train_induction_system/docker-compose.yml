@@ -1,0 +1,129 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: kmrl_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: kmrl_operations
+    volumes:
+      - mongodb_data:/data/db
+      - ./backend/data/mock:/docker-entrypoint-initdb.d
+    networks:
+      - kmrl_network
+
+  # Redis Cache
+  redis:
+    image: redis:7.2-alpine
+    container_name: kmrl_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - kmrl_network
+
+  # Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kmrl_backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017/kmrl_operations?authSource=admin
+      - REDIS_URL=redis://redis:6379/0
+      - API_KEY=dev-api-key
+      - SECRET_KEY=dev-secret-key
+      - DEBUG=true
+      - ENVIRONMENT=development
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    networks:
+      - kmrl_network
+
+  # Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: kmrl_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+      - VITE_SOCKET_URL=http://localhost:8000
+      - VITE_API_KEY=dev-api-key
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - kmrl_network
+
+  # Celery Worker
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kmrl_celery_worker
+    restart: unless-stopped
+    command: celery -A app.celery_app worker --loglevel=info
+    environment:
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017/kmrl_operations?authSource=admin
+      - REDIS_URL=redis://redis:6379/0
+      - API_KEY=dev-api-key
+      - SECRET_KEY=dev-secret-key
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    networks:
+      - kmrl_network
+
+  # Celery Beat (Scheduler)
+  celery_beat:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: kmrl_celery_beat
+    restart: unless-stopped
+    command: celery -A app.celery_app beat --loglevel=info
+    environment:
+      - MONGODB_URL=mongodb://admin:password@mongodb:27017/kmrl_operations?authSource=admin
+      - REDIS_URL=redis://redis:6379/0
+      - API_KEY=dev-api-key
+      - SECRET_KEY=dev-secret-key
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend:/app
+      - /app/__pycache__
+    networks:
+      - kmrl_network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  kmrl_network:
+    driver: bridge
