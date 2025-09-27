@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { assignmentApi, optimizationApi } from "@/services/api";
+import { assignmentApi, optimizationApi, trainsetsApi } from "@/services/api";
 import { Assignment, AssignmentSummary } from "@/types/api";
 import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info } from "lucide-react";
 import { useState } from "react";
@@ -13,6 +13,8 @@ const Assignments = () => {
   const [selectedTrainset, setSelectedTrainset] = useState<string | null>(null);
   const [explanationData, setExplanationData] = useState<any>(null);
   const [showExplanation, setShowExplanation] = useState(false);
+  const [trainsetDetails, setTrainsetDetails] = useState<any>(null);
+  const [showTrainsetDetails, setShowTrainsetDetails] = useState(false);
 
   // Fetch assignments data
   const { data: assignments = [], isLoading, refetch } = useQuery({
@@ -72,6 +74,16 @@ const Assignments = () => {
   const handleExplainDecision = (trainsetId: string, decision: string) => {
     setSelectedTrainset(trainsetId);
     explanationMutation.mutate({ trainsetId, decision });
+  };
+
+  const handleViewDetails = async (trainsetId: string) => {
+    try {
+      const response = await trainsetsApi.getDetails(trainsetId);
+      setTrainsetDetails(response.data);
+      setShowTrainsetDetails(true);
+    } catch (error) {
+      console.error('Error fetching trainset details:', error);
+    }
   };
 
   // Filter assignments by status
@@ -226,10 +238,14 @@ const Assignments = () => {
                           <Eye className="h-4 w-4 mr-2" />
                           Explain Decision
                         </Button>
-                        <Button size="sm" variant="secondary">
-                          <Info className="h-4 w-4 mr-2" />
-                          View Details
-                        </Button>
+                            <Button 
+                              size="sm" 
+                              variant="secondary"
+                              onClick={() => handleViewDetails(decision.trainset_id)}
+                            >
+                              <Info className="h-4 w-4 mr-2" />
+                              View Details
+                            </Button>
                       </div>
                     </div>
                   </CardContent>
@@ -517,9 +533,129 @@ const Assignments = () => {
             </CardContent>
           </Card>
         </div>
-      )}
-    </div>
-  );
-};
+          )}
 
-export default Assignments;
+          {/* Trainset Details Modal */}
+          {showTrainsetDetails && trainsetDetails && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-xl">
+                      Trainset Details - {trainsetDetails.trainset_id}
+                    </CardTitle>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setShowTrainsetDetails(false)}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h3 className="font-semibold text-lg mb-3">Basic Information</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Status:</span>
+                          <Badge variant={trainsetDetails.basic_info.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                            {trainsetDetails.basic_info.status}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Model:</span>
+                          <span>{trainsetDetails.basic_info.model}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Manufacturer:</span>
+                          <span>{trainsetDetails.basic_info.manufacturer}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Commission Date:</span>
+                          <span>{trainsetDetails.basic_info.commission_date}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Last Inspection:</span>
+                          <span>{trainsetDetails.basic_info.last_inspection}</span>
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="font-semibold text-lg mb-3">Operational Metrics</h3>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Total Assignments:</span>
+                          <span>{trainsetDetails.operational_metrics.total_assignments}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Success Rate:</span>
+                          <span className="text-green-600">{trainsetDetails.operational_metrics.success_rate}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Fitness Score:</span>
+                          <span className="text-blue-600">{Math.round(trainsetDetails.operational_metrics.current_fitness_score * 100)}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Failure Risk:</span>
+                          <span className="text-red-600">{Math.round(trainsetDetails.operational_metrics.predicted_failure_risk * 100)}%</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Performance Data</h3>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Operational Hours</div>
+                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.operational_hours.toLocaleString()}</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Total Mileage</div>
+                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.mileage.toLocaleString()} km</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Avg Sensor Health</div>
+                        <div className="text-lg font-semibold">{Math.round(trainsetDetails.performance_data.avg_sensor_health * 100)}%</div>
+                      </div>
+                      <div className="p-3 bg-gray-50 rounded-lg">
+                        <div className="text-sm text-muted-foreground">Next Maintenance</div>
+                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.next_scheduled_maintenance?.split('T')[0] || 'N/A'}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {trainsetDetails.recommendations && trainsetDetails.recommendations.filter(r => r).length > 0 && (
+                    <div>
+                      <h3 className="font-semibold text-lg mb-3">Recommendations</h3>
+                      <ul className="space-y-2">
+                        {trainsetDetails.recommendations.filter(r => r).map((rec: string, i: number) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
+                            <span className="text-sm">{rec}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setShowTrainsetDetails(false)}>
+                      Close
+                    </Button>
+                    <Button onClick={() => window.print()}>
+                      Print Details
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+        </div>
+      );
+    };
+
+    export default Assignments;

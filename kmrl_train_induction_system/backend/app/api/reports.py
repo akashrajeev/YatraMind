@@ -29,7 +29,6 @@ report_generator = ReportGenerator()
 @router.get("/daily-briefing")
 async def generate_daily_briefing(
     date: Optional[str] = Query(None, description="Date in YYYY-MM-DD format"),
-    current_user=Depends(get_current_user),
     _auth=Depends(require_api_key)
 ):
     """Generate daily briefing PDF report"""
@@ -59,7 +58,6 @@ async def export_assignments(
     status: Optional[AssignmentStatus] = Query(None),
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    current_user=Depends(get_current_user),
     _auth=Depends(require_api_key)
 ):
     """Export assignments in CSV or PDF format"""
@@ -116,7 +114,6 @@ async def export_audit_logs(
     end_date: Optional[str] = Query(None),
     user_id: Optional[str] = Query(None),
     action: Optional[str] = Query(None),
-    current_user=Depends(get_current_user),
     _auth=Depends(require_api_key)
 ):
     """Export audit logs in CSV format"""
@@ -163,7 +160,6 @@ async def export_audit_logs(
 @router.get("/fleet-status")
 async def generate_fleet_status_report(
     format: str = Query("pdf", regex="^(pdf|csv)$"),
-    current_user=Depends(get_current_user),
     _auth=Depends(require_api_key)
 ):
     """Generate fleet status report"""
@@ -191,7 +187,6 @@ async def generate_fleet_status_report(
 @router.get("/performance-analysis")
 async def generate_performance_analysis(
     days: int = Query(30, ge=1, le=365),
-    current_user=Depends(get_current_user),
     _auth=Depends(require_api_key)
 ):
     """Generate performance analysis report"""
@@ -215,7 +210,6 @@ async def generate_performance_analysis(
 async def generate_compliance_report(
     start_date: Optional[str] = Query(None),
     end_date: Optional[str] = Query(None),
-    current_user=Depends(get_current_user),
     _auth=Depends(require_api_key)
 ):
     """Generate compliance report"""

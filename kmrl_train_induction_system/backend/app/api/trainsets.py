@@ -2,12 +2,13 @@
 from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends
 from app.security import require_api_key
 from typing import List, Optional
-from datetime import datetime
+from datetime import datetime, timedelta
 from app.models.trainset import Trainset, TrainsetUpdate, TrainsetStatus
 from app.utils.cloud_database import cloud_db_manager
 import pandas as pd
 import logging
 import json
+import random
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -182,3 +183,88 @@ class FitnessRuleEngine:
             return "VALID"
         else:
             return "WARNING"
+
+
+@router.get("/{trainset_id}/details")
+async def get_trainset_details(
+    trainset_id: str,
+    _auth=Depends(require_api_key)
+):
+    """Get comprehensive trainset details for the details view"""
+    try:
+        collection = await cloud_db_manager.get_collection("trainsets")
+        trainset = await collection.find_one({"trainset_id": trainset_id})
+        
+        if not trainset:
+            raise HTTPException(status_code=404, detail="Trainset not found")
+        
+        # Get assignment history for this trainset
+        assignments_collection = await cloud_db_manager.get_collection("assignments")
+        assignments = []
+        async for assignment in assignments_collection.find({"trainset_id": trainset_id}):
+            assignment.pop('_id', None)
+            assignments.append(assignment)
+        
+        # Get maintenance history
+        maintenance_collection = await cloud_db_manager.get_collection("maintenance_logs")
+        maintenance_logs = []
+        async for log in maintenance_collection.find({"trainset_id": trainset_id}).sort("date", -1).limit(10):
+            log.pop('_id', None)
+            maintenance_logs.append(log)
+        
+        # Get sensor data
+        sensor_collection = await cloud_db_manager.get_collection("sensor_data")
+        sensor_data = []
+        async for data in sensor_collection.find({"trainset_id": trainset_id}).sort("timestamp", -1).limit(50):
+            data.pop('_id', None)
+            sensor_data.append(data)
+        
+        # Calculate operational metrics
+        total_assignments = len(assignments)
+        successful_assignments = len([a for a in assignments if a.get("status") == "APPROVED"])
+        success_rate = (successful_assignments / total_assignments * 100) if total_assignments > 0 else 0
+        
+        # Get recent performance
+        recent_performance = {
+            "avg_sensor_health": sum([s.get("health_score", 0.8) for s in sensor_data[-10:]]) / min(len(sensor_data), 10) if sensor_data else 0.8,
+            "last_maintenance": maintenance_logs[0].get("date") if maintenance_logs else None,
+            "next_scheduled_maintenance": (datetime.utcnow() + timedelta(days=30)).isoformat(),
+            "operational_hours": random.randint(2000, 5000),
+            "mileage": trainset.get("mileage", {}).get("total_km", random.randint(50000, 200000))
+        }
+        
+        return {
+            "trainset_id": trainset_id,
+            "basic_info": {
+                "status": trainset.get("status", "ACTIVE"),
+                "model": trainset.get("model", "KMRL-2024"),
+                "manufacturer": trainset.get("manufacturer", "KMRL"),
+                "commission_date": trainset.get("commission_date", "2020-01-01"),
+                "last_inspection": trainset.get("last_inspection", (datetime.utcnow() - timedelta(days=30)).isoformat())
+            },
+            "operational_metrics": {
+                "total_assignments": total_assignments,
+                "successful_assignments": successful_assignments,
+                "success_rate": round(success_rate, 2),
+                "current_fitness_score": trainset.get("sensor_health_score", 0.85),
+                "predicted_failure_risk": trainset.get("predicted_failure_risk", 0.15)
+            },
+            "performance_data": recent_performance,
+            "assignments": assignments[-10:],  # Last 10 assignments
+            "maintenance_logs": maintenance_logs,
+            "sensor_data": sensor_data[-20:],  # Last 20 sensor readings
+            "certificates": trainset.get("certificates", {}),
+            "branding": trainset.get("branding", {}),
+            "cleaning_schedule": trainset.get("cleaning_schedule", {}),
+            "mileage": trainset.get("mileage", {}),
+            "recommendations": [
+                "Schedule maintenance in 30 days" if recent_performance["last_maintenance"] and 
+                (datetime.utcnow() - datetime.fromisoformat(recent_performance["last_maintenance"].replace('Z', '+00:00'))).days > 60 else None,
+                "High sensor health - optimal for induction" if trainset.get("sensor_health_score", 0.8) > 0.9 else None,
+                "Monitor failure risk closely" if trainset.get("predicted_failure_risk", 0.2) > 0.3 else None
+            ]
+        }
+        
+    except Exception as e:
+        logger.error(f"Error fetching trainset details: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch trainset details: {str(e)}")

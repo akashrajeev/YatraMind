@@ -95,6 +95,7 @@ export const trainsetsApi = {
   getById: (id: string) => api.get(`/trainsets/${id}`),
   update: (id: string, data: any) => api.put(`/trainsets/${id}`, data),
   getFitness: (id: string) => api.get(`/trainsets/${id}/fitness`),
+  getDetails: (id: string) => api.get(`/trainsets/${id}/details`),
 };
 
 // Data Ingestion API
