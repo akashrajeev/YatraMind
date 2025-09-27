@@ -1,284 +1,206 @@
-import React, { useState } from 'react'
-import {
-  Box,
-  Typography,
-  Paper,
-  Button,
-  Grid,
-  Card,
-  CardContent,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  TextField,
-  Alert,
-  CircularProgress,
-} from '@mui/material'
-import {
-  Download as DownloadIcon,
-  PictureAsPdf as PdfIcon,
-  TableChart as CsvIcon,
-  Assessment as ReportIcon,
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
-import { useQuery, useMutation } from 'react-query'
-import { reportsApi } from '../services/api'
-import { format } from 'date-fns'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { useMutation } from "@tanstack/react-query";
+import { reportsApi } from "@/services/api";
+import { Download, FileText, BarChart3, TrendingUp } from "lucide-react";
 
-const Reports: React.FC = () => {
-  const [selectedFormat, setSelectedFormat] = useState<'csv' | 'pdf'>('pdf')
-  const [dateRange, setDateRange] = useState({
-    start: format(new Date(), 'yyyy-MM-dd'),
-    end: format(new Date(), 'yyyy-MM-dd'),
-  })
-
-  const generateDailyBriefingMutation = useMutation(reportsApi.generateDailyBriefing, {
-    onSuccess: (blob) => {
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `daily-briefing-${format(new Date(), 'yyyy-MM-dd')}.pdf`
-      link.click()
-      window.URL.revokeObjectURL(url)
+const Reports = () => {
+  // Mutations for report generation
+  const dailyBriefingMutation = useMutation({
+    mutationFn: reportsApi.getDailyBriefing,
+    onSuccess: (data) => {
+      const blob = new Blob([data.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `daily-briefing-${new Date().toISOString().split('T')[0]}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
     },
-  })
+  });
 
-  const exportAssignmentsMutation = useMutation(
-    () => reportsApi.exportAssignments(selectedFormat),
+  const assignmentsExportMutation = useMutation({
+    mutationFn: ({ format, filters }: { format: string; filters?: any }) => 
+      reportsApi.exportAssignments(format, filters),
+    onSuccess: (data, variables) => {
+      const blob = new Blob([data.data], { 
+        type: variables.format === 'pdf' ? 'application/pdf' : 'text/csv' 
+      });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `assignments-${new Date().toISOString().split('T')[0]}.${variables.format}`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    },
+  });
+
+  const fleetStatusMutation = useMutation({
+    mutationFn: reportsApi.getFleetStatus,
+    onSuccess: (data) => {
+      const blob = new Blob([data.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `fleet-status-${new Date().toISOString().split('T')[0]}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    },
+  });
+
+  const reportTypes = [
     {
-      onSuccess: (blob) => {
-        const url = window.URL.createObjectURL(blob)
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `assignments-${format(new Date(), 'yyyy-MM-dd')}.${selectedFormat}`
-        link.click()
-        window.URL.revokeObjectURL(url)
-      },
-    }
-  )
-
-  const exportAuditLogsMutation = useMutation(reportsApi.exportAuditLogs, {
-    onSuccess: (blob) => {
-      const url = window.URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = `audit-logs-${format(new Date(), 'yyyy-MM-dd')}.csv`
-      link.click()
-      window.URL.revokeObjectURL(url)
+      title: "Daily Operations Report",
+      description: "Summary of daily train induction activities",
+      icon: FileText,
+      lastGenerated: "2 hours ago",
+      status: "ready",
+      onGenerate: () => dailyBriefingMutation.mutate()
     },
-  })
+    {
+      title: "Performance Analytics",
+      description: "System performance and efficiency metrics",
+      icon: BarChart3,
+      lastGenerated: "1 day ago",
+      status: "ready",
+      onGenerate: () => fleetStatusMutation.mutate()
+    },
+    {
+      title: "Compliance Report",
+      description: "Safety and regulatory compliance status",
+      icon: TrendingUp,
+      lastGenerated: "3 days ago",
+      status: "pending",
+      onGenerate: () => assignmentsExportMutation.mutate({ format: 'pdf' })
+    }
+  ];
 
-  const handleGenerateDailyBriefing = () => {
-    generateDailyBriefingMutation.mutate()
-  }
-
-  const handleExportAssignments = () => {
-    exportAssignmentsMutation.mutate()
-  }
-
-  const handleExportAuditLogs = () => {
-    exportAuditLogsMutation.mutate()
-  }
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "ready":
+        return <Badge variant="success">Ready</Badge>;
+      case "pending":
+        return <Badge variant="secondary">Pending</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
+    }
+  };
 
   return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Reports & Exports
-      </Typography>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground">Reports & Analytics</h2>
+          <p className="text-muted-foreground">Generate and view operational reports</p>
+        </div>
+        <Button variant="industrial">
+          <Download className="h-4 w-4 mr-2" />
+          Generate All Reports
+        </Button>
+      </div>
 
-      <Grid container spacing={3}>
-        {/* Daily Briefing Report */}
-        <Grid item xs={12} md={6}>
-          <Card>
+      {/* Report Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {reportTypes.map((report, index) => (
+          <Card key={index} className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-primary/10 rounded-lg">
+                    <report.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-lg">{report.title}</CardTitle>
+                    <p className="text-sm text-muted-foreground">{report.description}</p>
+                  </div>
+                </div>
+                {getStatusBadge(report.status)}
+              </div>
+            </CardHeader>
             <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <ReportIcon sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6">Daily Briefing Report</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" paragraph>
-                Generate a comprehensive daily briefing PDF with fleet status, 
-                assignments, alerts, and performance metrics.
-              </Typography>
-              
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                <TextField
-                  label="Date"
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Box>
-
-              <Button
-                variant="contained"
-                startIcon={generateDailyBriefingMutation.isLoading ? <CircularProgress size={20} /> : <PdfIcon />}
-                onClick={handleGenerateDailyBriefing}
-                disabled={generateDailyBriefingMutation.isLoading}
-                fullWidth
-              >
-                {generateDailyBriefingMutation.isLoading ? 'Generating...' : 'Generate Daily Briefing'}
-              </Button>
-
-              {generateDailyBriefingMutation.isError && (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  Failed to generate daily briefing. Please try again.
-                </Alert>
-              )}
+              <div className="space-y-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Last Generated:</span>
+                  <span className="font-medium">{report.lastGenerated}</span>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex-1"
+                    onClick={report.onGenerate}
+                    disabled={dailyBriefingMutation.isPending || assignmentsExportMutation.isPending || fleetStatusMutation.isPending}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    {dailyBriefingMutation.isPending || assignmentsExportMutation.isPending || fleetStatusMutation.isPending ? 'Generating...' : 'Download'}
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="secondary" 
+                    className="flex-1"
+                    onClick={report.onGenerate}
+                    disabled={dailyBriefingMutation.isPending || assignmentsExportMutation.isPending || fleetStatusMutation.isPending}
+                  >
+                    Regenerate
+                  </Button>
+                </div>
+              </div>
             </CardContent>
           </Card>
-        </Grid>
+        ))}
+      </div>
 
-        {/* Assignment Exports */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <DownloadIcon sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6">Assignment Exports</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" paragraph>
-                Export assignment data in various formats for analysis and reporting.
-              </Typography>
+      {/* Quick Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Total Reports</p>
+                <p className="text-2xl font-bold">24</p>
+              </div>
+              <FileText className="h-8 w-8 text-muted-foreground" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">This Month</p>
+                <p className="text-2xl font-bold">8</p>
+              </div>
+              <TrendingUp className="h-8 w-8 text-success" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Auto-Generated</p>
+                <p className="text-2xl font-bold">18</p>
+              </div>
+              <BarChart3 className="h-8 w-8 text-primary" />
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-muted-foreground">Pending</p>
+                <p className="text-2xl font-bold">3</p>
+              </div>
+              <Badge variant="secondary">3</Badge>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+};
 
-              <FormControl fullWidth sx={{ mb: 2 }}>
-                <InputLabel>Export Format</InputLabel>
-                <Select
-                  value={selectedFormat}
-                  onChange={(e) => setSelectedFormat(e.target.value as 'csv' | 'pdf')}
-                  label="Export Format"
-                >
-                  <MenuItem value="pdf">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <PdfIcon fontSize="small" />
-                      PDF Report
-                    </Box>
-                  </MenuItem>
-                  <MenuItem value="csv">
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <CsvIcon fontSize="small" />
-                      CSV Data
-                    </Box>
-                  </MenuItem>
-                </Select>
-              </FormControl>
-
-              <Button
-                variant="outlined"
-                startIcon={exportAssignmentsMutation.isLoading ? <CircularProgress size={20} /> : <DownloadIcon />}
-                onClick={handleExportAssignments}
-                disabled={exportAssignmentsMutation.isLoading}
-                fullWidth
-              >
-                {exportAssignmentsMutation.isLoading ? 'Exporting...' : 'Export Assignments'}
-              </Button>
-
-              {exportAssignmentsMutation.isError && (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  Failed to export assignments. Please try again.
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Audit Logs Export */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <RefreshIcon sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6">Audit Logs Export</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" paragraph>
-                Export audit logs for compliance and security analysis.
-              </Typography>
-
-              <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
-                <TextField
-                  label="Start Date"
-                  type="date"
-                  value={dateRange.start}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
-                  InputLabelProps={{ shrink: true }}
-                />
-                <TextField
-                  label="End Date"
-                  type="date"
-                  value={dateRange.end}
-                  onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
-                  InputLabelProps={{ shrink: true }}
-                />
-              </Box>
-
-              <Button
-                variant="outlined"
-                startIcon={exportAuditLogsMutation.isLoading ? <CircularProgress size={20} /> : <CsvIcon />}
-                onClick={handleExportAuditLogs}
-                disabled={exportAuditLogsMutation.isLoading}
-                fullWidth
-              >
-                {exportAuditLogsMutation.isLoading ? 'Exporting...' : 'Export Audit Logs'}
-              </Button>
-
-              {exportAuditLogsMutation.isError && (
-                <Alert severity="error" sx={{ mt: 2 }}>
-                  Failed to export audit logs. Please try again.
-                </Alert>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Report Templates */}
-        <Grid item xs={12} md={6}>
-          <Card>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                <AssessmentIcon sx={{ mr: 1, color: 'primary.main' }} />
-                <Typography variant="h6">Report Templates</Typography>
-              </Box>
-              <Typography variant="body2" color="text.secondary" paragraph>
-                Pre-configured report templates for common operational needs.
-              </Typography>
-
-              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                <Button
-                  variant="text"
-                  startIcon={<PdfIcon />}
-                  onClick={() => {/* Generate maintenance report */}}
-                >
-                  Maintenance Summary Report
-                </Button>
-                <Button
-                  variant="text"
-                  startIcon={<PdfIcon />}
-                  onClick={() => {/* Generate performance report */}}
-                >
-                  Performance Analysis Report
-                </Button>
-                <Button
-                  variant="text"
-                  startIcon={<CsvIcon />}
-                  onClick={() => {/* Generate compliance report */}}
-                >
-                  Compliance Report
-                </Button>
-                <Button
-                  variant="text"
-                  startIcon={<CsvIcon />}
-                  onClick={() => {/* Generate cost analysis report */}}
-                >
-                  Cost Analysis Report
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
-  )
-}
-
-export default Reports
+export default Reports;

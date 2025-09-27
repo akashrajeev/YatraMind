@@ -1,253 +1,251 @@
-import React, { useState } from 'react'
-import {
-  Box,
-  Typography,
-  Paper,
-  Tabs,
-  Tab,
-  Button,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Chip,
-  Alert,
-} from '@mui/material'
-import {
-  Add as AddIcon,
-  FilterList as FilterIcon,
-  Download as DownloadIcon,
-  Refresh as RefreshIcon,
-} from '@mui/icons-material'
-import { useQuery, useMutation, useQueryClient } from 'react-query'
-import { assignmentApi, optimizationApi } from '../services/api'
-import { Assignment, OverrideRequest, ApprovalRequest } from '../types'
-import AssignmentList from '../components/AssignmentList'
-import AssignmentDetail from '../components/AssignmentDetail'
-import OverrideDialog from '../components/OverrideDialog'
-import ApprovalDialog from '../components/ApprovalDialog'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { assignmentApi } from "@/services/api";
+import { Assignment, AssignmentSummary } from "@/types/api";
+import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock } from "lucide-react";
 
-interface TabPanelProps {
-  children?: React.ReactNode
-  index: number
-  value: number
-}
+const Assignments = () => {
+  const queryClient = useQueryClient();
 
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props
+  // Fetch assignments data
+  const { data: assignments = [], isLoading, refetch } = useQuery({
+    queryKey: ['assignments'],
+    queryFn: () => assignmentApi.getAll().then(res => res.data),
+    refetchInterval: 30000,
+  });
 
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`assignment-tabpanel-${index}`}
-      aria-labelledby={`assignment-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
-    </div>
-  )
-}
+  const { data: summary } = useQuery({
+    queryKey: ['assignments-summary'],
+    queryFn: () => assignmentApi.getSummary().then(res => res.data),
+  });
 
-const Assignments: React.FC = () => {
-  const [tabValue, setTabValue] = useState(0)
-  const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null)
-  const [overrideDialogOpen, setOverrideDialogOpen] = useState(false)
-  const [approvalDialogOpen, setApprovalDialogOpen] = useState(false)
-  const [selectedAssignments, setSelectedAssignments] = useState<string[]>([])
-
-  const queryClient = useQueryClient()
-
-  const { data: assignments, isLoading, refetch } = useQuery(
-    'assignments',
-    assignmentApi.getAll,
-    { refetchInterval: 30000 }
-  )
-
-  const runOptimizationMutation = useMutation(optimizationApi.runOptimization, {
+  // Mutations for actions
+  const approveMutation = useMutation({
+    mutationFn: assignmentApi.approve,
     onSuccess: () => {
-      queryClient.invalidateQueries('assignments')
+      queryClient.invalidateQueries(['assignments']);
+      queryClient.invalidateQueries(['assignments-summary']);
     },
-  })
+  });
 
-  const approveMutation = useMutation(assignmentApi.approve, {
+  const overrideMutation = useMutation({
+    mutationFn: assignmentApi.override,
     onSuccess: () => {
-      queryClient.invalidateQueries('assignments')
-      setApprovalDialogOpen(false)
-      setSelectedAssignments([])
+      queryClient.invalidateQueries(['assignments']);
+      queryClient.invalidateQueries(['assignments-summary']);
     },
-  })
+  });
 
-  const overrideMutation = useMutation(assignmentApi.override, {
-    onSuccess: () => {
-      queryClient.invalidateQueries('assignments')
-      setOverrideDialogOpen(false)
-      setSelectedAssignment(null)
-    },
-  })
+  // Filter assignments by status
+  const pendingAssignments = assignments.filter(a => a.status === "PENDING");
+  const approvedAssignments = assignments.filter(a => a.status === "APPROVED");
+  const overriddenAssignments = assignments.filter(a => a.status === "OVERRIDDEN");
 
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue)
-  }
-
-  const handleRunOptimization = () => {
-    runOptimizationMutation.mutate({
-      target_date: new Date().toISOString(),
-      required_service_hours: 14,
-    })
-  }
-
-  const handleOverride = (assignment: Assignment) => {
-    setSelectedAssignment(assignment)
-    setOverrideDialogOpen(true)
-  }
-
-  const handleApprove = (assignmentIds: string[]) => {
-    setSelectedAssignments(assignmentIds)
-    setApprovalDialogOpen(true)
-  }
-
-  const handleOverrideSubmit = (overrideData: Omit<OverrideRequest, 'assignment_id'>) => {
-    if (selectedAssignment) {
-      overrideMutation.mutate({
-        assignment_id: selectedAssignment.id,
-        ...overrideData,
-      })
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case "PENDING":
+        return <Badge variant="secondary" className="text-warning"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      case "APPROVED":
+        return <Badge variant="success"><CheckCircle className="h-3 w-3 mr-1" />Approved</Badge>;
+      case "OVERRIDDEN":
+        return <Badge variant="outline" className="text-accent"><AlertTriangle className="h-3 w-3 mr-1" />Overridden</Badge>;
+      default:
+        return <Badge variant="outline">{status}</Badge>;
     }
-  }
+  };
 
-  const handleApprovalSubmit = (approvalData: Omit<ApprovalRequest, 'assignment_ids'>) => {
-    approveMutation.mutate({
-      assignment_ids: selectedAssignments,
-      ...approvalData,
-    })
-  }
-
-  const pendingAssignments = assignments?.filter(a => a.status === 'PENDING') || []
-  const approvedAssignments = assignments?.filter(a => a.status === 'APPROVED') || []
-  const overriddenAssignments = assignments?.filter(a => a.status === 'OVERRIDDEN') || []
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "HIGH":
+        return "text-destructive";
+      case "MEDIUM":
+        return "text-warning";
+      case "LOW":
+        return "text-success";
+      default:
+        return "text-muted-foreground";
+    }
+  };
 
   return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-        <Typography variant="h4" component="h1">
-          Train Induction Assignments
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button
-            variant="outlined"
-            startIcon={<RefreshIcon />}
-            onClick={() => refetch()}
-            disabled={isLoading}
-          >
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground">Train Induction Assignments</h2>
+          <p className="text-muted-foreground">Manage and monitor train induction assignments</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline">
+            <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button
-            variant="outlined"
-            startIcon={<DownloadIcon />}
-            onClick={() => {/* Export functionality */}}
-          >
+          <Button variant="outline">
+            <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={handleRunOptimization}
-            disabled={runOptimizationMutation.isLoading}
-          >
+          <Button variant="industrial">
+            <Plus className="h-4 w-4 mr-2" />
             Run Optimization
           </Button>
-        </Box>
-      </Box>
+        </div>
+      </div>
 
-      {runOptimizationMutation.isError && (
-        <Alert severity="error" sx={{ mb: 2 }}>
-          Failed to run optimization. Please try again.
-        </Alert>
-      )}
+      {/* Assignments Tabs */}
+      <Tabs defaultValue="pending" className="w-full">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="pending">
+            Pending ({pendingAssignments.length})
+          </TabsTrigger>
+          <TabsTrigger value="approved">
+            Approved ({approvedAssignments.length})
+          </TabsTrigger>
+          <TabsTrigger value="overridden">
+            Overridden ({overriddenAssignments.length})
+          </TabsTrigger>
+        </TabsList>
 
-      <Paper sx={{ width: '100%' }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab 
-              label={`Pending (${pendingAssignments.length})`} 
-              id="assignment-tab-0"
-              aria-controls="assignment-tabpanel-0"
-            />
-            <Tab 
-              label={`Approved (${approvedAssignments.length})`} 
-              id="assignment-tab-1"
-              aria-controls="assignment-tabpanel-1"
-            />
-            <Tab 
-              label={`Overridden (${overriddenAssignments.length})`} 
-              id="assignment-tab-2"
-              aria-controls="assignment-tabpanel-2"
-            />
-          </Tabs>
-        </Box>
+        <TabsContent value="pending" className="space-y-4">
+          {isLoading ? (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+              <p className="text-muted-foreground mt-2">Loading assignments...</p>
+            </div>
+          ) : pendingAssignments.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No pending assignments</p>
+            </div>
+          ) : (
+            pendingAssignments.map((assignment) => (
+              <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{assignment.trainset_id}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(assignment.status)}
+                      <span className={`text-sm font-medium ${getPriorityColor(assignment.priority.toString())}`}>
+                        Priority {assignment.priority}
+                      </span>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Decision:</span>
+                      <p className="font-medium">{assignment.decision.decision}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Confidence:</span>
+                      <p className="font-medium">{Math.round(assignment.decision.confidence_score * 100)}%</p>
+                    </div>
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasoning}</p>
+                  <div className="flex gap-2 mt-4">
+                    <Button size="sm" variant="outline">View Details</Button>
+                    <Button 
+                      size="sm" 
+                      variant="secondary"
+                      onClick={() => overrideMutation.mutate({
+                        assignment_id: assignment.id,
+                        override_decision: "OVERRIDE",
+                        reason: "Manual override"
+                      })}
+                      disabled={overrideMutation.isPending}
+                    >
+                      Override
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      variant="industrial"
+                      onClick={() => approveMutation.mutate({
+                        assignment_ids: [assignment.id],
+                        comments: "Approved by supervisor"
+                      })}
+                      disabled={approveMutation.isPending}
+                    >
+                      Approve
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            ))
+          )}
+        </TabsContent>
 
-        <TabPanel value={tabValue} index={0}>
-          <AssignmentList
-            assignments={pendingAssignments}
-            onOverride={handleOverride}
-            onApprove={handleApprove}
-            showActions={true}
-          />
-        </TabPanel>
+        <TabsContent value="approved" className="space-y-4">
+          {approvedAssignments.map((assignment) => (
+            <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{assignment.trainset}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(assignment.status)}
+                    <span className={`text-sm font-medium ${getPriorityColor(assignment.priority)}`}>
+                      {assignment.priority}
+                    </span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Assigned to:</span>
+                    <p className="font-medium">{assignment.assignedTo}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Scheduled:</span>
+                    <p className="font-medium">{assignment.scheduledDate}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">{assignment.description}</p>
+                <div className="flex gap-2 mt-4">
+                  <Button size="sm" variant="outline">View Details</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
 
-        <TabPanel value={tabValue} index={1}>
-          <AssignmentList
-            assignments={approvedAssignments}
-            onOverride={handleOverride}
-            onApprove={handleApprove}
-            showActions={false}
-          />
-        </TabPanel>
+        <TabsContent value="overridden" className="space-y-4">
+          {overriddenAssignments.map((assignment) => (
+            <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">{assignment.trainset}</CardTitle>
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(assignment.status)}
+                    <span className={`text-sm font-medium ${getPriorityColor(assignment.priority)}`}>
+                      {assignment.priority}
+                    </span>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Assigned to:</span>
+                    <p className="font-medium">{assignment.assignedTo}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Scheduled:</span>
+                    <p className="font-medium">{assignment.scheduledDate}</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">{assignment.description}</p>
+                <div className="flex gap-2 mt-4">
+                  <Button size="sm" variant="outline">View Details</Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+};
 
-        <TabPanel value={tabValue} index={2}>
-          <AssignmentList
-            assignments={overriddenAssignments}
-            onOverride={handleOverride}
-            onApprove={handleApprove}
-            showActions={false}
-          />
-        </TabPanel>
-      </Paper>
-
-      {/* Assignment Detail Dialog */}
-      {selectedAssignment && (
-        <AssignmentDetail
-          assignment={selectedAssignment}
-          open={!!selectedAssignment}
-          onClose={() => setSelectedAssignment(null)}
-        />
-      )}
-
-      {/* Override Dialog */}
-      <OverrideDialog
-        open={overrideDialogOpen}
-        onClose={() => setOverrideDialogOpen(false)}
-        onSubmit={handleOverrideSubmit}
-        assignment={selectedAssignment}
-        loading={overrideMutation.isLoading}
-      />
-
-      {/* Approval Dialog */}
-      <ApprovalDialog
-        open={approvalDialogOpen}
-        onClose={() => setApprovalDialogOpen(false)}
-        onSubmit={handleApprovalSubmit}
-        assignmentCount={selectedAssignments.length}
-        loading={approveMutation.isLoading}
-      />
-    </Box>
-  )
-}
-
-export default Assignments
+export default Assignments;

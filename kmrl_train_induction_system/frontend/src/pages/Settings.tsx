@@ -1,370 +1,163 @@
-import React from 'react'
-import {
-  Box,
-  Typography,
-  Paper,
-  Tabs,
-  Tab,
-  Grid,
-  Card,
-  CardContent,
-  Switch,
-  FormControlLabel,
-  TextField,
-  Button,
-  Divider,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
-  IconButton,
-  Chip,
-} from '@mui/material'
-import {
-  Settings as SettingsIcon,
-  Notifications as NotificationsIcon,
-  Security as SecurityIcon,
-  Person as PersonIcon,
-  Delete as DeleteIcon,
-  Edit as EditIcon,
-} from '@mui/icons-material'
-import { useState } from 'react'
-import { useAuth } from '../contexts/AuthContext'
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { 
+  Settings as SettingsIcon, 
+  Bell, 
+  Shield, 
+  Database, 
+  Users, 
+  Wifi,
+  Save
+} from "lucide-react";
 
-interface TabPanelProps {
-  children?: React.ReactNode
-  index: number
-  value: number
-}
+const Settings = () => {
+  const settings = [
+    {
+      category: "Notifications",
+      icon: Bell,
+      items: [
+        { name: "Email Alerts", description: "Receive email notifications for critical events", enabled: true },
+        { name: "System Alerts", description: "Desktop notifications for system updates", enabled: false },
+        { name: "Mobile Push", description: "Push notifications to mobile devices", enabled: true }
+      ]
+    },
+    {
+      category: "Security",
+      icon: Shield,
+      items: [
+        { name: "Two-Factor Auth", description: "Require 2FA for all user accounts", enabled: true },
+        { name: "Session Timeout", description: "Auto-logout after 30 minutes of inactivity", enabled: false },
+        { name: "Audit Logging", description: "Log all user actions and system changes", enabled: true }
+      ]
+    },
+    {
+      category: "System",
+      icon: Database,
+      items: [
+        { name: "Auto-Backup", description: "Automatically backup data every 6 hours", enabled: true },
+        { name: "Performance Monitoring", description: "Monitor system performance metrics", enabled: true },
+        { name: "Maintenance Mode", description: "Enable maintenance mode for updates", enabled: false }
+      ]
+    }
+  ];
 
-function TabPanel(props: TabPanelProps) {
-  const { children, value, index, ...other } = props
   return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`settings-tabpanel-${index}`}
-      aria-labelledby={`settings-tab-${index}`}
-      {...other}
-    >
-      {value === index && <Box sx={{ p: 3 }}>{children}</Box>}
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-3xl font-bold text-foreground">System Settings</h2>
+          <p className="text-muted-foreground">Configure system preferences and security settings</p>
+        </div>
+        <Button variant="industrial">
+          <Save className="h-4 w-4 mr-2" />
+          Save Changes
+        </Button>
+      </div>
+
+      {/* Settings Categories */}
+      <div className="space-y-6">
+        {settings.map((category, categoryIndex) => (
+          <Card key={categoryIndex}>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg">
+                  <category.icon className="h-5 w-5 text-primary" />
+                </div>
+                {category.category}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {category.items.map((item, itemIndex) => (
+                <div key={itemIndex} className="flex items-center justify-between p-4 border border-border rounded-lg">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Label htmlFor={`setting-${categoryIndex}-${itemIndex}`} className="font-medium">
+                        {item.name}
+                      </Label>
+                      {item.enabled && <Badge variant="success" className="text-xs">Active</Badge>}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{item.description}</p>
+                  </div>
+                  <Switch 
+                    id={`setting-${categoryIndex}-${itemIndex}`}
+                    checked={item.enabled}
+                    onCheckedChange={(checked) => {
+                      // Handle setting change
+                      console.log(`${item.name} changed to ${checked}`);
+                    }}
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* System Information */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-3">
+            <div className="p-2 bg-accent/10 rounded-lg">
+              <SettingsIcon className="h-5 w-5 text-accent" />
+            </div>
+            System Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Wifi className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">System Status</p>
+                  <p className="text-sm text-muted-foreground">Online - All systems operational</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Database className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Database</p>
+                  <p className="text-sm text-muted-foreground">Connected - Last backup: 2 hours ago</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <div>
+                  <p className="text-sm font-medium">Active Users</p>
+                  <p className="text-sm text-muted-foreground">12 users currently online</p>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="api-endpoint" className="text-sm font-medium">API Endpoint</Label>
+                <Input 
+                  id="api-endpoint"
+                  defaultValue="http://localhost:8000/api"
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="refresh-interval" className="text-sm font-medium">Data Refresh Interval</Label>
+                <Input 
+                  id="refresh-interval"
+                  defaultValue="30"
+                  type="number"
+                  className="mt-1"
+                />
+                <p className="text-xs text-muted-foreground mt-1">seconds</p>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
-  )
-}
+  );
+};
 
-const Settings: React.FC = () => {
-  const [tabValue, setTabValue] = useState(0)
-  const { user } = useAuth()
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setTabValue(newValue)
-  }
-
-  return (
-    <Box>
-      <Typography variant="h4" component="h1" gutterBottom>
-        Settings
-      </Typography>
-
-      <Paper sx={{ width: '100%' }}>
-        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-          <Tabs value={tabValue} onChange={handleTabChange}>
-            <Tab
-              icon={<PersonIcon />}
-              label="Profile"
-              id="settings-tab-0"
-              aria-controls="settings-tabpanel-0"
-            />
-            <Tab
-              icon={<NotificationsIcon />}
-              label="Notifications"
-              id="settings-tab-1"
-              aria-controls="settings-tabpanel-1"
-            />
-            <Tab
-              icon={<SecurityIcon />}
-              label="Security"
-              id="settings-tab-2"
-              aria-controls="settings-tabpanel-2"
-            />
-            <Tab
-              icon={<SettingsIcon />}
-              label="Preferences"
-              id="settings-tab-3"
-              aria-controls="settings-tabpanel-3"
-            />
-          </Tabs>
-        </Box>
-
-        <TabPanel value={tabValue} index={0}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    User Profile
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                      label="Name"
-                      value={user?.name || ''}
-                      disabled
-                      fullWidth
-                    />
-                    <TextField
-                      label="Email"
-                      value={user?.email || ''}
-                      disabled
-                      fullWidth
-                    />
-                    <TextField
-                      label="Role"
-                      value={user?.role?.replace('_', ' ') || ''}
-                      disabled
-                      fullWidth
-                    />
-                    <Button variant="outlined" startIcon={<EditIcon />}>
-                      Edit Profile
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Permissions
-                  </Typography>
-                  <List dense>
-                    {user?.permissions?.map((permission, index) => (
-                      <ListItem key={index}>
-                        <ListItemText primary={permission} />
-                        <ListItemSecondaryAction>
-                          <Chip label="Granted" color="success" size="small" />
-                        </ListItemSecondaryAction>
-                      </ListItem>
-                    ))}
-                  </List>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={1}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Alert Preferences
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <FormControlLabel
-                      control={<Switch defaultChecked />}
-                      label="Critical Alerts (Email + SMS)"
-                    />
-                    <FormControlLabel
-                      control={<Switch defaultChecked />}
-                      label="High Priority Alerts (Email)"
-                    />
-                    <FormControlLabel
-                      control={<Switch />}
-                      label="Warning Alerts (In-app only)"
-                    />
-                    <FormControlLabel
-                      control={<Switch defaultChecked />}
-                      label="Maintenance Notifications"
-                    />
-                    <FormControlLabel
-                      control={<Switch />}
-                      label="Performance Updates"
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Notification Channels
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                      label="Email Address"
-                      value={user?.email || ''}
-                      disabled
-                      fullWidth
-                    />
-                    <TextField
-                      label="Phone Number"
-                      placeholder="+91 98765 43210"
-                      fullWidth
-                    />
-                    <Button variant="outlined">
-                      Update Contact Info
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={2}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Password Security
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                      label="Current Password"
-                      type="password"
-                      fullWidth
-                    />
-                    <TextField
-                      label="New Password"
-                      type="password"
-                      fullWidth
-                    />
-                    <TextField
-                      label="Confirm New Password"
-                      type="password"
-                      fullWidth
-                    />
-                    <Button variant="contained">
-                      Change Password
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Two-Factor Authentication
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <FormControlLabel
-                      control={<Switch />}
-                      label="Enable 2FA"
-                    />
-                    <Typography variant="body2" color="text.secondary">
-                      Add an extra layer of security to your account
-                    </Typography>
-                    <Button variant="outlined">
-                      Setup 2FA
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Active Sessions
-                  </Typography>
-                  <List>
-                    <ListItem>
-                      <ListItemText
-                        primary="Current Session"
-                        secondary="Windows 10 • Chrome • Last active: Now"
-                      />
-                      <ListItemSecondaryAction>
-                        <Chip label="Active" color="success" size="small" />
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText
-                        primary="Mobile App"
-                        secondary="Android • Chrome • Last active: 2 hours ago"
-                      />
-                      <ListItemSecondaryAction>
-                        <IconButton edge="end" aria-label="delete">
-                          <DeleteIcon />
-                        </IconButton>
-                      </ListItemSecondaryAction>
-                    </ListItem>
-                  </List>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </TabPanel>
-
-        <TabPanel value={tabValue} index={3}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Display Preferences
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <FormControlLabel
-                      control={<Switch defaultChecked />}
-                      label="Dark Mode"
-                    />
-                    <FormControlLabel
-                      control={<Switch />}
-                      label="Compact View"
-                    />
-                    <FormControlLabel
-                      control={<Switch defaultChecked />}
-                      label="Show Tooltips"
-                    />
-                    <FormControlLabel
-                      control={<Switch />}
-                      label="Auto-refresh Data"
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-
-            <Grid item xs={12} md={6}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" gutterBottom>
-                    Data Preferences
-                  </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                    <TextField
-                      label="Refresh Interval (seconds)"
-                      type="number"
-                      defaultValue={30}
-                      fullWidth
-                    />
-                    <TextField
-                      label="Default Date Range (days)"
-                      type="number"
-                      defaultValue={7}
-                      fullWidth
-                    />
-                    <FormControlLabel
-                      control={<Switch defaultChecked />}
-                      label="Enable Real-time Updates"
-                    />
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          </Grid>
-        </TabPanel>
-      </Paper>
-    </Box>
-  )
-}
-
-export default Settings
+export default Settings;

@@ -1,112 +1,145 @@
-import axios from 'axios'
-import { 
-  Trainset, 
-  InductionDecision, 
-  Assignment, 
-  OverrideRequest, 
-  ApprovalRequest, 
-  Alert, 
-  DashboardOverview 
-} from '../types'
+import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
-
+// Create axios instance with base configuration
 const api = axios.create({
-  baseURL: API_BASE_URL,
+  baseURL: 'http://localhost:8000/api',
+  timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
-    'X-API-Key': import.meta.env.VITE_API_KEY || 'dev-key',
   },
-})
+});
 
-// Request interceptor for auth
+// Add request interceptor for API key
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('auth_token')
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`
-  }
-  return config
-})
+  // Add API key to all requests
+  config.headers['X-API-Key'] = 'your-api-key-here'; // This should come from environment or auth
+  return config;
+});
 
-// Response interceptor for error handling
+// Add response interceptor for error handling
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('auth_token')
-      window.location.href = '/login'
-    }
-    return Promise.reject(error)
+    console.error('API Error:', error.response?.data || error.message);
+    return Promise.reject(error);
   }
-)
+);
 
-export const trainsetApi = {
-  getAll: (): Promise<Trainset[]> => 
-    api.get('/api/trainsets').then(res => res.data),
-  
-  getById: (id: string): Promise<Trainset> => 
-    api.get(`/api/trainsets/${id}`).then(res => res.data),
-  
-  update: (id: string, updates: Partial<Trainset>): Promise<void> => 
-    api.put(`/api/trainsets/${id}`, { updates }).then(res => res.data),
-  
-  getFitness: (id: string): Promise<any> => 
-    api.get(`/api/trainsets/${id}/fitness`).then(res => res.data),
-}
-
-export const optimizationApi = {
-  runOptimization: (request: any): Promise<InductionDecision[]> => 
-    api.post('/api/optimization/run', request).then(res => res.data),
-  
-  getHistory: (): Promise<any[]> => 
-    api.get('/api/optimization/history').then(res => res.data),
-}
-
-export const assignmentApi = {
-  getAll: (): Promise<Assignment[]> => 
-    api.get('/api/v1/assignments').then(res => res.data),
-  
-  approve: (request: ApprovalRequest): Promise<void> => 
-    api.post('/api/v1/assignments/approve', request).then(res => res.data),
-  
-  override: (request: OverrideRequest): Promise<void> => 
-    api.post('/api/v1/assignments/override', request).then(res => res.data),
-  
-  getById: (id: string): Promise<Assignment> => 
-    api.get(`/api/v1/assignments/${id}`).then(res => res.data),
-}
-
+// Dashboard API
 export const dashboardApi = {
-  getOverview: (): Promise<DashboardOverview> => 
-    api.get('/api/dashboard/overview').then(res => res.data),
-  
-  getAlerts: (): Promise<{ alerts: Alert[]; total_alerts: number }> => 
-    api.get('/api/dashboard/alerts').then(res => res.data),
-  
-  getPerformance: (): Promise<any> => 
-    api.get('/api/dashboard/performance').then(res => res.data),
-}
+  getOverview: () => api.get('/dashboard/overview'),
+  getAlerts: () => api.get('/dashboard/alerts'),
+  getPerformance: () => api.get('/dashboard/performance'),
+};
 
+// Assignments API
+export const assignmentApi = {
+  getAll: (params?: any) => api.get('/assignments', { params }),
+  getById: (id: string) => api.get(`/assignments/${id}`),
+  create: (data: any) => api.post('/assignments', data),
+  approve: (data: any) => api.post('/assignments/approve', data),
+  override: (data: any) => api.post('/assignments/override', data),
+  getSummary: () => api.get('/assignments/summary'),
+};
+
+// Reports API
 export const reportsApi = {
-  generateDailyBriefing: (): Promise<Blob> => 
-    api.get('/api/v1/reports/daily-briefing', { responseType: 'blob' }).then(res => res.data),
-  
-  exportAssignments: (format: 'csv' | 'pdf'): Promise<Blob> => 
-    api.get(`/api/v1/reports/assignments?format=${format}`, { responseType: 'blob' }).then(res => res.data),
-  
-  exportAuditLogs: (): Promise<Blob> => 
-    api.get('/api/v1/reports/audit-logs', { responseType: 'blob' }).then(res => res.data),
-}
+  getDailyBriefing: (date?: string) => api.get('/reports/daily-briefing', { 
+    params: { date },
+    responseType: 'blob' 
+  }),
+  exportAssignments: (format: string, filters?: any) => api.get('/reports/assignments', {
+    params: { format, ...filters },
+    responseType: 'blob'
+  }),
+  exportAuditLogs: (filters?: any) => api.get('/reports/audit-logs', {
+    params: filters,
+    responseType: 'blob'
+  }),
+  getFleetStatus: (format: string = 'pdf') => api.get('/reports/fleet-status', {
+    params: { format },
+    responseType: 'blob'
+  }),
+  getPerformanceAnalysis: (days: number = 30) => api.get('/reports/performance-analysis', {
+    params: { days },
+    responseType: 'blob'
+  }),
+  getComplianceReport: (startDate?: string, endDate?: string) => api.get('/reports/compliance-report', {
+    params: { start_date: startDate, end_date: endDate },
+    responseType: 'blob'
+  }),
+};
 
-export const authApi = {
-  login: (credentials: { email: string; password: string }): Promise<{ token: string; user: any }> => 
-    api.post('/api/v1/auth/login', credentials).then(res => res.data),
-  
-  logout: (): Promise<void> => 
-    api.post('/api/v1/auth/logout').then(res => res.data),
-  
-  getProfile: (): Promise<any> => 
-    api.get('/api/v1/auth/profile').then(res => res.data),
-}
+// Optimization API
+export const optimizationApi = {
+  runOptimization: (data: any) => api.post('/optimization/run', data),
+  getHistory: () => api.get('/optimization/history'),
+  getStatus: (id: string) => api.get(`/optimization/status/${id}`),
+  checkConstraints: () => api.get('/optimization/constraints/check'),
+  explainAssignment: (trainsetId: string, decision?: string, format?: string) => 
+    api.get(`/optimization/explain/${trainsetId}`, { 
+      params: { decision, format } 
+    }),
+  explainBatch: (assignments: any[], format?: string) => 
+    api.post('/optimization/explain/batch', { assignments, format }),
+  simulate: (params: any) => api.get('/optimization/simulate', { params }),
+  getLatest: () => api.get('/optimization/latest'),
+  getStablingGeometry: () => api.get('/optimization/stabling-geometry'),
+  getShuntingSchedule: () => api.get('/optimization/shunting-schedule'),
+};
 
-export default api
+// Trainsets API
+export const trainsetsApi = {
+  getAll: (params?: any) => api.get('/trainsets', { params }),
+  getById: (id: string) => api.get(`/trainsets/${id}`),
+  update: (id: string, data: any) => api.put(`/trainsets/${id}`, data),
+  getFitness: (id: string) => api.get(`/trainsets/${id}/fitness`),
+};
+
+// Data Ingestion API
+export const ingestionApi = {
+  ingestAll: () => api.post('/ingestion/ingest/all'),
+  ingestMaximo: () => api.post('/ingestion/ingest/maximo'),
+  ingestIoT: () => api.post('/ingestion/ingest/iot'),
+  uploadTimeseries: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/ingestion/ingest/timeseries/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  uploadFitness: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/ingestion/fitness/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  uploadBranding: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/ingestion/branding/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  uploadDepot: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/ingestion/depot/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
+  getStatus: () => api.get('/ingestion/status'),
+  startMQTT: () => api.post('/ingestion/mqtt/start'),
+  stopMQTT: () => api.post('/ingestion/mqtt/stop'),
+  getMQTTStatus: () => api.get('/ingestion/mqtt/status'),
+};
+
+// Notifications API
+export const notificationsApi = {
+  getAll: () => api.get('/notifications'),
+  markAsRead: (id: string) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/read-all'),
+};
+
+export default api;
