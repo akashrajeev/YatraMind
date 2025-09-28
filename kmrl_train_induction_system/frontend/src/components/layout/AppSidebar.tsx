@@ -70,11 +70,6 @@ const reportItems = [
     url: "/reports",
     icon: BarChart3,
   },
-  {
-    title: "Audit Logs",
-    url: "/audit",
-    icon: FileText,
-  },
 ];
 
 const systemItems = [

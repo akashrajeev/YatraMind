@@ -41,6 +41,7 @@ export const assignmentApi = {
   approve: (data: any) => api.post('/v1/assignments/approve', data),
   override: (data: any) => api.post('/v1/assignments/override', data),
   getSummary: () => api.get('/v1/assignments/summary'),
+  getConflicts: () => api.get('/v1/assignments/conflicts'),
 };
 
 // Reports API

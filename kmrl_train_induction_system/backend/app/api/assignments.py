@@ -369,16 +369,19 @@ async def create_sample_assignments():
             confidence = round(random.uniform(0.7, 0.95), 2)
             priority = random.randint(1, 5)
             
-            # Generate violations for some assignments
+            # Generate violations for some assignments (higher chance for conflicts)
             violations = []
-            if random.random() < 0.3:  # 30% chance of violations
+            if random.random() < 0.4:  # 40% chance of violations for more conflicts
                 violation_types = [
                     "Safety certificate expiring soon",
-                    "Maintenance overdue",
+                    "Maintenance overdue", 
                     "Cleaning schedule conflict",
-                    "Branding contract expired"
+                    "Branding contract expired",
+                    "High failure risk detected",
+                    "Sensor health below threshold",
+                    "Certificate validation failed"
                 ]
-                violations = random.sample(violation_types, random.randint(1, 2))
+                violations = random.sample(violation_types, random.randint(1, 3))
             
             assignment = {
                 "id": f"ASS-{i+1:03d}",
@@ -403,6 +406,31 @@ async def create_sample_assignments():
         
     except Exception as e:
         logger.error(f"Error creating sample assignments: {e}")
+
+
+@router.get("/conflicts", response_model=List[Assignment])
+async def get_conflict_assignments(
+    _auth=Depends(require_api_key)
+):
+    """Get assignments with conflicts (violations)"""
+    try:
+        collection = await cloud_db_manager.get_collection("assignments")
+        
+        # Find assignments with violations
+        cursor = collection.find({
+            "decision.violations": {"$exists": True, "$ne": []}
+        })
+        
+        assignments = []
+        async for doc in cursor:
+            doc.pop('_id', None)
+            assignments.append(Assignment(**doc))
+        
+        return assignments
+        
+    except Exception as e:
+        logger.error(f"Error fetching conflict assignments: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch conflicts: {str(e)}")
 
 
 async def log_audit_event(audit_log: AuditLogCreate):

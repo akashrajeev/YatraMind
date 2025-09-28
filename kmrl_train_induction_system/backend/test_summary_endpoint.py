@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 import urllib.request
-import urllib.parse
 import json
 
-def test_api():
+def test_summary_endpoint():
     try:
-        # Test dashboard overview endpoint
-        url = "http://localhost:8000/api/dashboard/overview"
+        url = "http://localhost:8000/api/v1/assignments/summary"
         headers = {
             'X-API-Key': 'kmrl_api_key_2024',
             'Content-Type': 'application/json'
@@ -16,11 +14,14 @@ def test_api():
         
         with urllib.request.urlopen(req) as response:
             data = response.read()
+            result = json.loads(data.decode('utf-8'))
             print(f"Status Code: {response.status}")
-            print(f"Response: {data.decode('utf-8')[:200]}...")
+            print(f"Response: {json.dumps(result, indent=2)}")
+            return True
             
     except Exception as e:
         print(f"Error: {e}")
+        return False
 
 if __name__ == "__main__":
-    test_api()
+    test_summary_endpoint()

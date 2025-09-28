@@ -321,123 +321,315 @@ async def simulate_what_if(
 async def get_latest_ranked_list():
     """Get latest ranked induction list stored in MongoDB"""
     try:
-        latest_collection = await cloud_db_manager.get_collection("latest_induction")
-        doc = await latest_collection.find_one({})
-        if not doc:
-            # Get all trainsets from database and create ranked list
-            trainsets_collection = await cloud_db_manager.get_collection("trainsets")
-            trainsets = []
-            async for trainset_doc in trainsets_collection.find({}):
-                trainsets.append(trainset_doc)
-            
-            if not trainsets:
-                # Create sample trainsets if none exist
+        # Always regenerate the ranked list instead of using cached data
+        # Get all trainsets from database and create ranked list
+        trainsets_collection = await cloud_db_manager.get_collection("trainsets")
+        trainsets = []
+        async for trainset_doc in trainsets_collection.find({}):
+            trainsets.append(trainset_doc)
+        
+        logger.info(f"Found {len(trainsets)} trainsets in database")
+        
+        if not trainsets:
+                logger.info("No trainsets found, creating sample data")
+                # Create sample trainsets if none exist - using proper KMRL trainset IDs
                 sample_trainsets = [
                     {
-                        "trainset_id": f"TS-{i:03d}", 
+                        "trainset_id": f"T-{i:03d}", 
                         "status": "ACTIVE", 
-                        "sensor_health_score": 0.85 + (i * 0.01),
-                        "predicted_failure_risk": 0.1 + (i * 0.02),
-                        "branding": {"priority": random.choice(["HIGH", "MEDIUM", "LOW"])},
+                        "sensor_health_score": round(random.uniform(0.7, 0.95), 2),
+                        "predicted_failure_risk": round(random.uniform(0.05, 0.3), 2),
+                        "total_operational_hours": random.randint(100, 2000),
+                        "branding": {
+                            "priority": random.choice(["HIGH", "MEDIUM", "LOW"]),
+                            "runtime_requirements": [random.randint(8, 16)]
+                        },
                         "certificates": {
-                            "safety": {"valid": random.choice([True, False])},
-                            "maintenance": {"valid": random.choice([True, False])}
+                            "rolling_stock": {
+                                "status": random.choice(["valid", "expired", "pending"]),
+                                "expiry_days": random.randint(-30, 365)
+                            },
+                            "signalling": {
+                                "status": random.choice(["valid", "expired", "pending"]),
+                                "expiry_days": random.randint(-30, 365)
+                            },
+                            "telecom": {
+                                "status": random.choice(["valid", "expired", "pending"]),
+                                "expiry_days": random.randint(-30, 365)
+                            }
+                        },
+                        "job_cards": [
+                            {
+                                "id": f"JC-{i}-{j}",
+                                "status": random.choice(["open", "closed", "pending"]),
+                                "priority": random.choice(["critical", "high", "medium", "low"]),
+                                "description": f"Maintenance task {j}"
+                            } for j in range(random.randint(0, 3))
+                        ],
+                        "cleaning": {
+                            "bay_available": random.choice([True, False]),
+                            "manpower_available": random.choice([True, False])
+                        },
+                        "stabling": {
+                            "bay_position": random.choice(["near_exit", "middle", "far"])
+                        },
+                        "maintenance": {
+                            "scheduled_dates": [f"2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}"],
+                            "types": random.sample(["preventive", "corrective", "emergency"], random.randint(1, 2))
                         }
                     }
-                    for i in range(1, 26)
+                    for i in range(1, 31)  # Create 30 trainsets
                 ]
                 await trainsets_collection.insert_many(sample_trainsets)
                 trainsets = sample_trainsets
-            
-            # Create ranked decisions for all trainsets
-            mock_decisions = []
-            decisions = ["INDUCT", "STANDBY", "MAINTENANCE"]
-            
-            for trainset in trainsets:
-                decision = random.choice(decisions)
-                confidence = round(random.uniform(0.7, 0.95), 2)
-                score = round(random.uniform(0.6, 0.95), 3)
-                
-                # Generate realistic reasons based on trainset data
-                reasons = []
-                if trainset.get("sensor_health_score", 0.8) > 0.8:
-                    reasons.append("High sensor health score")
-                if trainset.get("predicted_failure_risk", 0.3) < 0.2:
-                    reasons.append("Low predicted failure risk")
-                if trainset.get("certificates", {}).get("safety", {}).get("valid", False):
-                    reasons.append("Valid safety certificate")
-                if trainset.get("branding", {}).get("priority") == "HIGH":
-                    reasons.append("High branding priority")
-                
-                if not reasons:
-                    reasons = ["All department certificates valid", "Available cleaning slot"]
-                
-                # Generate risks
-                risks = []
-                if trainset.get("predicted_failure_risk", 0.3) > 0.25:
-                    risks.append("High predicted failure risk")
-                if not trainset.get("certificates", {}).get("safety", {}).get("valid", True):
-                    risks.append("Safety certificate expired")
-                
-                mock_decision = {
-                    "trainset_id": trainset["trainset_id"],
-                    "decision": decision,
-                    "confidence_score": confidence,
-                    "score": score,
-                    "top_reasons": reasons[:3],
-                    "top_risks": risks,
-                    "violations": [],
-                    "shap_values": [
-                        {"name": "Sensor Health Score", "value": trainset.get("sensor_health_score", 0.85), "impact": "positive"},
-                        {"name": "Predicted Failure Risk", "value": trainset.get("predicted_failure_risk", 0.15), "impact": "positive"},
-                        {"name": "Branding Priority", "value": 0.8 if trainset.get("branding", {}).get("priority") == "HIGH" else 0.5, "impact": "positive"}
-                    ],
-                    "reasons": reasons
-                }
-                mock_decisions.append(InductionDecision(**mock_decision))
-            
-            # Sort by score (highest first)
-            mock_decisions.sort(key=lambda x: x.score, reverse=True)
-            return mock_decisions
+                logger.info(f"Created {len(trainsets)} sample trainsets")
         
-        return [InductionDecision(**d) for d in doc.get("decisions", [])]
+        # Create ranked decisions for all trainsets with proper scoring
+        mock_decisions = []
+        
+        for trainset in trainsets:
+            # Calculate score based on KMRL priority factors (in order of importance)
+            score = 0.0
+            reasons = []
+            risks = []
+            
+            try:
+                # 1. FITNESS CERTIFICATES (Highest Priority - 35% weight)
+                # Check Rolling-Stock, Signalling, and Telecom certificates
+                fitness_score = 0.0
+                cert_status = trainset.get("fitness_certificates", {})
+                
+                # Rolling-Stock certificate (most critical)
+                rolling_stock = cert_status.get("rolling_stock", {})
+                if rolling_stock.get("status") == "VALID":
+                    fitness_score += 0.15
+                    reasons.append("Valid Rolling-Stock fitness certificate")
+                elif rolling_stock.get("status") == "EXPIRED":
+                    fitness_score += 0.0
+                    risks.append("Rolling-Stock certificate expired")
+                else:
+                    fitness_score += 0.05
+                    risks.append("Rolling-Stock certificate pending")
+                
+                # Signalling certificate
+                signalling = cert_status.get("signalling", {})
+                if signalling.get("status") == "VALID":
+                    fitness_score += 0.10
+                    reasons.append("Valid Signalling fitness certificate")
+                elif signalling.get("status") == "EXPIRED":
+                    fitness_score += 0.0
+                    risks.append("Signalling certificate expired")
+                else:
+                    fitness_score += 0.05
+                    risks.append("Signalling certificate pending")
+                
+                # Telecom certificate
+                telecom = cert_status.get("telecom", {})
+                if telecom.get("status") == "VALID":
+                    fitness_score += 0.10
+                    reasons.append("Valid Telecom fitness certificate")
+                elif telecom.get("status") == "EXPIRED":
+                    fitness_score += 0.0
+                    risks.append("Telecom certificate expired")
+                else:
+                    fitness_score += 0.05
+                    risks.append("Telecom certificate pending")
+                
+                score += fitness_score
+                
+                # 2. JOB-CARD STATUS (25% weight)
+                # Check for open/pending work orders in Maximo
+                job_cards = trainset.get("job_cards", {})
+                open_cards = job_cards.get("open_cards", 0)
+                critical_cards = job_cards.get("critical_cards", 0)
+                
+                if critical_cards > 0:
+                    score += 0.0
+                    risks.append(f"{critical_cards} critical job cards open")
+                elif open_cards > 0:
+                    score += 0.05
+                    risks.append(f"{open_cards} job cards open")
+                else:
+                    score += 0.25
+                    reasons.append("No critical job cards pending")
+                
+                # 3. CLEANING & DETAILING SLOTS (20% weight)
+                # Check availability of manpower and bay occupancy
+                # For now, use sensor health as proxy for cleaning readiness
+                sensor_health = trainset.get("sensor_health_score", 0.8)
+                if sensor_health > 0.9:
+                    score += 0.20
+                    reasons.append("Excellent sensor health - ready for service")
+                elif sensor_health > 0.7:
+                    score += 0.10
+                    reasons.append("Good sensor health")
+                else:
+                    score += 0.0
+                    risks.append("Poor sensor health - needs attention")
+                
+                # 4. STABLING GEOMETRY (15% weight)
+                # Physical positions of bays affect dispatch efficiency
+                # Use current location as proxy for stabling position
+                current_location = trainset.get("current_location", {})
+                depot = current_location.get("depot", "unknown")
+                if depot in ["Petta", "Vytilla"]:  # Main depots
+                    score += 0.15
+                    reasons.append("Optimal depot location for dispatch")
+                else:
+                    score += 0.10
+                    reasons.append("Good depot location")
+                
+                # 5. MILEAGE BALANCING (10% weight)
+                # Balance wear on bogies, brake pads, and HVAC systems
+                current_mileage = trainset.get("current_mileage", 0)
+                max_mileage = trainset.get("max_mileage_before_maintenance", 50000)
+                mileage_ratio = current_mileage / max_mileage if max_mileage > 0 else 0
+                
+                if mileage_ratio < 0.5:
+                    score += 0.10
+                    reasons.append("Low mileage - good for balancing wear")
+                elif mileage_ratio > 0.8:
+                    score += 0.05
+                    risks.append("High mileage - consider maintenance")
+                else:
+                    score += 0.08
+                    reasons.append("Balanced mileage")
+                
+                # 6. BRANDING PRIORITIES (5% weight - Lowest Priority)
+                # Contractual commitments for exterior wrap exposure hours
+                branding_priority = trainset.get("branding_priority", 0)
+                if branding_priority > 0.7:
+                    score += 0.05
+                    reasons.append("High branding priority")
+                elif branding_priority > 0.3:
+                    score += 0.03
+                    reasons.append("Medium branding priority")
+                else:
+                    score += 0.02
+                    reasons.append("Low branding priority")
+                
+                # Normalize score to 0-1 range
+                score = min(1.0, max(0.0, score))
+                
+            except Exception as e:
+                logger.error(f"Error calculating score for trainset {trainset.get('trainset_id', 'unknown')}: {e}")
+                # Fallback to simple scoring
+                score = 0.5
+                reasons = ["Default scoring applied"]
+                risks = ["Scoring error occurred"]
+            
+            # Determine decision based on KMRL priority factors
+            # INDUCT: All critical factors (fitness, job cards) are good
+            # STANDBY: Some issues but not critical
+            # MAINTENANCE: Critical issues that need attention
+            
+            if score >= 0.8 and len([r for r in risks if "certificate" in r.lower() or "critical" in r.lower()]) == 0:
+                decision = "INDUCT"
+            elif score >= 0.6 and len([r for r in risks if "certificate" in r.lower()]) == 0:
+                decision = "STANDBY"
+            else:
+                decision = "MAINTENANCE"
+            
+            # Calculate confidence based on score and risk factors
+            base_confidence = min(0.95, max(0.6, score))
+            risk_penalty = len(risks) * 0.05
+            confidence = round(max(0.6, base_confidence - risk_penalty), 2)
+            final_score = round(score, 3)
+            
+            mock_decision = {
+                "trainset_id": trainset["trainset_id"],
+                "decision": decision,
+                "confidence_score": confidence,
+                "score": final_score,
+                "top_reasons": reasons[:3] if reasons else ["All systems operational"],
+                "top_risks": [risk for risk in risks[:2] if risk is not None] if risks else [],
+                "violations": [],
+                "shap_values": [
+                    {"name": "Fitness Certificates", "value": fitness_score, "impact": "positive"},
+                    {"name": "Job Card Status", "value": 0.25 if critical_cards == 0 and open_cards == 0 else 0.05, "impact": "positive"},
+                    {"name": "Sensor Health", "value": trainset.get("sensor_health_score", 0.85), "impact": "positive"},
+                    {"name": "Mileage Balance", "value": 1.0 - mileage_ratio, "impact": "positive"},
+                    {"name": "Branding Priority", "value": branding_priority, "impact": "positive"}
+                ],
+                "reasons": reasons if reasons else ["Default scoring applied"]
+            }
+            mock_decisions.append(mock_decision)
+        
+        # Sort by score (highest first) - ensure proper ranking
+        mock_decisions.sort(key=lambda x: x["score"], reverse=True)
+        
+        # Take top 10 trainsets for induction list (not just 3)
+        top_decisions = mock_decisions[:10]
+        
+        logger.info(f"Created {len(mock_decisions)} ranked decisions, returning top {len(top_decisions)}")
+        
+        # Store the ranked list
+        latest_collection = await cloud_db_manager.get_collection("latest_induction")
+        await latest_collection.insert_one({
+            "decisions": top_decisions,
+            "created_at": datetime.utcnow().isoformat(),
+            "total_trainsets": len(mock_decisions)
+        })
+        
+        logger.info(f"Stored ranked list with {len(top_decisions)} decisions")
+        return top_decisions
+        
     except Exception as e:
         logger.error(f"Error fetching latest induction list: {e}")
-        # Return mock data on error
+        # Return mock data on error - create all 30 trainsets
         mock_decisions = []
-        trainset_ids = ["TS-001", "TS-002", "TS-003", "TS-004", "TS-005", "TS-006", "TS-007", "TS-008", "TS-009", "TS-010"]
+        trainset_ids = [f"T-{i:03d}" for i in range(1, 31)]  # T-001 to T-030
         decisions = ["INDUCT", "STANDBY", "MAINTENANCE"]
         
         for i, trainset_id in enumerate(trainset_ids):
-            decision = random.choice(decisions)
-            confidence = round(random.uniform(0.7, 0.95), 2)
-            score = round(random.uniform(0.6, 0.95), 3)
+            # Calculate realistic score based on index
+            base_score = 0.6 + (i * 0.01)  # Scores from 0.61 to 0.90
+            score = min(0.95, base_score)
+            
+            # Determine decision based on score
+            if score >= 0.8:
+                decision = "INDUCT"
+            elif score >= 0.7:
+                decision = "STANDBY"
+            else:
+                decision = "MAINTENANCE"
+            
+            confidence = round(random.uniform(0.75, 0.95), 2)
             
             mock_decision = {
                 "trainset_id": trainset_id,
                 "decision": decision,
                 "confidence_score": confidence,
-                "score": score,
+                "score": round(score, 3),
                 "top_reasons": [
                     "All department certificates valid",
                     "Low predicted failure probability",
                     "Available cleaning slot before dawn"
                 ],
                 "top_risks": [
-                    "Safety certificate expiring soon"
+                    "Safety certificate expiring soon" if random.random() > 0.7 else None
                 ],
                 "violations": [],
                 "shap_values": [
-                    {"name": "Sensor Health Score", "value": 0.85, "impact": "positive"},
-                    {"name": "Predicted Failure Risk", "value": 0.15, "impact": "positive"}
+                    {"name": "Sensor Health Score", "value": round(random.uniform(0.7, 0.95), 2), "impact": "positive"},
+                    {"name": "Predicted Failure Risk", "value": round(random.uniform(0.05, 0.3), 2), "impact": "positive"},
+                    {"name": "Branding Priority", "value": random.choice(["HIGH", "MEDIUM", "LOW"]), "impact": "positive"},
+                    {"name": "Certificate Status", "value": "valid", "impact": "positive"},
+                    {"name": "Runtime Compliance", "value": round(random.uniform(0.8, 1.0), 2), "impact": "positive"}
                 ],
                 "reasons": [
                     "All department certificates valid",
-                    "Low predicted failure probability"
+                    "Low predicted failure probability",
+                    "High sensor health score",
+                    "Valid maintenance schedule"
                 ]
             }
-            mock_decisions.append(InductionDecision(**mock_decision))
+            mock_decisions.append(mock_decision)
         
+        # Sort by score (highest first)
+        mock_decisions.sort(key=lambda x: x["score"], reverse=True)
+        
+        logger.info(f"Returning {len(mock_decisions)} mock decisions due to error")
         return mock_decisions
 
 @router.get("/stabling-geometry")

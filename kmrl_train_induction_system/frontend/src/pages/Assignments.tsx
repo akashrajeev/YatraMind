@@ -6,15 +6,26 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { assignmentApi, optimizationApi, trainsetsApi } from "@/services/api";
 import { Assignment, AssignmentSummary } from "@/types/api";
 import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 
 const Assignments = () => {
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
   const [selectedTrainset, setSelectedTrainset] = useState<string | null>(null);
   const [explanationData, setExplanationData] = useState<any>(null);
   const [showExplanation, setShowExplanation] = useState(false);
   const [trainsetDetails, setTrainsetDetails] = useState<any>(null);
   const [showTrainsetDetails, setShowTrainsetDetails] = useState(false);
+  const [defaultTab, setDefaultTab] = useState("ranked");
+
+  // Check for tab parameter from URL
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'conflicts') {
+      setDefaultTab('conflicts');
+    }
+  }, [searchParams]);
 
   // Fetch assignments data
   const { data: assignments = [], isLoading, refetch } = useQuery({
@@ -38,9 +49,7 @@ const Assignments = () => {
   // Fetch conflict alerts
   const { data: conflictAlerts = [] } = useQuery({
     queryKey: ['conflict-alerts'],
-    queryFn: () => assignmentApi.getAll({ status: 'PENDING' }).then(res => 
-      res.data.filter((a: any) => a.decision?.violations?.length > 0)
-    ),
+    queryFn: () => assignmentApi.getConflicts().then(res => res.data),
     refetchInterval: 15000,
   });
 
@@ -141,8 +150,8 @@ const Assignments = () => {
         </div>
       </div>
 
-      {/* Assignments Tabs */}
-      <Tabs defaultValue="ranked" className="w-full">
+          {/* Assignments Tabs */}
+          <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="ranked">
             <Target className="h-4 w-4 mr-2" />

@@ -129,7 +129,7 @@ const Settings = () => {
                 <Users className="h-4 w-4 text-muted-foreground" />
                 <div>
                   <p className="text-sm font-medium">Active Users</p>
-                  <p className="text-sm text-muted-foreground">12 users currently online</p>
+                  <p className="text-sm text-muted-foreground">System operational</p>
                 </div>
               </div>
             </div>

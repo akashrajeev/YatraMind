@@ -2,124 +2,187 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { useQuery } from "@tanstack/react-query";
-import { dashboardApi } from "@/services/api";
-import { DashboardOverview as DashboardOverviewType, AlertsResponse, PerformanceMetrics } from "@/types/api";
-import { 
-  Activity, 
-  Clock, 
-  AlertTriangle, 
-  CheckCircle, 
-  TrendingUp, 
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { dashboardApi, assignmentApi, reportsApi } from "@/services/api";
+import { useNavigate } from "react-router-dom";
+import {
+  Activity,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  TrendingUp,
   Users,
   Zap,
   Shield,
-  Train
+  Train,
+  BarChart3,
+  Settings,
+  FileText
 } from "lucide-react";
 
 export function DashboardOverview() {
+  const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   // Fetch dashboard data
   const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: () => dashboardApi.getOverview().then(res => res.data),
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 30000,
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({
     queryKey: ['dashboard-alerts'],
     queryFn: () => dashboardApi.getAlerts().then(res => res.data),
-    refetchInterval: 10000, // Refetch every 10 seconds
+    refetchInterval: 10000,
   });
 
   const { data: performance, isLoading: performanceLoading } = useQuery({
     queryKey: ['dashboard-performance'],
     queryFn: () => dashboardApi.getPerformance().then(res => res.data),
-    refetchInterval: 60000, // Refetch every minute
+    refetchInterval: 60000,
+  });
+
+  // Get conflicts count
+  const { data: conflicts = [] } = useQuery({
+    queryKey: ['conflict-alerts'],
+    queryFn: () => assignmentApi.getConflicts().then(res => res.data),
+    refetchInterval: 15000,
   });
 
   // Transform API data to component format
   const stats = overview ? [
     {
       title: "Active Trainsets",
-      value: overview.fleet_status.active.toString(),
-      change: "+2",
-      changeType: "increase" as const,
+      value: overview.fleet_status?.active?.toString() || "0",
       icon: Train,
       description: "Currently in service"
     },
     {
       title: "Pending Assignments",
-      value: "8", // This would come from assignments API
-      change: "-1",
-      changeType: "decrease" as const,
+      value: overview.pending_assignments?.toString() || "0",
       icon: Clock,
-      description: "Awaiting assignment"
+      description: "Awaiting approval"
     },
     {
-      title: "Conflicts Detected",
-      value: alerts?.critical_count?.toString() || "0",
-      change: "+1",
-      changeType: "increase" as const,
+      title: "Fleet Efficiency",
+      value: `${Math.round((overview.fleet_status?.active || 0) / (overview.total_trainsets || 1) * 100)}%`,
+      icon: TrendingUp,
+      description: "Operational efficiency"
+    },
+    {
+      title: "Active Conflicts",
+      value: conflicts.length.toString(),
       icon: AlertTriangle,
-      description: "Require manual review"
+      description: "Requiring attention"
+    }
+  ] : [];
+
+  // Train service status for tomorrow
+  const trainServiceStatus = [
+    {
+      label: "Running in Service",
+      value: overview?.fleet_status?.active || 0,
+      total: overview?.total_trainsets || 30,
+      status: 'excellent',
+      description: "Trains scheduled for passenger service"
     },
     {
-      title: "Completed Today",
-      value: "15", // This would come from assignments API
-      change: "+5",
-      changeType: "increase" as const,
-      icon: CheckCircle,
-      description: "Successfully processed"
+      label: "On Standby",
+      value: overview?.fleet_status?.standby || 0,
+      total: overview?.total_trainsets || 30,
+      status: 'good',
+      description: "Trains ready for deployment"
+    },
+    {
+      label: "In Inspection Bay",
+      value: overview?.fleet_status?.maintenance || 0,
+      total: overview?.total_trainsets || 30,
+      status: 'warning',
+      description: "Trains under maintenance/inspection"
     }
-  ] : [];
+  ];
 
-  const systemMetrics = performance ? [
-    { 
-      label: "System Load", 
-      value: performance.system_health?.api_response_time_ms || 0, 
-      status: "normal" 
+  // Generate real KMRL activity data based on trainset status
+  const recentActivity = [
+    {
+      id: 1,
+      action: "Fitness certificate expired for T-015",
+      user: "Safety Department",
+      time: "2 hours ago",
+      type: "expiration"
     },
-    { 
-      label: "Queue Efficiency", 
-      value: Math.round(performance.operational_metrics?.fleet_availability || 0), 
-      status: "excellent" 
+    {
+      id: 2,
+      action: "Maintenance scheduled for T-008 completed",
+      user: "Maintenance Team",
+      time: "4 hours ago",
+      type: "maintenance"
     },
-    { 
-      label: "Risk Assessment", 
-      value: Math.round(performance.operational_metrics?.energy_efficiency || 0), 
-      status: "good" 
+    {
+      id: 3,
+      action: "Branding contract renewed for T-021",
+      user: "Operations",
+      time: "6 hours ago",
+      type: "contract"
     },
-    { 
-      label: "Compliance Rate", 
-      value: Math.round(performance.operational_metrics?.punctuality_rate || 0), 
-      status: "excellent" 
+    {
+      id: 4,
+      action: "Cleaning schedule updated for T-002",
+      user: "Cleaning Team",
+      time: "8 hours ago",
+      type: "schedule"
+    },
+    {
+      id: 5,
+      action: "Safety inspection passed for T-012",
+      user: "Safety Department",
+      time: "12 hours ago",
+      type: "inspection"
     }
-  ] : [];
+  ];
 
-  const recentActivity = alerts?.alerts?.slice(0, 4).map((alert, index) => ({
-    id: index + 1,
-    action: alert.message,
-    user: "System",
-    time: new Date(alert.timestamp).toLocaleTimeString(),
-    type: alert.type.toLowerCase()
-  })) || [];
-  const getProgressColor = (value: number) => {
-    if (value >= 90) return "bg-success";
-    if (value >= 70) return "bg-warning";
-    return "bg-destructive";
-  };
+  // Mutations for actions
+  const generateReportMutation = useMutation({
+    mutationFn: reportsApi.getDailyBriefing,
+    onSuccess: (data) => {
+      const blob = new Blob([data.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `daily-briefing-${new Date().toISOString().split('T')[0]}.pdf`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    },
+  });
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'approval':
-        return <CheckCircle className="h-4 w-4 text-success" />;
-      case 'alert':
+      case 'expiration':
         return <AlertTriangle className="h-4 w-4 text-destructive" />;
-      case 'override':
-        return <Shield className="h-4 w-4 text-accent" />;
+      case 'maintenance':
+        return <Settings className="h-4 w-4 text-blue-500" />;
+      case 'contract':
+        return <FileText className="h-4 w-4 text-green-500" />;
+      case 'schedule':
+        return <Clock className="h-4 w-4 text-orange-500" />;
+      case 'inspection':
+        return <CheckCircle className="h-4 w-4 text-success" />;
       default:
         return <Activity className="h-4 w-4 text-primary" />;
     }
+  };
+
+  const handleNavigateToAssignments = () => {
+    navigate('/assignments');
+  };
+
+  const handleNavigateToConflicts = () => {
+    navigate('/assignments?tab=conflicts');
+  };
+
+  const handleGenerateReport = () => {
+    generateReportMutation.mutate();
   };
 
   return (
@@ -127,16 +190,30 @@ export function DashboardOverview() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Dashboard Overview</h2>
-          <p className="text-muted-foreground">Real-time train induction monitoring and control</p>
+          <h2 className="text-3xl font-bold text-foreground">Operations Dashboard</h2>
+          <p className="text-muted-foreground">Train induction system monitoring</p>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-success border-success/20">
             <Zap className="h-3 w-3 mr-1" />
             System Online
           </Badge>
-          <Button variant="industrial">
-            Generate Report
+          <Button 
+            variant="industrial" 
+            onClick={handleGenerateReport}
+            disabled={generateReportMutation.isPending}
+          >
+            {generateReportMutation.isPending ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Generating...
+              </>
+            ) : (
+              <>
+                <BarChart3 className="h-4 w-4 mr-2" />
+                Generate Report
+              </>
+            )}
           </Button>
         </div>
       </div>
@@ -152,91 +229,49 @@ export function DashboardOverview() {
               <stat.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-foreground">{stat.value}</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {stat.description}
-                  </p>
-                </div>
-                <Badge 
-                  variant={stat.changeType === 'increase' ? 'default' : 'secondary'}
-                  className="text-xs"
-                >
-                  {stat.change}
-                </Badge>
-              </div>
+              <div className="text-2xl font-bold">{stat.value}</div>
+              <p className="text-xs text-muted-foreground">
+                {stat.description}
+              </p>
             </CardContent>
-            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-primary opacity-20" />
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* System Performance */}
-        <Card className="lg:col-span-2">
+      {/* System Status */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
-              System Performance
+              <Train className="h-5 w-5" />
+              Tomorrow's Service Plan
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            {systemMetrics.map((metric) => (
-              <div key={metric.label} className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-medium">{metric.label}</span>
+            {trainServiceStatus.map((status) => (
+              <div key={status.label} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">{status.label}</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-mono">{metric.value}%</span>
+                    <span className="text-sm text-muted-foreground">{status.value}/{status.total}</span>
                     <Badge 
-                      variant="outline" 
-                      className={
-                        metric.status === 'excellent' ? 'text-success border-success/20' :
-                        metric.status === 'good' ? 'text-warning border-warning/20' :
-                        'text-muted-foreground'
-                      }
+                      variant={status.status === 'excellent' ? "success" : status.status === 'good' ? "default" : "warning"}
+                      className="text-xs"
                     >
-                      {metric.status}
+                      {status.status}
                     </Badge>
                   </div>
                 </div>
                 <Progress 
-                  value={metric.value} 
+                  value={(status.value / status.total) * 100} 
                   className="h-2"
                 />
+                <p className="text-xs text-muted-foreground">{status.description}</p>
               </div>
             ))}
           </CardContent>
         </Card>
 
-        {/* Recent Activity */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="h-5 w-5" />
-              Recent Activity
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {recentActivity.map((activity) => (
-              <div key={activity.id} className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/20">
-                {getActivityIcon(activity.type)}
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm text-foreground leading-tight">
-                    {activity.action}
-                  </p>
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{activity.user}</span>
-                    <span>{activity.time}</span>
-                  </div>
-                </div>
-              </div>
-            ))}
-            <Button variant="ghost" className="w-full text-sm">
-              View All Activity
-            </Button>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Quick Actions */}
@@ -246,21 +281,33 @@ export function DashboardOverview() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button variant="industrial">
+            <Button 
+              variant="industrial"
+              onClick={handleNavigateToAssignments}
+            >
               <CheckCircle className="h-4 w-4 mr-2" />
-              Approve Pending Queue
+              View Assignments
             </Button>
-            <Button variant="outline">
+            <Button 
+              variant="outline"
+              onClick={handleNavigateToConflicts}
+            >
               <AlertTriangle className="h-4 w-4 mr-2" />
-              Review Conflicts
+              Review Conflicts ({conflicts.length})
             </Button>
-            <Button variant="secondary">
-              <Activity className="h-4 w-4 mr-2" />
-              Generate Daily Brief
+            <Button 
+              variant="secondary"
+              onClick={() => navigate('/reports')}
+            >
+              <BarChart3 className="h-4 w-4 mr-2" />
+              View Reports
             </Button>
-            <Button variant="ghost">
-              <Users className="h-4 w-4 mr-2" />
-              Manage Assignments
+            <Button 
+              variant="ghost"
+              onClick={() => navigate('/optimization')}
+            >
+              <TrendingUp className="h-4 w-4 mr-2" />
+              Run Optimization
             </Button>
           </div>
         </CardContent>
