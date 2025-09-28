@@ -68,6 +68,9 @@ const DataIngestion = () => {
     mutationFn: ingestionApi.uploadTimeseries,
     onSuccess: () => {
       queryClient.invalidateQueries(['ingestion-status']);
+      queryClient.invalidateQueries(['trainsets']);
+      queryClient.invalidateQueries(['optimization']);
+      queryClient.invalidateQueries(['assignments']);
     },
   });
 
@@ -75,6 +78,9 @@ const DataIngestion = () => {
     mutationFn: ingestionApi.uploadFitness,
     onSuccess: () => {
       queryClient.invalidateQueries(['ingestion-status']);
+      queryClient.invalidateQueries(['trainsets']);
+      queryClient.invalidateQueries(['optimization']);
+      queryClient.invalidateQueries(['assignments']);
     },
   });
 
@@ -82,6 +88,9 @@ const DataIngestion = () => {
     mutationFn: ingestionApi.uploadBranding,
     onSuccess: () => {
       queryClient.invalidateQueries(['ingestion-status']);
+      queryClient.invalidateQueries(['trainsets']);
+      queryClient.invalidateQueries(['optimization']);
+      queryClient.invalidateQueries(['assignments']);
     },
   });
 
@@ -89,6 +98,9 @@ const DataIngestion = () => {
     mutationFn: ingestionApi.uploadDepot,
     onSuccess: () => {
       queryClient.invalidateQueries(['ingestion-status']);
+      queryClient.invalidateQueries(['trainsets']);
+      queryClient.invalidateQueries(['optimization']);
+      queryClient.invalidateQueries(['assignments']);
     },
   });
 
@@ -103,6 +115,16 @@ const DataIngestion = () => {
     mutationFn: ingestionApi.stopMQTT,
     onSuccess: () => {
       queryClient.invalidateQueries(['mqtt-status']);
+    },
+  });
+
+  const ingestCleaningMutation = useMutation({
+    mutationFn: ingestionApi.ingestCleaningGoogle,
+    onSuccess: () => {
+      queryClient.invalidateQueries(['ingestion-status']);
+      queryClient.invalidateQueries(['trainsets']);
+      queryClient.invalidateQueries(['optimization']);
+      queryClient.invalidateQueries(['assignments']);
     },
   });
 
@@ -535,14 +557,15 @@ const DataIngestion = () => {
                 </div>
                 <Button 
                   onClick={() => {
-                    // Handle Google Sheets ingestion
-                    console.log('Google Sheets URL:', googleSheetUrl);
+                    if (googleSheetUrl) {
+                      ingestCleaningMutation.mutate(googleSheetUrl);
+                    }
                   }}
-                  disabled={!googleSheetUrl}
+                  disabled={!googleSheetUrl || ingestCleaningMutation.isPending}
                   className="w-full"
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Ingest from Google Sheets
+                  {ingestCleaningMutation.isPending ? 'Ingesting...' : 'Ingest from Google Sheets'}
                 </Button>
               </div>
             </CardContent>

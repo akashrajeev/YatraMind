@@ -262,12 +262,40 @@ class DataIngestionService:
                 upsert=True,
             )
             ops += 1
+
+        # Denormalize into trainsets collection for direct frontend consumption
+        trainsets_col = await cloud_db_manager.get_collection("trainsets")
+        for r in records:
+            trainset_id = r.get("trainset_id")
+            cert_key = str(r.get("certificate", "")).strip().lower()
+            update_path = {
+                f"fitness_certificates.{cert_key}": {
+                    "dept": r.get("dept"),
+                    "certificate": r.get("certificate"),
+                    "status": r.get("status"),
+                    "valid_from": r.get("valid_from"),
+                    "valid_to": r.get("valid_to"),
+                    "issued_by": r.get("issued_by"),
+                    "certificate_id": r.get("certificate_id"),
+                    "updated_at": datetime.now().isoformat(),
+                },
+                "last_updated_sources.fitness": datetime.now().isoformat(),
+            }
+            await trainsets_col.update_one(
+                {"trainset_id": trainset_id},
+                {"$set": update_path},
+                upsert=True,
+            )
         await record_uns_event(
             source="file_upload_service",
             target_collection="fitness_certificates",
             raw_payload={"filename": filename, "count": len(records)},
             normalized_docs=None,
         )
+        
+        # Trigger optimization refresh after fitness data update
+        await self._trigger_optimization_refresh("fitness_upload")
+        
         return {"count": ops}
 
     async def ingest_branding_file(self, content: bytes, filename: str) -> Dict[str, Any]:
@@ -288,12 +316,34 @@ class DataIngestionService:
                 upsert=True,
             )
             ops += 1
+
+        # Denormalize branding summary into trainsets collection
+        trainsets_col = await cloud_db_manager.get_collection("trainsets")
+        for r in records:
+            trainset_id = r.get("trainset_id")
+            branding_summary = {
+                "current_advertiser": r.get("current_advertiser"),
+                "priority": r.get("priority"),
+                "start_date": r.get("start_date"),
+                "end_date": r.get("end_date"),
+                "runtime_requirement_hours": r.get("runtime_requirement_hours"),
+                "updated_at": datetime.now().isoformat(),
+            }
+            await trainsets_col.update_one(
+                {"trainset_id": trainset_id},
+                {"$set": {"branding": branding_summary, "last_updated_sources.branding": datetime.now().isoformat()}},
+                upsert=True,
+            )
         await record_uns_event(
             source="branding_contracts_parser",
             target_collection="branding_contracts",
             raw_payload={"filename": filename, "count": len(records)},
             normalized_docs=None,
         )
+        
+        # Trigger optimization refresh after branding data update
+        await self._trigger_optimization_refresh("branding_upload")
+        
         return {"count": ops}
 
     async def ingest_depot_geojson(self, content: bytes) -> Dict[str, Any]:
@@ -310,6 +360,12 @@ class DataIngestionService:
             "version": version_tag,
             "ingested_at": datetime.now().isoformat()
         })
+        # Propagate depot layout version to all trainsets for reference
+        trainsets_col = await cloud_db_manager.get_collection("trainsets")
+        await trainsets_col.update_many(
+            {},
+            {"$set": {"depot_layout_version": version_tag, "last_updated_sources.depot_layout": datetime.now().isoformat()}}
+        )
         await record_uns_event(
             source="geojson_ingest",
             target_collection="depot_layout",
@@ -317,6 +373,10 @@ class DataIngestionService:
             normalized_docs=None,
             metadata={"version": version_tag},
         )
+        
+        # Trigger optimization refresh after depot layout update
+        await self._trigger_optimization_refresh("depot_upload")
+        
         return {"objects": len(data.get("features", []))}
 
     async def ingest_cleaning_google_sheet(self, sheet_url: str) -> Dict[str, Any]:
@@ -340,6 +400,34 @@ class DataIngestionService:
                 upsert=True,
             )
             ops += 1
+
+        # Denormalize latest cleaning info per trainset
+        trainsets_col = await cloud_db_manager.get_collection("trainsets")
+        # For each trainset, pick the latest by date
+        try:
+            df_sorted = df.sort_values(by=["trainset_id", "date"]).groupby("trainset_id").tail(1)
+            for _, row in df_sorted.iterrows():
+                await trainsets_col.update_one(
+                    {"trainset_id": row["trainset_id"]},
+                    {"$set": {
+                        "cleaning_schedule.latest": {
+                            "date": str(row.get("date")),
+                            "slot": row.get("slot"),
+                            "bay": row.get("bay"),
+                            "manpower": row.get("manpower"),
+                            "updated_at": datetime.now().isoformat(),
+                        },
+                        "last_updated_sources.cleaning": datetime.now().isoformat(),
+                    }},
+                    upsert=True,
+                )
+        except Exception:
+            # Best-effort only
+            pass
+            
+        # Trigger optimization refresh after cleaning data update
+        await self._trigger_optimization_refresh("cleaning_upload")
+        
         return {"count": ops}
 
     def _read_tabular(self, content: bytes, filename: str) -> pd.DataFrame:
@@ -348,3 +436,21 @@ class DataIngestionService:
         if filename.lower().endswith(".xlsx") or filename.lower().endswith(".xls"):
             return pd.read_excel(bio)
         return pd.read_csv(bio)
+    
+    async def _trigger_optimization_refresh(self, source: str):
+        """Trigger optimization refresh after data uploads"""
+        try:
+            # Clear any cached optimization results
+            optimization_col = await cloud_db_manager.get_collection("optimization_results")
+            await optimization_col.delete_many({})
+            
+            # Log the refresh trigger
+            logger.info(f"Optimization refresh triggered by {source}")
+            
+            # In a production system, you might want to trigger a background task
+            # to regenerate the optimization results immediately
+            # For now, the next call to /api/optimization/latest will regenerate
+            
+        except Exception as e:
+            logger.error(f"Failed to trigger optimization refresh: {e}")
+            # Don't fail the upload if optimization refresh fails

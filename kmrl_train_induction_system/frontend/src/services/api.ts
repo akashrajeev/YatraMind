@@ -132,6 +132,13 @@ export const ingestionApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  ingestCleaningGoogle: (sheetUrl: string) => {
+    const formData = new FormData();
+    formData.append('sheet_url', sheetUrl);
+    return api.post('/ingestion/cleaning/google', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   getStatus: () => api.get('/ingestion/status'),
   startMQTT: () => api.post('/ingestion/mqtt/start'),
   stopMQTT: () => api.post('/ingestion/mqtt/stop'),
