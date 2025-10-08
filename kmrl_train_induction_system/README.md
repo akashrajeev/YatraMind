@@ -265,17 +265,4 @@ docker-compose up -d
 4. Add tests
 5. Submit a pull request
 
-## 📄 License
 
-This project is proprietary software developed for Kochi Metro Rail Ltd.
-
-## 🆘 Support
-
-For technical support or questions:
-- Create an issue in the repository
-- Contact the development team
-- Check the documentation
-
----
-
-**Built with ❤️ for KMRL Operations Team**
