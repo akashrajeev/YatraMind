@@ -16,8 +16,9 @@ logger = logging.getLogger(__name__)
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-# JWT settings
-SECRET_KEY = "your-secret-key-here"  # In production, use environment variable
+# JWT settings - Import from config
+from app.config import settings
+SECRET_KEY = settings.secret_key or "your-secret-key-here-change-in-production"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
@@ -32,11 +33,23 @@ class AuthService:
         self.pwd_context = pwd_context
     
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
-        """Verify a password against its hash"""
+        """Verify a password against its hash with proper encoding handling"""
+        # Ensure password is encoded as UTF-8 and truncate to 72 bytes if needed
+        # bcrypt has a 72-byte limit for passwords
+        password_bytes = plain_password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            plain_password = password_bytes.decode('utf-8', errors='ignore')
         return self.pwd_context.verify(plain_password, hashed_password)
     
     def get_password_hash(self, password: str) -> str:
-        """Hash a password"""
+        """Hash a password with proper encoding handling"""
+        # Ensure password is encoded as UTF-8 and truncate to 72 bytes if needed
+        # bcrypt has a 72-byte limit for passwords
+        password_bytes = password.encode('utf-8')
+        if len(password_bytes) > 72:
+            password_bytes = password_bytes[:72]
+            password = password_bytes.decode('utf-8', errors='ignore')
         return self.pwd_context.hash(password)
     
     def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
@@ -59,11 +72,11 @@ class AuthService:
         except JWTError:
             return None
     
-    async def authenticate_user(self, email: str, password: str) -> Optional[User]:
-        """Authenticate a user with email and password"""
+    async def authenticate_user(self, username: str, password: str) -> Optional[User]:
+        """Authenticate a user with username and password"""
         try:
             collection = await cloud_db_manager.get_collection("users")
-            user_doc = await collection.find_one({"email": email})
+            user_doc = await collection.find_one({"username": username})
             
             if not user_doc:
                 return None
@@ -98,10 +111,11 @@ class AuthService:
     
     async def create_user(
         self,
-        email: str,
+        username: str,
         password: str,
         name: str,
         role: str,
+        email: Optional[str] = None,
         permissions: Optional[list] = None
     ) -> User:
         """Create a new user"""
@@ -111,6 +125,7 @@ class AuthService:
             
             user = User(
                 id=user_id,
+                username=username,
                 email=email,
                 name=name,
                 role=role,
@@ -125,7 +140,7 @@ class AuthService:
                 "hashed_password": hashed_password
             })
             
-            logger.info(f"Created user: {email}")
+            logger.info(f"Created user: {username}")
             return user
             
         except Exception as e:

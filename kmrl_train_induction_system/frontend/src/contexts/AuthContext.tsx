@@ -4,7 +4,7 @@ import { authApi } from '../services/api'
 
 interface AuthContextType {
   user: User | null
-  login: (email: string, password: string) => Promise<void>
+  login: (username: string, password: string) => Promise<void>
   logout: () => void
   loading: boolean
   hasPermission: (permission: string) => boolean
@@ -33,8 +33,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const token = localStorage.getItem('auth_token')
       if (token) {
         try {
-          const profile = await authApi.getProfile()
-          setUser(profile)
+          const response = await authApi.getProfile()
+          setUser(response.data)
         } catch (error) {
           localStorage.removeItem('auth_token')
         }
@@ -44,13 +44,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth()
   }, [])
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     try {
-      const { token, user: userData } = await authApi.login({ email, password })
-      localStorage.setItem('auth_token', token)
-      setUser(userData)
-    } catch (error) {
-      throw new Error('Login failed')
+      const response = await authApi.login({ username, password })
+      const data = response.data
+      localStorage.setItem('auth_token', data.access_token)
+      setUser(data.user)
+    } catch (error: any) {
+      throw new Error(error.response?.data?.detail || 'Login failed')
     }
   }
 

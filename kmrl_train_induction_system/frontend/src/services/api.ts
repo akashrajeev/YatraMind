@@ -152,4 +152,24 @@ export const notificationsApi = {
   markAllAsRead: () => api.put('/notifications/read-all'),
 };
 
+// Auth API
+export const authApi = {
+  login: (credentials: { username: string; password: string }) => 
+    api.post('/v1/auth/login', credentials),
+  logout: () => api.post('/v1/auth/logout'),
+  getProfile: () => api.get('/v1/auth/profile'),
+  refreshToken: () => api.post('/v1/auth/refresh-token'),
+  changePassword: (data: { current_password: string; new_password: string }) =>
+    api.post('/v1/auth/change-password', data),
+};
+
+// Add auth token to requests
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
 export default api;
