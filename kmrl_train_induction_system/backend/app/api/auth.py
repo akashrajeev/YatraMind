@@ -16,20 +16,19 @@ ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 @router.post("/login", response_model=Token)
 async def login(
-    user_credentials: UserLogin,
-    _auth=Depends(require_api_key)
+    user_credentials: UserLogin
 ):
     """Authenticate user and return access token"""
     try:
         user = await auth_service.authenticate_user(
-            user_credentials.email, 
+            user_credentials.username, 
             user_credentials.password
         )
         
         if not user:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Incorrect email or password",
+                detail="Incorrect username or password",
                 headers={"WWW-Authenticate": "Bearer"},
             )
         
@@ -49,7 +48,7 @@ async def login(
         # Update last login
         await auth_service.update_last_login(user.id)
         
-        logger.info(f"User {user.email} logged in successfully")
+        logger.info(f"User {user.username} logged in successfully")
         
         return Token(
             access_token=access_token,
@@ -80,7 +79,7 @@ async def logout(
         # 2. Store blacklisted tokens in Redis
         # 3. Check blacklist on token validation
         
-        logger.info(f"User {current_user.email} logged out")
+        logger.info(f"User {current_user.username} logged out")
         return {"message": "Successfully logged out"}
         
     except Exception as e:
@@ -120,7 +119,7 @@ async def update_profile(
                 detail="Failed to update profile"
             )
         
-        logger.info(f"User {current_user.email} updated profile")
+        logger.info(f"User {current_user.username} updated profile")
         return updated_user
         
     except HTTPException:
@@ -163,7 +162,7 @@ async def change_password(
                 detail="Failed to update password"
             )
         
-        logger.info(f"User {current_user.email} changed password")
+        logger.info(f"User {current_user.username} changed password")
         return {"message": "Password updated successfully"}
         
     except HTTPException:
@@ -190,7 +189,7 @@ async def refresh_token(
             expires_delta=access_token_expires
         )
         
-        logger.info(f"Token refreshed for user {current_user.email}")
+        logger.info(f"Token refreshed for user {current_user.username}")
         
         return Token(
             access_token=access_token,

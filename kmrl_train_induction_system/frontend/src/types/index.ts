@@ -76,8 +76,9 @@ export interface Alert {
 
 export interface User {
   id: string
+  username: string
   name: string
-  email: string
+  email?: string
   role: 'SUPERVISOR' | 'MAINTENANCE_ENGINEER' | 'OPERATIONS_MANAGER' | 'READONLY_VIEWER'
   permissions: string[]
 }
