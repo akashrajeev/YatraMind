@@ -61,13 +61,13 @@ class AssignmentUpdate(BaseModel):
 
 class ApprovalRequest(BaseModel):
     assignment_ids: List[str] = Field(..., description="List of assignment IDs to approve")
-    user_id: str = Field(..., description="User ID of approver")
+    user_id: Optional[str] = Field(None, description="User ID of approver (defaults to 'system' if not provided)")
     comments: Optional[str] = Field(None, description="Approval comments")
 
 
 class OverrideRequest(BaseModel):
     assignment_id: str = Field(..., description="Assignment ID to override")
-    user_id: str = Field(..., description="User ID of overrider")
+    user_id: Optional[str] = Field(None, description="User ID of overrider (defaults to 'system' if not provided)")
     reason: str = Field(..., description="Override reason")
     override_decision: str = Field(..., description="New decision (INDUCT/STANDBY/MAINTENANCE)")
 

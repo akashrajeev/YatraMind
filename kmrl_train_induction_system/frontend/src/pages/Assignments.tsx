@@ -8,6 +8,7 @@ import { Assignment, AssignmentSummary } from "@/types/api";
 import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 
 const Assignments = () => {
   const queryClient = useQueryClient();
@@ -56,17 +57,37 @@ const Assignments = () => {
   // Mutations for actions
   const approveMutation = useMutation({
     mutationFn: assignmentApi.approve,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      toast.success("Assignment Approved", {
+        description: `Successfully approved ${data.data?.approved_count || 1} assignment(s)`,
+      });
       queryClient.invalidateQueries(['assignments']);
       queryClient.invalidateQueries(['assignments-summary']);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || "Failed to approve assignment";
+      toast.error("Approval Failed", {
+        description: errorMessage,
+      });
+      console.error("Approve error:", error);
     },
   });
 
   const overrideMutation = useMutation({
     mutationFn: assignmentApi.override,
-    onSuccess: () => {
+    onSuccess: (data) => {
+      toast.success("Assignment Overridden", {
+        description: data.data?.message || "Assignment decision has been overridden",
+      });
       queryClient.invalidateQueries(['assignments']);
       queryClient.invalidateQueries(['assignments-summary']);
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || "Failed to override assignment";
+      toast.error("Override Failed", {
+        description: errorMessage,
+      });
+      console.error("Override error:", error);
     },
   });
 
@@ -357,29 +378,58 @@ const Assignments = () => {
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasoning}</p>
                   <div className="flex gap-2 mt-4">
-                    <Button size="sm" variant="outline">View Details</Button>
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleViewDetails(assignment.trainset_id)}
+                    >
+                      <Info className="h-4 w-4 mr-2" />
+                      View Details
+                    </Button>
                     <Button 
                       size="sm" 
                       variant="secondary"
-                      onClick={() => overrideMutation.mutate({
-                        assignment_id: assignment.id,
-                        override_decision: "OVERRIDE",
-                        reason: "Manual override"
-                      })}
-                      disabled={overrideMutation.isPending}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!assignment.id) {
+                          toast.error("Error", { description: "Assignment ID is missing" });
+                          return;
+                        }
+                        console.log("Override clicked - Assignment:", assignment);
+                        const newDecision = assignment.decision.decision === "INDUCT" ? "STANDBY" : 
+                                            assignment.decision.decision === "STANDBY" ? "MAINTENANCE" : "INDUCT";
+                        overrideMutation.mutate({
+                          assignment_id: assignment.id,
+                          user_id: "system",
+                          override_decision: newDecision,
+                          reason: `Manual override: Changed from ${assignment.decision.decision} to ${newDecision}`
+                        });
+                      }}
+                      disabled={overrideMutation.isPending || assignment.status !== "PENDING"}
                     >
-                      Override
+                      {overrideMutation.isPending ? "Overriding..." : "Override"}
                     </Button>
                     <Button 
                       size="sm" 
                       variant="industrial"
-                      onClick={() => approveMutation.mutate({
-                        assignment_ids: [assignment.id],
-                        comments: "Approved by supervisor"
-                      })}
-                      disabled={approveMutation.isPending}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!assignment.id) {
+                          toast.error("Error", { description: "Assignment ID is missing" });
+                          return;
+                        }
+                        console.log("Approve clicked - Assignment:", assignment);
+                        approveMutation.mutate({
+                          assignment_ids: [assignment.id],
+                          user_id: "system",
+                          comments: "Approved by supervisor"
+                        });
+                      }}
+                      disabled={approveMutation.isPending || assignment.status !== "PENDING"}
                     >
-                      Approve
+                      {approveMutation.isPending ? "Approving..." : "Approve"}
                     </Button>
                   </div>
                 </CardContent>
@@ -389,71 +439,132 @@ const Assignments = () => {
         </TabsContent>
 
         <TabsContent value="approved" className="space-y-4">
-          {approvedAssignments.map((assignment) => (
-            <Card key={assignment.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{assignment.trainset}</CardTitle>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(assignment.status)}
-                    <span className={`text-sm font-medium ${getPriorityColor(assignment.priority)}`}>
-                      {assignment.priority}
-                    </span>
+          {approvedAssignments.length === 0 ? (
+            <div className="text-center py-8">
+              <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
+              <p className="text-muted-foreground">No approved assignments</p>
+              <p className="text-sm text-muted-foreground mt-2">Approved assignments will appear here after you approve them from the Pending tab</p>
+            </div>
+          ) : (
+            approvedAssignments.map((assignment) => (
+              <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{assignment.trainset_id}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(assignment.status)}
+                      <span className={`text-sm font-medium ${getPriorityColor(assignment.priority.toString())}`}>
+                        Priority {assignment.priority}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Assigned to:</span>
-                    <p className="font-medium">{assignment.assignedTo}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Decision:</span>
+                      <p className="font-medium">{assignment.decision.decision}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Confidence:</span>
+                      <p className="font-medium">{Math.round(assignment.decision.confidence_score * 100)}%</p>
+                    </div>
+                    {assignment.approved_by && (
+                      <div>
+                        <span className="text-muted-foreground">Approved by:</span>
+                        <p className="font-medium">{assignment.approved_by}</p>
+                      </div>
+                    )}
+                    {assignment.approved_at && (
+                      <div>
+                        <span className="text-muted-foreground">Approved at:</span>
+                        <p className="font-medium">{new Date(assignment.approved_at).toLocaleString()}</p>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Scheduled:</span>
-                    <p className="font-medium">{assignment.scheduledDate}</p>
+                  {assignment.decision.reasons && assignment.decision.reasons.length > 0 && (
+                    <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasons[0]}</p>
+                  )}
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleViewDetails(assignment.trainset_id)}
+                    >
+                      <Info className="h-4 w-4 mr-2" />
+                      View Details
+                    </Button>
                   </div>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">{assignment.description}</p>
-                <div className="flex gap-2 mt-4">
-                  <Button size="sm" variant="outline">View Details</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </TabsContent>
 
         <TabsContent value="overridden" className="space-y-4">
-          {overriddenAssignments.map((assignment) => (
-            <Card key={assignment.id} className="hover:shadow-md transition-shadow">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">{assignment.trainset}</CardTitle>
-                  <div className="flex items-center gap-2">
-                    {getStatusBadge(assignment.status)}
-                    <span className={`text-sm font-medium ${getPriorityColor(assignment.priority)}`}>
-                      {assignment.priority}
-                    </span>
+          {overriddenAssignments.length === 0 ? (
+            <div className="text-center py-8">
+              <AlertTriangle className="h-12 w-12 text-orange-500 mx-auto mb-4" />
+              <p className="text-muted-foreground">No overridden assignments</p>
+              <p className="text-sm text-muted-foreground mt-2">Overridden assignments will appear here after you override them from the Pending tab</p>
+            </div>
+          ) : (
+            overriddenAssignments.map((assignment) => (
+              <Card key={assignment.id} className="hover:shadow-md transition-shadow border-orange-200">
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{assignment.trainset_id}</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {getStatusBadge(assignment.status)}
+                      <span className={`text-sm font-medium ${getPriorityColor(assignment.priority.toString())}`}>
+                        Priority {assignment.priority}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-muted-foreground">Assigned to:</span>
-                    <p className="font-medium">{assignment.assignedTo}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground">Original Decision:</span>
+                      <p className="font-medium">{assignment.decision.decision}</p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground">Override Decision:</span>
+                      <p className="font-medium text-orange-600">{assignment.override_decision || 'N/A'}</p>
+                    </div>
+                    {assignment.override_by && (
+                      <div>
+                        <span className="text-muted-foreground">Overridden by:</span>
+                        <p className="font-medium">{assignment.override_by}</p>
+                      </div>
+                    )}
+                    {assignment.override_at && (
+                      <div>
+                        <span className="text-muted-foreground">Overridden at:</span>
+                        <p className="font-medium">{new Date(assignment.override_at).toLocaleString()}</p>
+                      </div>
+                    )}
                   </div>
-                  <div>
-                    <span className="text-muted-foreground">Scheduled:</span>
-                    <p className="font-medium">{assignment.scheduledDate}</p>
+                  {assignment.override_reason && (
+                    <div className="mt-2 p-2 bg-orange-50 rounded">
+                      <span className="text-sm font-medium text-orange-800">Override Reason:</span>
+                      <p className="text-sm text-orange-700">{assignment.override_reason}</p>
+                    </div>
+                  )}
+                  <div className="flex gap-2 mt-4">
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      onClick={() => handleViewDetails(assignment.trainset_id)}
+                    >
+                      <Info className="h-4 w-4 mr-2" />
+                      View Details
+                    </Button>
                   </div>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">{assignment.description}</p>
-                <div className="flex gap-2 mt-4">
-                  <Button size="sm" variant="outline">View Details</Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            ))
+          )}
         </TabsContent>
       </Tabs>
 
