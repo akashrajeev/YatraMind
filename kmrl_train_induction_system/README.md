@@ -265,4 +265,3 @@ docker-compose up -d
 4. Add tests
 5. Submit a pull request
 
-
