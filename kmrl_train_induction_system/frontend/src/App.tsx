@@ -13,6 +13,8 @@ import DataIngestion from "./pages/DataIngestion";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import { useAuth } from "@/contexts/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
 const queryClient = new QueryClient();
 
@@ -54,62 +56,76 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+const withDashboardLayout = (component: React.ReactNode) => (
+  <DashboardLayout>{component}</DashboardLayout>
+);
+
 const AppRoutes = () => (
   <Routes>
-    <Route path="/login" element={
-      <PublicRoute>
-        <Login />
-      </PublicRoute>
-    } />
-    <Route path="/" element={
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Dashboard />
-        </DashboardLayout>
-      </ProtectedRoute>
-    } />
-    <Route path="/assignments" element={
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Assignments />
-        </DashboardLayout>
-      </ProtectedRoute>
-    } />
-    <Route path="/trainsets" element={
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Trainsets />
-        </DashboardLayout>
-      </ProtectedRoute>
-    } />
-    <Route path="/optimization" element={
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Optimization />
-        </DashboardLayout>
-      </ProtectedRoute>
-    } />
-    <Route path="/data-ingestion" element={
-      <ProtectedRoute>
-        <DashboardLayout>
-          <DataIngestion />
-        </DashboardLayout>
-      </ProtectedRoute>
-    } />
-    <Route path="/reports" element={
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Reports />
-        </DashboardLayout>
-      </ProtectedRoute>
-    } />
-    <Route path="/settings" element={
-      <ProtectedRoute>
-        <DashboardLayout>
-          <Settings />
-        </DashboardLayout>
-      </ProtectedRoute>
-    } />
+    <Route
+      path="/login"
+      element={
+        <PublicRoute>
+          <Login />
+        </PublicRoute>
+      }
+    />
+    <Route
+      path="/"
+      element={
+        <ProtectedRoute>
+          {withDashboardLayout(<Dashboard />)}
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/assignments"
+      element={
+        <ProtectedRoute>
+          {withDashboardLayout(<Assignments />)}
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/trainsets"
+      element={
+        <ProtectedRoute>
+          {withDashboardLayout(<Trainsets />)}
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/optimization"
+      element={
+        <ProtectedRoute>
+          {withDashboardLayout(<Optimization />)}
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/data-ingestion"
+      element={
+        <ProtectedRoute>
+          {withDashboardLayout(<DataIngestion />)}
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/reports"
+      element={
+        <ProtectedRoute>
+          {withDashboardLayout(<Reports />)}
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/settings"
+      element={
+        <ProtectedRoute>
+          {withDashboardLayout(<Settings />)}
+        </ProtectedRoute>
+      }
+    />
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
@@ -119,18 +135,8 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="system" storageKey="kmrl-ui-theme">
         <BrowserRouter>
-          <DashboardLayout>
-            <Routes>
-              <Route path="/" element={<Dashboard />} />
-              <Route path="/assignments" element={<Assignments />} />
-              <Route path="/trainsets" element={<Trainsets />} />
-              <Route path="/optimization" element={<Optimization />} />
-              <Route path="/data-ingestion" element={<DataIngestion />} />
-              <Route path="/reports" element={<Reports />} />
-              <Route path="/settings" element={<Settings />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </DashboardLayout>
+          <AppRoutes />
+          <Toaster />
         </BrowserRouter>
       </ThemeProvider>
     </QueryClientProvider>
