@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { NavLink, useLocation } from "react-router-dom";
 import {
   Sidebar,
@@ -104,25 +103,6 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r border-border bg-card/30 backdrop-blur-sm">
       <SidebarContent className="p-4">
-        {/* Logo Section */}
-        <div className="mb-6 px-2">
-          {!isCollapsed ? (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center">
-                <Train className="w-4 h-4 text-primary-foreground" />
-              </div>
-              <div>
-                <h2 className="font-bold text-sm text-foreground">KMRL Pro</h2>
-                <p className="text-xs text-muted-foreground">v2.1.0</p>
-              </div>
-            </div>
-          ) : (
-            <div className="w-8 h-8 bg-gradient-primary rounded-lg flex items-center justify-center mx-auto">
-              <Train className="w-4 h-4 text-primary-foreground" />
-            </div>
-          )}
-        </div>
-
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">

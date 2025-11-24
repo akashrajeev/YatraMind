@@ -8,33 +8,44 @@ import os
 import sys
 import subprocess
 from pathlib import Path
+from dotenv import load_dotenv
 
-# Set environment variables for development
-os.environ["API_KEY"] = "kmrl_api_key_2024"
-os.environ["SECRET_KEY"] = "kmrl-secret-key-2024"
-os.environ["DEBUG"] = "true"
-os.environ["ENVIRONMENT"] = "development"
+BASE_DIR = Path(__file__).parent
 
-# Set database URLs to use mock data
-os.environ["MONGODB_URL"] = "mongodb://localhost:27017/kmrl_db"
-os.environ["DATABASE_NAME"] = "kmrl_db"
+def set_default(key: str, value: str) -> None:
+    """Only set env var if it's not already defined (e.g. via .env)."""
+    if os.environ.get(key) is None:
+        os.environ[key] = value
+
+# Load .env (so values defined there win)
+load_dotenv(BASE_DIR / ".env")
+
+# Set environment variables for development (fallbacks)
+set_default("API_KEY", "kmrl_api_key_2024")
+set_default("SECRET_KEY", "kmrl-secret-key-2024")
+set_default("DEBUG", "true")
+set_default("ENVIRONMENT", "development")
+
+# Set database URLs to use mock data unless overridden
+set_default("MONGODB_URL", "mongodb://localhost:27017/kmrl_db")
+set_default("DATABASE_NAME", "kmrl_db")
 
 # Set InfluxDB to use mock data
-os.environ["INFLUXDB_URL"] = "https://us-west-2-1.aws.cloud2.influxdata.com"
-os.environ["INFLUXDB_TOKEN"] = "mock_token"
-os.environ["INFLUXDB_ORG"] = "mock_org"
-os.environ["INFLUXDB_BUCKET"] = "kmrl_sensor_data"
+set_default("INFLUXDB_URL", "https://us-west-2-1.aws.cloud2.influxdata.com")
+set_default("INFLUXDB_TOKEN", "mock_token")
+set_default("INFLUXDB_ORG", "mock_org")
+set_default("INFLUXDB_BUCKET", "kmrl_sensor_data")
 
-# Set Redis to use local instance
-os.environ["REDIS_URL"] = "redis://localhost:6379"
+# Set Redis to use local instance by default
+set_default("REDIS_URL", "redis://localhost:6379")
 
-# Set MQTT configuration
-os.environ["MQTT_BROKER"] = "broker.hivemq.com"
-os.environ["MQTT_PORT"] = "1883"
+# Set MQTT configuration defaults
+set_default("MQTT_BROKER", "broker.hivemq.com")
+set_default("MQTT_PORT", "1883")
 
-# Set ML model configuration
-os.environ["MODEL_PATH"] = "models/"
-os.environ["CONFIDENCE_THRESHOLD"] = "0.8"
+# Set ML model configuration defaults
+set_default("MODEL_PATH", "models/")
+set_default("CONFIDENCE_THRESHOLD", "0.8")
 
 print("🚀 Starting KMRL Train Induction System in Development Mode")
 print("=" * 60)
@@ -44,8 +55,7 @@ print(f"Environment: {os.environ['ENVIRONMENT']}")
 print("=" * 60)
 
 # Change to the backend directory
-backend_dir = Path(__file__).parent
-os.chdir(backend_dir)
+os.chdir(BASE_DIR)
 
 # Start the FastAPI server
 try:

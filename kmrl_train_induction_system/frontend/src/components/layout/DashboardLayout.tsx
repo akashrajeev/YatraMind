@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
@@ -6,10 +5,11 @@ import { AppSidebar } from "./AppSidebar";
 import { StatusBar } from "./StatusBar";
 import { ThemeToggle } from "@/components/theme-toggle";
 
-import { Bell, Settings, User, LogOut } from "lucide-react";
+import { Settings, User, LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+
+import { useAuth } from "@/contexts/AuthContext";
 
 
 import {
@@ -27,18 +27,15 @@ interface DashboardLayoutProps {
 
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  // Temporary values until auth is implemented
-  const user = {
-    name: "User",
-    username: "user123",
-    role: "admin",
-  };
+  const displayName = user?.name || user?.username || "User";
+  const displayUsername = user?.username || "unknown";
+  const displayRole = user?.role?.toLowerCase().replace("_", " ") || "member";
 
   const handleLogout = () => {
-    console.log("Logout clicked");
-    // Add navigation or token clearing here once auth is ready
-    // navigate("/login");
+    logout();
+    navigate("/login", { replace: true });
   };
 
   return (
@@ -87,13 +84,13 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                     <DropdownMenuLabel>
                       <div className="flex flex-col space-y-1">
                         <p className="text-sm font-medium leading-none">
-                          {user.name}
+                          {displayName}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground">
-                          {user.username}
+                          {displayUsername}
                         </p>
                         <p className="text-xs leading-none text-muted-foreground mt-1">
-                          {user.role}
+                          {displayRole}
                         </p>
                       </div>
                     </DropdownMenuLabel>
