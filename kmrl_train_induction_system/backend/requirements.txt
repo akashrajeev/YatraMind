@@ -1,44 +1,76 @@
-fastapi==0.104.1
-uvicorn[standard]==0.24.0
-pydantic==2.5.0
-pydantic-settings==2.1.0
-pymongo==4.6.0
-motor==3.3.2
-redis==5.0.1
-influxdb-client==1.38.0
+# Core web framework
+fastapi==0.115.0
+uvicorn[standard]==0.32.0
+pydantic==2.9.2
+pydantic-settings==2.5.2
+
+# Database drivers
+# motor 3.6.0 requires pymongo<4.10 and >=4.9, so using pymongo 4.9.0
+pymongo==4.9.0
+motor==3.6.0
+redis==5.2.0
+influxdb-client==1.41.0
+
+# MQTT and messaging
 paho-mqtt==1.6.1
-google-api-python-client==2.108.0
-google-auth-httplib2==0.1.1
-google-auth-oauthlib==1.1.0
+
+# Google APIs
+google-api-python-client==2.152.0
+google-auth-httplib2==0.2.0
+google-auth-oauthlib==1.2.1
+
+# Optimization
+# Using ortools 9.8.x to maintain compatibility with protobuf<5.0 (required by tensorflow 2.14.0)
+# ortools 9.10+ requires protobuf>=5.26.1 which conflicts with tensorflow's protobuf<5.0 requirement
 ortools==9.8.3296
+
+# Data science and ML
+# NumPy 1.24.x is compatible with TensorFlow 2.14.0 (requires numpy<2.0,>=1.19.2)
+# and PyTorch 2.1.0 (supports numpy 1.21-1.26)
 pandas==2.1.4
-numpy==1.25.2
+numpy==1.24.4
 scikit-learn==1.3.2
+# TensorFlow 2.14.0 is stable and compatible with numpy 1.24.x
+tensorflow>=2.14.0
+# PyTorch 2.1.0 is stable and compatible with numpy 1.24.x
 torch==2.1.0
-tensorflow==2.14.0
+shap==0.44.0
+
+# Rules engine
 durable-rules==2.0.28
-python-jose[cryptography]==3.3.0
-python-multipart==0.0.6
-python-dotenv==1.0.0
-requests==2.31.0
-aiofiles==23.2.1
-jinja2==3.1.2
-shap==0.42.1
-# Celery and Redis for background tasks
-celery==5.3.4
-kombu==5.3.4
-# Socket.IO for real-time updates
-python-socketio==5.10.0
-fastapi-socketio==0.0.6
-# Report generation
-reportlab==4.0.7
+
 # Authentication and security
-python-multipart==0.0.6
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.12
+# Using bcrypt 3.2.2 for compatibility with passlib 1.7.4 (newer bcrypt versions removed __about__)
+bcrypt==3.2.2
 passlib[bcrypt]==1.7.4
+
+# Utilities
+python-dotenv==1.0.1
+requests==2.32.3
+aiofiles==24.1.0
+jinja2==3.1.4
+
+# Celery and Redis for background tasks
+celery==5.4.0
+kombu==5.4.0
+
+# Socket.IO for real-time updates
+python-socketio==5.11.3
+fastapi-socketio==0.0.6
+
+# Report generation
+reportlab==4.2.5
+
 # Testing dependencies
-pytest==8.4.2
-pytest-asyncio==0.23.2
-httpx==0.27.0
+pytest==8.3.3
+pytest-asyncio==0.24.0
+httpx==0.27.2
+
 # Production dependencies
-gunicorn==21.2.0
+gunicorn==23.0.0
 prometheus-fastapi-instrumentator==7.0.0
+
+apscheduler==3.10.4
+

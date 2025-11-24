@@ -16,7 +16,8 @@ class UserRole(str, Enum):
 
 class User(BaseModel):
     id: str = Field(..., description="Unique user ID")
-    email: EmailStr = Field(..., description="User email address")
+    username: str = Field(..., description="Username for login")
+    email: Optional[EmailStr] = Field(None, description="User email address (optional)")
     name: str = Field(..., description="User full name")
     role: UserRole = Field(..., description="User role")
     permissions: List[str] = Field(default_factory=list, description="User permissions")
@@ -53,7 +54,7 @@ class UserUpdate(BaseModel):
 
 
 class UserLogin(BaseModel):
-    email: EmailStr
+    username: str  # Changed from email to username
     password: str
 
 
