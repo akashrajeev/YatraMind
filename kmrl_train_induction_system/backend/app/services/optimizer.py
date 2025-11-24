@@ -1,6 +1,6 @@
 # backend/app/services/optimizer.py
-from typing import List, Dict, Any
-from app.models.trainset import OptimizationRequest, InductionDecision
+from typing import List, Dict, Any, Optional
+from app.models.trainset import OptimizationRequest, InductionDecision, OptimizationWeights
 from ortools.linear_solver import pywraplp
 import logging
 from app.utils.explainability import (
@@ -35,11 +35,57 @@ class TrainInductionOptimizer:
         try:
             logger.info(f"Starting optimization for {len(trainsets)} trainsets")
             
+            # Get custom weights from request or use defaults
+            if request.weights:
+                weights = request.weights
+            else:
+                weights = OptimizationWeights()  # Use defaults
+            
+            # Integrate ML risk prediction for all trainsets
+            try:
+                from app.ml.predictor import batch_predict
+                logger.info("Calling ML batch_predict for risk assessment")
+                
+                # Prepare features for ML prediction
+                features_for_pred = []
+                for t in trainsets:
+                    feature_dict = {"trainset_id": t.get("trainset_id")}
+                    # Extract numeric features
+                    for key, value in t.items():
+                        if isinstance(value, (int, float)):
+                            feature_dict[key] = value
+                    features_for_pred.append(feature_dict)
+                
+                # Get ML predictions
+                predictions = await batch_predict(features_for_pred)
+                prediction_map = {p["trainset_id"]: p for p in predictions}
+                
+                # Update trainsets with ML risk predictions
+                for trainset in trainsets:
+                    trainset_id = trainset.get("trainset_id")
+                    if trainset_id in prediction_map:
+                        pred = prediction_map[trainset_id]
+                        trainset["predicted_failure_risk"] = pred.get("risk_prob", 0.2)
+                        if "top_features" in pred:
+                            trainset["risk_top_features"] = pred.get("top_features", [])
+                        logger.debug(f"Updated {trainset_id} with ML risk: {trainset['predicted_failure_risk']}")
+                    else:
+                        # Fallback if prediction fails
+                        trainset["predicted_failure_risk"] = trainset.get("predicted_failure_risk", 0.2)
+                
+                logger.info(f"ML predictions completed for {len(predictions)} trainsets")
+            except Exception as ml_error:
+                logger.warning(f"ML prediction failed, using existing risk values: {ml_error}")
+                # Continue with existing predicted_failure_risk values if ML fails
+                for trainset in trainsets:
+                    if "predicted_failure_risk" not in trainset:
+                        trainset["predicted_failure_risk"] = 0.2
+            
             # Build an assignment model (0/1) with weighted objective
             solver = pywraplp.Solver.CreateSolver("SCIP")
             if solver is None:
                 # Fallback to previous scoring if OR-Tools missing
-                return await self._optimize_with_scoring(trainsets, request)
+                return await self._optimize_with_scoring(trainsets, request, weights)
 
             x_vars = {}
             readiness_scores = {}
@@ -51,7 +97,11 @@ class TrainInductionOptimizer:
                 var = solver.BoolVar(f"x_{idx}")
                 x_vars[idx] = var
                 readiness_scores[idx] = self._readiness_score(t)
-                reliability_scores[idx] = self._reliability_score(t)
+                # Incorporate ML risk prediction into reliability score
+                reliability_base = self._reliability_score(t)
+                predicted_risk = float(t.get("predicted_failure_risk", 0.2))
+                # Lower risk = higher reliability score
+                reliability_scores[idx] = reliability_base * (1.0 - predicted_risk)
                 cost_scores[idx] = self._cost_score(t)
                 branding_scores[idx] = self._branding_score(t)
 
@@ -66,11 +116,19 @@ class TrainInductionOptimizer:
                 if t["trainset_id"] not in eligible_ids:
                     solver.Add(x_vars[idx] == 0)
 
-            # Weighted objective
-            w_readiness = 0.35
-            w_reliability = 0.30
-            w_cost = 0.15
-            w_branding = 0.20
+            # Weighted objective - use custom weights from request
+            w_readiness = weights.readiness
+            w_reliability = weights.reliability
+            w_branding = weights.branding
+            # Map cost weight from mileage_balance + shunt weights
+            w_cost = (weights.mileage_balance + weights.shunt) / 2.0  # Combine related weights
+            # If weights don't sum to 1.0, normalize them
+            total_weight = w_readiness + w_reliability + w_branding + w_cost
+            if total_weight > 0:
+                w_readiness /= total_weight
+                w_reliability /= total_weight
+                w_branding /= total_weight
+                w_cost /= total_weight
 
             objective_terms = []
             for i in x_vars:
@@ -140,7 +198,7 @@ class TrainInductionOptimizer:
                                 )
                             )
             else:
-                return await self._optimize_with_scoring(trainsets, request)
+                return await self._optimize_with_scoring(trainsets, request, weights)
 
             logger.info(f"Optimization completed: {len([d for d in decisions if d.decision=='INDUCT'])} inducted")
             return decisions
@@ -176,39 +234,41 @@ class TrainInductionOptimizer:
         
         return eligible
     
-    def _calculate_optimization_score(self, trainset: Dict[str, Any], request: OptimizationRequest) -> float:
+    def _calculate_optimization_score(self, trainset: Dict[str, Any], request: OptimizationRequest, weights: OptimizationWeights) -> float:
         """Calculate multi-objective optimization score"""
         score = 0.0
         
-        # Fitness score (0-1)
-        fitness_score = self._calculate_fitness_score(trainset)
-        score += fitness_score * self.optimization_weights["fitness_score"]
+        # Readiness score (fitness + maintenance status)
+        readiness_score = self._readiness_score(trainset)
+        score += readiness_score * weights.readiness
         
-        # Maintenance priority (inverse of open cards)
-        maintenance_score = max(0, 1 - (trainset["job_cards"]["open_cards"] / 10))
-        score += maintenance_score * self.optimization_weights["maintenance_priority"]
+        # Reliability score (sensor health + ML risk)
+        reliability_base = self._reliability_score(trainset)
+        # Incorporate ML risk prediction
+        predicted_risk = float(trainset.get("predicted_failure_risk", 0.2))
+        reliability_score = reliability_base * (1.0 - predicted_risk)  # Lower risk = higher reliability
+        score += reliability_score * weights.reliability
         
         # Branding priority
-        branding_score = self._calculate_branding_score(trainset)
-        score += branding_score * self.optimization_weights["branding_priority"]
+        branding_score = self._branding_score(trainset)
+        score += branding_score * weights.branding
         
         # Mileage balance (prefer lower mileage for even distribution)
-        mileage_score = 1 - (trainset["current_mileage"] / trainset["max_mileage_before_maintenance"])
-        score += mileage_score * self.optimization_weights["mileage_balance"]
+        mileage_score = 1 - (trainset["current_mileage"] / max(1.0, trainset["max_mileage_before_maintenance"]))
+        score += mileage_score * weights.mileage_balance
         
-        # Operational efficiency / reliability via ML risk: higher risk => lower score
-        predicted_risk = float(trainset.get("predicted_failure_risk", 0.2))
-        operational_score = max(0.0, 1.0 - predicted_risk)
-        score += operational_score * self.optimization_weights["operational_efficiency"]
+        # Shunt cost (lower is better, so we use inverse of cost score)
+        cost_score = self._cost_score(trainset)
+        score += cost_score * weights.shunt
         
         return min(score, 1.0)
 
-    async def _optimize_with_scoring(self, trainsets: List[Dict[str, Any]], request: OptimizationRequest) -> List[InductionDecision]:
+    async def _optimize_with_scoring(self, trainsets: List[Dict[str, Any]], request: OptimizationRequest, weights: OptimizationWeights) -> List[InductionDecision]:
         """Fallback scorer-only optimization when OR-Tools is unavailable."""
         eligible_trainsets = self._filter_by_constraints(trainsets)
         scored_trainsets = []
         for trainset in eligible_trainsets:
-            score = self._calculate_optimization_score(trainset, request)
+            score = self._calculate_optimization_score(trainset, request, weights)
             scored_trainsets.append((trainset, score))
         scored_trainsets.sort(key=lambda x: x[1], reverse=True)
         target_inductions = min(14, len(scored_trainsets))

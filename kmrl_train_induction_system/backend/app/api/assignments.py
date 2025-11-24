@@ -1,6 +1,6 @@
 # backend/app/api/assignments.py
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import logging
 import uuid
@@ -12,7 +12,7 @@ from app.models.assignment import (
 )
 from app.models.audit import AuditLogCreate, AuditAction
 from app.utils.cloud_database import cloud_db_manager
-from app.security import require_api_key, get_current_user
+from app.security import require_api_key
 from app.services.notification_service import NotificationService
 
 logger = logging.getLogger(__name__)
@@ -20,6 +20,71 @@ router = APIRouter()
 
 # Initialize notification service
 notification_service = NotificationService()
+
+
+def _transform_doc_to_assignment(doc: Dict[str, Any]) -> Assignment:
+    """Transform database document to Assignment model, handling missing fields and data structure mismatches"""
+    # Remove MongoDB _id
+    doc.pop('_id', None)
+    
+    # Get trainset_id from assignment level
+    trainset_id = doc.get('trainset_id', '')
+    
+    # Fix decision field - ensure it has trainset_id inside it for InductionDecision model
+    decision_data = doc.get('decision', {})
+    if isinstance(decision_data, dict):
+        # Add trainset_id to decision if missing
+        if 'trainset_id' not in decision_data:
+            decision_data['trainset_id'] = trainset_id
+        
+        # Map old field names to new ones if needed
+        if 'reasoning' in decision_data and 'reasons' not in decision_data:
+            decision_data['reasons'] = [decision_data.pop('reasoning')] if decision_data.get('reasoning') else []
+        
+        # Ensure all required InductionDecision fields exist
+        decision_data.setdefault('decision', 'STANDBY')
+        decision_data.setdefault('confidence_score', 0.8)
+        decision_data.setdefault('reasons', [])
+        decision_data.setdefault('score', 0.0)
+        decision_data.setdefault('top_reasons', [])
+        decision_data.setdefault('top_risks', [])
+        decision_data.setdefault('violations', [])
+        decision_data.setdefault('shap_values', [])
+        
+        doc['decision'] = decision_data
+    
+    # Add missing required fields with defaults
+    if 'created_by' not in doc:
+        doc['created_by'] = doc.get('assigned_to', 'system')
+    
+    # Map updated_at to last_updated if needed
+    if 'updated_at' in doc and 'last_updated' not in doc:
+        try:
+            if isinstance(doc['updated_at'], str):
+                doc['last_updated'] = datetime.fromisoformat(doc['updated_at'].replace('Z', '+00:00'))
+            else:
+                doc['last_updated'] = doc['updated_at']
+        except Exception:
+            doc['last_updated'] = datetime.utcnow()
+    
+    # Ensure created_at is datetime if it's a string
+    if 'created_at' in doc and isinstance(doc['created_at'], str):
+        try:
+            doc['created_at'] = datetime.fromisoformat(doc['created_at'].replace('Z', '+00:00'))
+        except Exception:
+            doc['created_at'] = datetime.utcnow()
+    
+    # Map scheduled_date to execution_date if needed
+    if 'scheduled_date' in doc and 'execution_date' not in doc:
+        try:
+            if isinstance(doc['scheduled_date'], str):
+                doc['execution_date'] = datetime.fromisoformat(doc['scheduled_date'].replace('Z', '+00:00'))
+            else:
+                doc['execution_date'] = doc['scheduled_date']
+        except Exception:
+            pass
+    
+    return Assignment(**doc)
 
 
 @router.get("/", response_model=List[Assignment])
@@ -55,227 +120,17 @@ async def get_assignments(
         assignments = []
         
         async for doc in cursor:
-            doc.pop('_id', None)
-            assignments.append(Assignment(**doc))
+            try:
+                assignments.append(_transform_doc_to_assignment(doc))
+            except Exception as e:
+                logger.warning(f"Skipping invalid assignment document: {e}")
+                continue
         
         return assignments
         
     except Exception as e:
         logger.error(f"Error fetching assignments: {e}")
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-
-@router.get("/{assignment_id}", response_model=Assignment)
-async def get_assignment(
-    assignment_id: str,
-    _auth=Depends(require_api_key)
-):
-    """Get specific assignment by ID"""
-    try:
-        collection = await cloud_db_manager.get_collection("assignments")
-        doc = await collection.find_one({"id": assignment_id})
-        
-        if not doc:
-            raise HTTPException(status_code=404, detail="Assignment not found")
-        
-        doc.pop('_id', None)
-        return Assignment(**doc)
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error fetching assignment {assignment_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
-
-
-@router.post("/", response_model=Assignment)
-async def create_assignment(
-    assignment_data: AssignmentCreate,
-    background_tasks: BackgroundTasks,
-    current_user=Depends(get_current_user),
-    _auth=Depends(require_api_key)
-):
-    """Create a new assignment"""
-    try:
-        assignment_id = str(uuid.uuid4())
-        
-        assignment = Assignment(
-            id=assignment_id,
-            trainset_id=assignment_data.trainset_id,
-            decision=assignment_data.decision,
-            created_by=current_user["id"],
-            priority=assignment_data.priority,
-            execution_date=assignment_data.execution_date
-        )
-        
-        # Save to database
-        collection = await cloud_db_manager.get_collection("assignments")
-        await collection.insert_one(assignment.dict())
-        
-        # Log audit event
-        audit_log = AuditLogCreate(
-            user_id=current_user["id"],
-            action=AuditAction.ASSIGNMENT_CREATED,
-            resource_type="assignment",
-            resource_id=assignment_id,
-            details={
-                "trainset_id": assignment_data.trainset_id,
-                "decision": assignment_data.decision.decision,
-                "priority": assignment_data.priority
-            }
-        )
-        background_tasks.add_task(log_audit_event, audit_log)
-        
-        # Send notification
-        background_tasks.add_task(
-            send_assignment_notification,
-            assignment_id,
-            "Assignment Created",
-            f"New assignment created for trainset {assignment_data.trainset_id}"
-        )
-        
-        logger.info(f"Created assignment {assignment_id} for trainset {assignment_data.trainset_id}")
-        return assignment
-        
-    except Exception as e:
-        logger.error(f"Error creating assignment: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to create assignment: {str(e)}")
-
-
-@router.post("/approve")
-async def approve_assignments(
-    approval_request: ApprovalRequest,
-    background_tasks: BackgroundTasks,
-    current_user=Depends(get_current_user),
-    _auth=Depends(require_api_key)
-):
-    """Approve multiple assignments"""
-    try:
-        collection = await cloud_db_manager.get_collection("assignments")
-        current_time = datetime.utcnow()
-        
-        # Update assignments
-        result = await collection.update_many(
-            {"id": {"$in": approval_request.assignment_ids}},
-            {
-                "$set": {
-                    "status": AssignmentStatus.APPROVED.value,
-                    "approved_by": current_user["id"],
-                    "approved_at": current_time,
-                    "approval_comments": approval_request.comments,
-                    "last_updated": current_time
-                }
-            }
-        )
-        
-        if result.modified_count == 0:
-            raise HTTPException(status_code=404, detail="No assignments found to approve")
-        
-        # Log audit event
-        audit_log = AuditLogCreate(
-            user_id=current_user["id"],
-            action=AuditAction.ASSIGNMENT_APPROVED,
-            resource_type="assignment",
-            resource_id=",".join(approval_request.assignment_ids),
-            details={
-                "assignment_count": result.modified_count,
-                "comments": approval_request.comments
-            }
-        )
-        background_tasks.add_task(log_audit_event, audit_log)
-        
-        # Send notifications
-        for assignment_id in approval_request.assignment_ids:
-            background_tasks.add_task(
-                send_assignment_notification,
-                assignment_id,
-                "Assignment Approved",
-                f"Assignment has been approved and locked for execution"
-            )
-        
-        logger.info(f"Approved {result.modified_count} assignments by user {current_user['id']}")
-        return {
-            "message": f"Successfully approved {result.modified_count} assignments",
-            "approved_count": result.modified_count
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error approving assignments: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to approve assignments: {str(e)}")
-
-
-@router.post("/override")
-async def override_assignment(
-    override_request: OverrideRequest,
-    background_tasks: BackgroundTasks,
-    current_user=Depends(get_current_user),
-    _auth=Depends(require_api_key)
-):
-    """Override an assignment decision"""
-    try:
-        collection = await cloud_db_manager.get_collection("assignments")
-        current_time = datetime.utcnow()
-        
-        # Get original assignment
-        original_assignment = await collection.find_one({"id": override_request.assignment_id})
-        if not original_assignment:
-            raise HTTPException(status_code=404, detail="Assignment not found")
-        
-        # Update assignment
-        result = await collection.update_one(
-            {"id": override_request.assignment_id},
-            {
-                "$set": {
-                    "status": AssignmentStatus.OVERRIDDEN.value,
-                    "override_reason": override_request.reason,
-                    "override_by": current_user["id"],
-                    "override_at": current_time,
-                    "override_decision": override_request.override_decision,
-                    "last_updated": current_time
-                }
-            }
-        )
-        
-        if result.modified_count == 0:
-            raise HTTPException(status_code=400, detail="Failed to override assignment")
-        
-        # Log audit event
-        audit_log = AuditLogCreate(
-            user_id=current_user["id"],
-            action=AuditAction.ASSIGNMENT_OVERRIDDEN,
-            resource_type="assignment",
-            resource_id=override_request.assignment_id,
-            details={
-                "original_decision": original_assignment["decision"]["decision"],
-                "override_decision": override_request.override_decision,
-                "reason": override_request.reason,
-                "trainset_id": original_assignment["trainset_id"]
-            },
-            risk_level="HIGH"
-        )
-        background_tasks.add_task(log_audit_event, audit_log)
-        
-        # Send notification
-        background_tasks.add_task(
-            send_assignment_notification,
-            override_request.assignment_id,
-            "Assignment Overridden",
-            f"Assignment decision overridden: {override_request.override_decision}"
-        )
-        
-        logger.info(f"Overridden assignment {override_request.assignment_id} by user {current_user['id']}")
-        return {
-            "message": "Assignment successfully overridden",
-            "assignment_id": override_request.assignment_id
-        }
-        
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error overriding assignment: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to override assignment: {str(e)}")
 
 
 @router.get("/summary", response_model=AssignmentSummary)
@@ -285,6 +140,26 @@ async def get_assignment_summary(
     """Get assignment summary statistics"""
     try:
         collection = await cloud_db_manager.get_collection("assignments")
+        
+        # Reset any existing APPROVED/OVERRIDDEN assignments back to PENDING
+        # This ensures they don't appear in approved/overridden tabs without user action
+        reset_result = await collection.update_many(
+            {"status": {"$in": ["APPROVED", "OVERRIDDEN"]}},
+            {
+                "$set": {
+                    "status": "PENDING",
+                    "approved_by": None,
+                    "approved_at": None,
+                    "override_by": None,
+                    "override_at": None,
+                    "override_reason": None,
+                    "override_decision": None,
+                    "last_updated": datetime.utcnow()
+                }
+            }
+        )
+        if reset_result.modified_count > 0:
+            logger.info(f"Reset {reset_result.modified_count} assignments back to PENDING status")
         
         # Get total counts
         total_assignments = await collection.count_documents({})
@@ -341,10 +216,292 @@ async def get_assignment_summary(
         )
 
 
-async def create_sample_assignments():
-    """Create sample assignments with real data"""
+@router.get("/conflicts", response_model=List[Assignment])
+async def get_conflict_assignments(
+    _auth=Depends(require_api_key)
+):
+    """Get assignments with conflicts (violations)"""
     try:
         collection = await cloud_db_manager.get_collection("assignments")
+        
+        # Find assignments with violations
+        cursor = collection.find({
+            "decision.violations": {"$exists": True, "$ne": []}
+        })
+        
+        assignments = []
+        async for doc in cursor:
+            try:
+                assignments.append(_transform_doc_to_assignment(doc))
+            except Exception as e:
+                logger.warning(f"Skipping invalid assignment document: {e}")
+                continue
+        
+        return assignments
+        
+    except Exception as e:
+        logger.error(f"Error fetching conflict assignments: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch conflicts: {str(e)}")
+
+
+@router.get("/{assignment_id}", response_model=Assignment)
+async def get_assignment(
+    assignment_id: str,
+    _auth=Depends(require_api_key)
+):
+    """Get specific assignment by ID"""
+    try:
+        collection = await cloud_db_manager.get_collection("assignments")
+        doc = await collection.find_one({"id": assignment_id})
+        
+        if not doc:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+        
+        return _transform_doc_to_assignment(doc)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching assignment {assignment_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}")
+
+
+@router.post("/", response_model=Assignment)
+async def create_assignment(
+    assignment_data: AssignmentCreate,
+    background_tasks: BackgroundTasks,
+    _auth=Depends(require_api_key)
+):
+    """Create a new assignment"""
+    try:
+        assignment_id = str(uuid.uuid4())
+        
+        # Use created_by from request or default to 'system'
+        created_by = getattr(assignment_data, 'created_by', None) or "system"
+        
+        assignment = Assignment(
+            id=assignment_id,
+            trainset_id=assignment_data.trainset_id,
+            decision=assignment_data.decision,
+            created_by=created_by,
+            priority=assignment_data.priority,
+            execution_date=assignment_data.execution_date
+        )
+        
+        # Save to database
+        collection = await cloud_db_manager.get_collection("assignments")
+        await collection.insert_one(assignment.dict())
+        
+        # Log audit event
+        audit_log = AuditLogCreate(
+            user_id=created_by,
+            action=AuditAction.ASSIGNMENT_CREATED,
+            resource_type="assignment",
+            resource_id=assignment_id,
+            details={
+                "trainset_id": assignment_data.trainset_id,
+                "decision": assignment_data.decision.decision,
+                "priority": assignment_data.priority
+            }
+        )
+        background_tasks.add_task(log_audit_event, audit_log)
+        
+        # Send notification
+        background_tasks.add_task(
+            send_assignment_notification,
+            assignment_id,
+            "Assignment Created",
+            f"New assignment created for trainset {assignment_data.trainset_id}"
+        )
+        
+        logger.info(f"Created assignment {assignment_id} for trainset {assignment_data.trainset_id}")
+        return assignment
+        
+    except Exception as e:
+        logger.error(f"Error creating assignment: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to create assignment: {str(e)}")
+
+
+@router.post("/approve")
+async def approve_assignments(
+    approval_request: ApprovalRequest,
+    background_tasks: BackgroundTasks,
+    _auth=Depends(require_api_key)
+):
+    """Approve multiple assignments"""
+    try:
+        collection = await cloud_db_manager.get_collection("assignments")
+        current_time = datetime.utcnow()
+        
+        # Use user_id from request, or default to 'system' if not provided
+        user_id = approval_request.user_id or "system"
+        
+        # Only update assignments that are PENDING (can't approve already approved/overridden)
+        result = await collection.update_many(
+            {
+                "id": {"$in": approval_request.assignment_ids},
+                "status": AssignmentStatus.PENDING.value  # Only approve PENDING assignments
+            },
+            {
+                "$set": {
+                    "status": AssignmentStatus.APPROVED.value,
+                    "approved_by": user_id,
+                    "approved_at": current_time,
+                    "approval_comments": approval_request.comments,
+                    "last_updated": current_time
+                }
+            }
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=404, detail="No pending assignments found to approve")
+        
+        # Log audit event
+        audit_log = AuditLogCreate(
+            user_id=user_id,
+            action=AuditAction.ASSIGNMENT_APPROVED,
+            resource_type="assignment",
+            resource_id=",".join(approval_request.assignment_ids),
+            details={
+                "assignment_count": result.modified_count,
+                "comments": approval_request.comments
+            }
+        )
+        background_tasks.add_task(log_audit_event, audit_log)
+        
+        # Send notifications
+        for assignment_id in approval_request.assignment_ids:
+            background_tasks.add_task(
+                send_assignment_notification,
+                assignment_id,
+                "Assignment Approved",
+                f"Assignment has been approved and locked for execution"
+            )
+        
+        logger.info(f"Approved {result.modified_count} assignments by user {user_id}")
+        return {
+            "message": f"Successfully approved {result.modified_count} assignments",
+            "approved_count": result.modified_count
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error approving assignments: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to approve assignments: {str(e)}")
+
+
+@router.post("/override")
+async def override_assignment(
+    override_request: OverrideRequest,
+    background_tasks: BackgroundTasks,
+    _auth=Depends(require_api_key)
+):
+    """Override an assignment decision"""
+    try:
+        collection = await cloud_db_manager.get_collection("assignments")
+        current_time = datetime.utcnow()
+        
+        # Use user_id from request, or default to 'system' if not provided
+        user_id = override_request.user_id or "system"
+        
+        # Get original assignment
+        original_assignment = await collection.find_one({"id": override_request.assignment_id})
+        if not original_assignment:
+            raise HTTPException(status_code=404, detail="Assignment not found")
+        
+        # Only allow overriding PENDING assignments (can't override already approved/overridden)
+        if original_assignment.get("status") != AssignmentStatus.PENDING.value:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cannot override assignment with status {original_assignment.get('status')}"
+            )
+        
+        # Update assignment
+        result = await collection.update_one(
+            {"id": override_request.assignment_id},
+            {
+                "$set": {
+                    "status": AssignmentStatus.OVERRIDDEN.value,
+                    "override_reason": override_request.reason,
+                    "override_by": user_id,
+                    "override_at": current_time,
+                    "override_decision": override_request.override_decision,
+                    "last_updated": current_time
+                }
+            }
+        )
+        
+        if result.modified_count == 0:
+            raise HTTPException(status_code=400, detail="Failed to override assignment")
+        
+        # Log audit event
+        audit_log = AuditLogCreate(
+            user_id=user_id,
+            action=AuditAction.ASSIGNMENT_OVERRIDDEN,
+            resource_type="assignment",
+            resource_id=override_request.assignment_id,
+            details={
+                "original_decision": original_assignment.get("decision", {}).get("decision", "UNKNOWN"),
+                "override_decision": override_request.override_decision,
+                "reason": override_request.reason,
+                "trainset_id": original_assignment.get("trainset_id")
+            },
+            risk_level="HIGH"
+        )
+        background_tasks.add_task(log_audit_event, audit_log)
+        
+        # Send notification
+        background_tasks.add_task(
+            send_assignment_notification,
+            override_request.assignment_id,
+            "Assignment Overridden",
+            f"Assignment decision overridden: {override_request.override_decision}"
+        )
+        
+        logger.info(f"Overridden assignment {override_request.assignment_id} by user {user_id}")
+        return {
+            "message": "Assignment successfully overridden",
+            "assignment_id": override_request.assignment_id
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error overriding assignment: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to override assignment: {str(e)}")
+
+
+async def create_sample_assignments():
+    """Create sample assignments with real data - all as PENDING"""
+    try:
+        collection = await cloud_db_manager.get_collection("assignments")
+        
+        # First, reset any existing APPROVED/OVERRIDDEN assignments back to PENDING
+        # This ensures they don't appear in approved/overridden tabs without user action
+        reset_result = await collection.update_many(
+            {"status": {"$in": ["APPROVED", "OVERRIDDEN"]}},
+            {
+                "$set": {
+                    "status": "PENDING",
+                    "approved_by": None,
+                    "approved_at": None,
+                    "override_by": None,
+                    "override_at": None,
+                    "override_reason": None,
+                    "override_decision": None,
+                    "last_updated": datetime.utcnow()
+                }
+            }
+        )
+        if reset_result.modified_count > 0:
+            logger.info(f"Reset {reset_result.modified_count} assignments back to PENDING status")
+        
+        # Check if assignments already exist
+        existing_count = await collection.count_documents({})
+        if existing_count > 0:
+            logger.info(f"Skipping sample assignment creation - {existing_count} assignments already exist")
+            return
         
         # Get trainsets to create assignments for
         trainsets_collection = await cloud_db_manager.get_collection("trainsets")
@@ -361,11 +518,11 @@ async def create_sample_assignments():
             await trainsets_collection.insert_many(sample_trainsets)
             trainsets = sample_trainsets
         
-        # Create sample assignments
+        # Create sample assignments - all start as PENDING (user must approve/override them)
         assignments = []
         for i, trainset in enumerate(trainsets[:15]):
             decision = random.choice(["INDUCT", "STANDBY", "MAINTENANCE"])
-            status = random.choice(["PENDING", "APPROVED", "OVERRIDDEN"])
+            status = "PENDING"  # All sample assignments start as PENDING - user must approve/override
             confidence = round(random.uniform(0.7, 0.95), 2)
             priority = random.randint(1, 5)
             
@@ -383,21 +540,27 @@ async def create_sample_assignments():
                 ]
                 violations = random.sample(violation_types, random.randint(1, 3))
             
+            trainset_id = trainset.get("trainset_id", f"TS-{i:03d}")
             assignment = {
                 "id": f"ASS-{i+1:03d}",
-                "trainset_id": trainset["trainset_id"],
+                "trainset_id": trainset_id,
                 "status": status,
                 "priority": priority,
                 "decision": {
+                    "trainset_id": trainset_id,  # Required by InductionDecision model
                     "decision": decision,
                     "confidence_score": confidence,
-                    "reasoning": f"AI decision based on trainset {trainset['trainset_id']} analysis",
-                    "violations": violations
+                    "reasons": [f"AI decision based on trainset {trainset_id} analysis"],
+                    "top_reasons": [],
+                    "top_risks": [],
+                    "violations": violations,
+                    "score": confidence,
+                    "shap_values": []
                 },
-                "created_at": (datetime.utcnow() - timedelta(days=random.randint(0, 7))).isoformat(),
-                "updated_at": datetime.utcnow().isoformat(),
-                "assigned_to": f"Operator-{random.randint(1, 5)}",
-                "scheduled_date": (datetime.utcnow() + timedelta(days=random.randint(1, 3))).isoformat()
+                "created_at": (datetime.utcnow() - timedelta(days=random.randint(0, 7))),
+                "last_updated": datetime.utcnow(),
+                "created_by": f"system-{random.randint(1, 5)}",
+                "execution_date": (datetime.utcnow() + timedelta(days=random.randint(1, 3)))
             }
             assignments.append(assignment)
         
@@ -406,31 +569,6 @@ async def create_sample_assignments():
         
     except Exception as e:
         logger.error(f"Error creating sample assignments: {e}")
-
-
-@router.get("/conflicts", response_model=List[Assignment])
-async def get_conflict_assignments(
-    _auth=Depends(require_api_key)
-):
-    """Get assignments with conflicts (violations)"""
-    try:
-        collection = await cloud_db_manager.get_collection("assignments")
-        
-        # Find assignments with violations
-        cursor = collection.find({
-            "decision.violations": {"$exists": True, "$ne": []}
-        })
-        
-        assignments = []
-        async for doc in cursor:
-            doc.pop('_id', None)
-            assignments.append(Assignment(**doc))
-        
-        return assignments
-        
-    except Exception as e:
-        logger.error(f"Error fetching conflict assignments: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to fetch conflicts: {str(e)}")
 
 
 async def log_audit_event(audit_log: AuditLogCreate):
