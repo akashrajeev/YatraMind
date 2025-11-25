@@ -61,8 +61,8 @@ const Assignments = () => {
       toast.success("Assignment Approved", {
         description: `Successfully approved ${data.data?.approved_count || 1} assignment(s)`,
       });
-      queryClient.invalidateQueries(['assignments']);
-      queryClient.invalidateQueries(['assignments-summary']);
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments-summary'] });
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.detail || error.message || "Failed to approve assignment";
@@ -79,8 +79,8 @@ const Assignments = () => {
       toast.success("Assignment Overridden", {
         description: data.data?.message || "Assignment decision has been overridden",
       });
-      queryClient.invalidateQueries(['assignments']);
-      queryClient.invalidateQueries(['assignments-summary']);
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments-summary'] });
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.detail || error.message || "Failed to override assignment";
@@ -301,34 +301,51 @@ const Assignments = () => {
                 </Badge>
               </div>
               {conflictAlerts.map((assignment: any) => (
-                <Card key={assignment.id} className="border-red-200 bg-red-50/50">
+                <Card
+                  key={assignment.id}
+                  className="border border-red-200 bg-red-50/70 text-red-900 dark:border-red-900/60 dark:bg-red-950/70 dark:text-red-100"
+                >
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg text-red-800">{assignment.trainset_id}</CardTitle>
-                      <Badge variant="destructive">Conflict Detected</Badge>
+                      <CardTitle className="text-lg text-red-800 dark:text-red-100">
+                        {assignment.trainset_id}
+                      </CardTitle>
+                      <Badge className="bg-red-100 text-red-900 dark:bg-red-900 dark:text-white" variant="destructive">
+                        Conflict Detected
+                      </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div>
-                        <h4 className="font-medium text-sm text-muted-foreground mb-2">Violations:</h4>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-2">
+                          Violations:
+                        </h4>
                         <ul className="list-disc list-inside text-sm space-y-1">
                           {assignment.decision?.violations?.map((violation: string, i: number) => (
-                            <li key={i} className="text-red-600">{violation}</li>
+                            <li key={i} className="text-red-700 dark:text-red-200">
+                              {violation}
+                            </li>
                           ))}
                         </ul>
                       </div>
                       <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="destructive"
-                          onClick={() => handleExplainDecision(assignment.trainset_id, assignment.decision?.decision)}
+                          onClick={() =>
+                            handleExplainDecision(assignment.trainset_id, assignment.decision?.decision)
+                          }
                           disabled={explanationMutation.isPending}
                         >
                           <Eye className="h-4 w-4 mr-2" />
                           Explain Conflict
                         </Button>
-                        <Button size="sm" variant="outline">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-red-900 border-red-200 hover:bg-red-100 dark:text-red-100 dark:border-red-800 dark:hover:bg-red-900/40"
+                        >
                           <Info className="h-4 w-4 mr-2" />
                           Resolve
                         </Button>
@@ -570,11 +587,11 @@ const Assignments = () => {
 
       {/* Explanation Modal */}
       {showExplanation && explanationData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 text-foreground dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-slate-800">
             <CardHeader>
               <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">
+                <CardTitle className="text-xl text-foreground dark:text-white">
                   AI Decision Explanation - {selectedTrainset}
                 </CardTitle>
                 <Button 
@@ -589,30 +606,30 @@ const Assignments = () => {
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <h3 className="font-semibold text-lg mb-3 text-green-600">Top Reasons</h3>
+                  <h3 className="font-semibold text-lg mb-3 text-green-600 dark:text-green-400">Top Reasons</h3>
                   <ul className="space-y-2">
                     {explanationData.top_reasons?.map((reason: string, i: number) => (
                       <li key={i} className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{reason}</span>
+                        <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-foreground dark:text-slate-100">{reason}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
                 
                 <div>
-                  <h3 className="font-semibold text-lg mb-3 text-red-600">Risks & Violations</h3>
+                  <h3 className="font-semibold text-lg mb-3 text-red-600 dark:text-red-400">Risks & Violations</h3>
                   <ul className="space-y-2">
                     {explanationData.top_risks?.map((risk: string, i: number) => (
                       <li key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{risk}</span>
+                        <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-foreground dark:text-slate-100">{risk}</span>
                       </li>
                     ))}
                     {explanationData.violations?.map((violation: string, i: number) => (
                       <li key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-red-600">{violation}</span>
+                        <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                        <span className="text-sm text-red-600 dark:text-red-300">{violation}</span>
                       </li>
                     ))}
                   </ul>
@@ -621,17 +638,20 @@ const Assignments = () => {
 
               {explanationData.shap_values && explanationData.shap_values.length > 0 && (
                 <div>
-                  <h3 className="font-semibold text-lg mb-3">Feature Impact Analysis</h3>
+                  <h3 className="font-semibold text-lg mb-3 text-foreground dark:text-white">Feature Impact Analysis</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     {explanationData.shap_values.map((feature: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm font-medium">{feature.name}</span>
+                      <div
+                        key={i}
+                        className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800/70 border border-gray-100 dark:border-slate-700"
+                      >
+                        <span className="text-sm font-medium text-foreground dark:text-slate-100">{feature.name}</span>
                         <div className="flex items-center gap-2">
-                          <span className="text-sm">{feature.value}</span>
+                          <span className="text-sm text-foreground dark:text-slate-200">{feature.value}</span>
                           <span className={`text-xs px-2 py-1 rounded ${
                             feature.impact === 'positive' 
-                              ? 'bg-green-100 text-green-800' 
-                              : 'bg-red-100 text-red-800'
+                              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' 
+                              : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
                           }`}>
                             {feature.impact === 'positive' ? '↑' : '↓'}
                           </span>
