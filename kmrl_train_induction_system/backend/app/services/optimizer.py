@@ -295,8 +295,10 @@ class TrainInductionOptimizer:
                         explanation = generate_comprehensive_explanation(t, "INDUCT")
                         reasons = self._get_tiered_induction_reasons(t, tier2_val, tier3_val)
                         
-                        # Use the composite score from explanation (properly normalized 0-1)
-                        composite_score = explanation.get("score", 0.0)
+                        # Calculate normalized score based on actual optimization priority
+                        normalized_score = self._calculate_normalized_optimization_score(
+                            t, tier2_val, tier3_val, "INDUCT"
+                        )
                         
                         decisions.append(
                             InductionDecision(
@@ -304,7 +306,7 @@ class TrainInductionOptimizer:
                                 decision="INDUCT",
                                 confidence_score=confidence,
                                 reasons=reasons + explanation.get("top_reasons", []),
-                                score=composite_score,  # Use explanation composite score
+                                score=normalized_score,  # Use actual optimization score
                                 top_reasons=explanation.get("top_reasons", []),
                                 top_risks=explanation.get("top_risks", []),
                                 violations=explanation.get("violations", []),
@@ -317,14 +319,18 @@ class TrainInductionOptimizer:
                     if i not in chosen_indices:
                         if self._needs_maintenance(t):
                             explanation = generate_comprehensive_explanation(t, "MAINTENANCE")
-                            composite_score = explanation.get("score", 0.0)
+                            tier2_val = tier2_scores[i]
+                            tier3_val = tier3_scores[i]
+                            normalized_score = self._calculate_normalized_optimization_score(
+                                t, tier2_val, tier3_val, "MAINTENANCE"
+                            )
                             decisions.append(
                                 InductionDecision(
                                     trainset_id=t["trainset_id"],
                                     decision="MAINTENANCE",
                                     confidence_score=0.9,
                                     reasons=["Maintenance required - not selected for service"] + explanation.get("top_reasons", []),
-                                    score=composite_score,
+                                    score=normalized_score,
                                     top_reasons=explanation.get("top_reasons", []),
                                     top_risks=explanation.get("top_risks", []),
                                     violations=explanation.get("violations", []),
@@ -333,14 +339,18 @@ class TrainInductionOptimizer:
                             )
                         else:
                             explanation = generate_comprehensive_explanation(t, "STANDBY")
-                            composite_score = explanation.get("score", 0.0)
+                            tier2_val = tier2_scores[i]
+                            tier3_val = tier3_scores[i]
+                            normalized_score = self._calculate_normalized_optimization_score(
+                                t, tier2_val, tier3_val, "STANDBY"
+                            )
                             decisions.append(
                                 InductionDecision(
                                     trainset_id=t["trainset_id"],
                                     decision="STANDBY",
                                     confidence_score=0.7,
                                     reasons=["Standby - lower tiered score than inducted trainsets"] + explanation.get("top_reasons", []),
-                                    score=composite_score,
+                                    score=normalized_score,
                                     top_reasons=explanation.get("top_reasons", []),
                                     top_risks=explanation.get("top_risks", []),
                                     violations=explanation.get("violations", []),
@@ -580,16 +590,17 @@ class TrainInductionOptimizer:
         
         if requires_cleaning and cleaning_due_date:
             try:
-                if isinstance(cleaning_due_date, str):
-                    due_date = datetime.fromisoformat(cleaning_due_date.replace('Z', '+00:00'))
+                due_date = self._parse_cleaning_date(cleaning_due_date)
+                if due_date:
+                    days_until_due = (due_date - datetime.utcnow()).days
+                    if days_until_due <= 7:  # Due within 7 days
+                        penalty_factor = 1.0 - (days_until_due / 7.0)
+                        score += self.weights["CLEANING_DUE_PENALTY"] * penalty_factor
                 else:
-                    due_date = cleaning_due_date
-                
-                days_until_due = (due_date - datetime.utcnow()).days
-                if days_until_due <= 7:  # Due within 7 days
-                    penalty_factor = 1.0 - (days_until_due / 7.0)
-                    score += self.weights["CLEANING_DUE_PENALTY"] * penalty_factor
-            except (ValueError, TypeError):
+                    # If date parsing fails, apply small penalty if cleaning is required
+                    score += self.weights["CLEANING_DUE_PENALTY"] * 0.5
+            except Exception as e:
+                logger.warning(f"Error processing cleaning due date '{cleaning_due_date}': {e}")
                 # If date parsing fails, apply small penalty if cleaning is required
                 score += self.weights["CLEANING_DUE_PENALTY"] * 0.5
         elif requires_cleaning:
@@ -611,34 +622,10 @@ class TrainInductionOptimizer:
         
         return score
     
-    def _calculate_optimization_score(self, trainset: Dict[str, Any], request: OptimizationRequest, weights: OptimizationWeights) -> float:
-        """Calculate multi-objective optimization score"""
-        score = 0.0
-        
-        # Readiness score (fitness + maintenance status)
-        readiness_score = self._readiness_score(trainset)
-        score += readiness_score * weights.readiness
-        
-        # Reliability score (sensor health + ML risk)
-        reliability_base = self._reliability_score(trainset)
-        # Incorporate ML risk prediction
-        predicted_risk = float(trainset.get("predicted_failure_risk", 0.2))
-        reliability_score = reliability_base * (1.0 - predicted_risk)  # Lower risk = higher reliability
-        score += reliability_score * weights.reliability
-        
-        # Branding priority
-        branding_score = self._branding_score(trainset)
-        score += branding_score * weights.branding
-        
-        # Mileage balance (prefer lower mileage for even distribution)
-        mileage_score = 1 - (trainset["current_mileage"] / max(1.0, trainset["max_mileage_before_maintenance"]))
-        score += mileage_score * weights.mileage_balance
-        
-        # Shunt cost (lower is better, so we use inverse of cost score)
-        cost_score = self._cost_score(trainset)
-        score += cost_score * weights.shunt
-        
-        return min(score, 1.0)
+    # Legacy optimization score method removed - replaced by tiered scoring system
+    # The _calculate_optimization_score method and OptimizationWeights model usage
+    # were never called by the main optimization loop and conflicted with the
+    # tiered constraint hierarchy approach.
 
     async def _optimize_with_tiered_scoring(self, eligible_trainsets: List[Dict[str, Any]], critical_failures: List[Dict[str, Any]], request: OptimizationRequest) -> List[InductionDecision]:
         """Fallback tiered scoring-based optimization when OR-Tools is unavailable."""
@@ -667,14 +654,16 @@ class TrainInductionOptimizer:
                 confidence = min(1.0, max(0.5, (combined_score + 5000) / 10000))
                 explanation = generate_comprehensive_explanation(trainset, "INDUCT")
                 reasons = self._get_tiered_induction_reasons(trainset, tier2_score, tier3_score)
-                composite_score = explanation.get("score", 0.0)
+                normalized_score = self._calculate_normalized_optimization_score(
+                    trainset, tier2_score, tier3_score, "INDUCT"
+                )
                 
                 decisions.append(InductionDecision(
                     trainset_id=trainset["trainset_id"],
                     decision="INDUCT",
                     confidence_score=confidence,
                     reasons=reasons + explanation.get("top_reasons", []),
-                    score=composite_score,  # Use explanation composite score
+                    score=normalized_score,  # Use actual optimization score
                     top_reasons=explanation.get("top_reasons", []),
                     top_risks=explanation.get("top_risks", []),
                     violations=explanation.get("violations", []),
@@ -683,13 +672,15 @@ class TrainInductionOptimizer:
                 inducted += 1
             elif self._needs_maintenance(trainset):
                 explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
-                composite_score = explanation.get("score", 0.0)
+                normalized_score = self._calculate_normalized_optimization_score(
+                    trainset, tier2_score, tier3_score, "MAINTENANCE"
+                )
                 decisions.append(InductionDecision(
                     trainset_id=trainset["trainset_id"],
                     decision="MAINTENANCE",
                     confidence_score=0.9,
                     reasons=["Maintenance required - not selected for service"] + explanation.get("top_reasons", []),
-                    score=composite_score,
+                    score=normalized_score,
                     top_reasons=explanation.get("top_reasons", []),
                     top_risks=explanation.get("top_risks", []),
                     violations=explanation.get("violations", []),
@@ -697,13 +688,15 @@ class TrainInductionOptimizer:
                 ))
             else:
                 explanation = generate_comprehensive_explanation(trainset, "STANDBY")
-                composite_score = explanation.get("score", 0.0)
+                normalized_score = self._calculate_normalized_optimization_score(
+                    trainset, tier2_score, tier3_score, "STANDBY"
+                )
                 decisions.append(InductionDecision(
                     trainset_id=trainset["trainset_id"],
                     decision="STANDBY",
                     confidence_score=0.7,
                     reasons=["Standby - lower tiered score than inducted trainsets"] + explanation.get("top_reasons", []),
-                    score=composite_score,
+                    score=normalized_score,
                     top_reasons=explanation.get("top_reasons", []),
                     top_risks=explanation.get("top_risks", []),
                     violations=explanation.get("violations", []),
@@ -857,3 +850,130 @@ class TrainInductionOptimizer:
             reasons.append("ML Alert: Component fatigue detected")
 
         return reasons if reasons else ["Selected based on tiered optimization criteria"]
+    
+    def _calculate_normalized_optimization_score(self, trainset: Dict[str, Any], tier2_score: float, tier3_score: float, decision: str) -> float:
+        """Calculate normalized score (0-100%) based on actual optimization priority.
+        
+        This ensures the API displays scores that match the optimization hierarchy:
+        - Branding trains (Tier 2): 90-100%
+        - Mileage/Health trains (Tier 3): 50-89%
+        - Maintenance/Critical failures: 0-49%
+        """
+        # Check if this is a critical failure (should be scored 0-49%)
+        if self._has_critical_failure(trainset) or decision == "MAINTENANCE":
+            # For critical failures, score based on severity
+            job_cards = trainset.get("job_cards", {})
+            critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+            fitness_certs = trainset.get("fitness_certificates", {})
+            has_expired = any(
+                isinstance(cert, dict) and str(cert.get("status", "")).upper() == "EXPIRED"
+                for cert in fitness_certs.values()
+            )
+            
+            if critical_cards > 0 or has_expired:
+                return 0.0  # Absolute minimum for safety violations
+            else:
+                return min(0.49, max(0.0, tier3_score / 1000.0))  # Scale down maintenance scores
+        
+        # Check for Tier 2 (Branding) priority
+        branding = trainset.get("branding", {})
+        has_branding_obligation = False
+        branding_priority = "LOW"
+        
+        if isinstance(branding, dict):
+            advertiser = branding.get("current_advertiser")
+            branding_priority = branding.get("priority", "LOW")
+            has_branding_obligation = advertiser and advertiser not in ("None", "", None)
+        
+        if has_branding_obligation and tier2_score > 0:
+            # Tier 2: Branding trains get 90-100% scores
+            base_score = 0.90  # 90% baseline for any branding obligation
+            
+            if branding_priority == "HIGH":
+                priority_boost = 0.10  # Up to 100% for high priority
+            elif branding_priority == "MEDIUM":
+                priority_boost = 0.07  # Up to 97% for medium priority
+            elif branding_priority == "LOW":
+                priority_boost = 0.04  # Up to 94% for low priority
+            else:
+                priority_boost = 0.05  # Default 95% for wrapped trains
+            
+            # Add defect penalty within Tier 2 range
+            job_cards = trainset.get("job_cards", {})
+            minor_defects = max(0, job_cards.get("open_cards", 0) - job_cards.get("critical_cards", 0))
+            defect_penalty = min(0.05, minor_defects * 0.01)  # Max 5% penalty for defects
+            
+            final_score = base_score + priority_boost - defect_penalty
+            return min(1.0, max(0.90, final_score))  # Keep in 90-100% range
+        
+        # Tier 3: Mileage/Health optimization (50-89% range)
+        if decision == "INDUCT":
+            # For inducted trains without branding, use 70-89% range
+            base_score = 0.70
+            tier3_boost = min(0.19, max(0.0, tier3_score / 1000.0))  # Scale tier3 to 0-19%
+            return min(0.89, base_score + tier3_boost)
+        elif decision == "STANDBY":
+            # For standby trains, use 50-69% range
+            base_score = 0.50
+            tier3_boost = min(0.19, max(0.0, tier3_score / 1000.0))  # Scale tier3 to 0-19%
+            return min(0.69, base_score + tier3_boost)
+        else:
+            # Default fallback
+            return min(0.49, max(0.0, (tier2_score + tier3_score) / 2000.0))
+    
+    def _parse_cleaning_date(self, cleaning_due_date: Any) -> Optional[datetime]:
+        """Safely parse cleaning due date with better error handling.
+        
+        Handles various date formats and validates input.
+        """
+        if not cleaning_due_date:
+            return None
+        
+        # If already a datetime object
+        if isinstance(cleaning_due_date, datetime):
+            return cleaning_due_date
+        
+        # If string, try multiple parsing approaches
+        if isinstance(cleaning_due_date, str):
+            date_str = cleaning_due_date.strip()
+            if not date_str:
+                return None
+            
+            # Try ISO format with timezone
+            try:
+                if date_str.endswith('Z'):
+                    return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+                elif '+' in date_str or date_str.endswith('UTC'):
+                    return datetime.fromisoformat(date_str.replace('UTC', '+00:00'))
+                else:
+                    return datetime.fromisoformat(date_str)
+            except ValueError:
+                pass
+            
+            # Try common date formats
+            common_formats = [
+                "%Y-%m-%d",
+                "%Y-%m-%d %H:%M:%S",
+                "%Y/%m/%d",
+                "%d/%m/%Y",
+                "%m/%d/%Y",
+                "%Y-%m-%dT%H:%M:%S",
+                "%Y-%m-%dT%H:%M:%SZ"
+            ]
+            
+            for fmt in common_formats:
+                try:
+                    return datetime.strptime(date_str, fmt)
+                except ValueError:
+                    continue
+            
+            # If all parsing fails, log warning and return None
+            logger.warning(f"Could not parse cleaning due date: '{date_str}'")
+            return None
+        
+        # For other types, try conversion
+        try:
+            return datetime(cleaning_due_date)
+        except (ValueError, TypeError):
+            logger.warning(f"Invalid cleaning due date type: {type(cleaning_due_date)}")
+            return None

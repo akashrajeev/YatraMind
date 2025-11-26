@@ -19,7 +19,7 @@ def test_ranking():
             print(f"Number of ranked trainsets: {len(result)}")
             print(f"\nTop 10 ranked trainsets:")
             print("-" * 60)
-            for i, item in enumerate(result[:10]):
+            for i, item in enumerate(result):
                 print(f"{i+1:2d}. {item['trainset_id']} - Score: {item['score']:.3f} - Decision: {item['decision']} - Confidence: {item['confidence_score']:.3f}")
             
             print(f"\nBottom 5 trainsets:")
