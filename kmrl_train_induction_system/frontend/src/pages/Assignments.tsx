@@ -55,6 +55,23 @@ const Assignments = () => {
   });
 
   // Mutations for actions
+  const optimizationMutation = useMutation({
+    mutationFn: optimizationApi.runOptimization,
+    onSuccess: () => {
+      toast.success("Optimization completed", {
+        description: "AI-ranked induction list has been refreshed for tomorrow's service window.",
+      });
+      queryClient.invalidateQueries({ queryKey: ['ranked-induction-list'] });
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || "Failed to run optimization";
+      toast.error("Optimization Failed", {
+        description: errorMessage,
+      });
+      console.error("Optimization error:", error);
+    },
+  });
+
   const approveMutation = useMutation({
     mutationFn: assignmentApi.approve,
     onSuccess: (data) => {
@@ -164,9 +181,20 @@ const Assignments = () => {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button variant="industrial">
+          <Button
+            variant="industrial"
+            disabled={optimizationMutation.isPending}
+            onClick={() => {
+              const tomorrow = new Date();
+              tomorrow.setDate(tomorrow.getDate() + 1);
+              optimizationMutation.mutate({
+                target_date: tomorrow.toISOString(),
+                required_service_hours: 14,
+              });
+            }}
+          >
             <Plus className="h-4 w-4 mr-2" />
-            Run Optimization
+            {optimizationMutation.isPending ? "Running..." : "Run Optimization"}
           </Button>
         </div>
       </div>

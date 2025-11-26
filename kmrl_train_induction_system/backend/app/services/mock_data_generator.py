@@ -81,66 +81,173 @@ class KMRLMockDataGenerator:
         return data
 
     async def generate_trainsets_data(self):
-        """Generate trainsets with fitness certificates"""
-        trainsets = []
-        
+        """Generate trainsets with fitness certificates and realistic health mix.
+
+        Realistic Operational Mix:
+        - Group A (Golden Fleet)   : 60%  -> Healthy, pass Safety Gate
+        - Group B (Standby)        : 20%  -> Safety OK, minor defects
+        - Group C (Critical Fail)  : 20%  -> Fail Safety Gate (expired cert OR critical cards)
+
+        Within Group A:
+        - ~30% have REQUIRED branding (Tier 2 test)
+        - ~30% have mileage close to limit (Tier 3 test)
+        """
+        trainsets: List[Dict[str, Any]] = []
+
+        total = len(self.trainset_ids)
+        golden_count = int(total * 0.6)
+        standby_count = int(total * 0.2)
+        critical_count = total - golden_count - standby_count  # ensure full coverage
+
+        def _valid_cert(status_override: str | None = None, min_days: int = 30, max_days: int = 365) -> Dict[str, Any]:
+            status = status_override or "VALID"
+            return {
+                "status": status,
+                "expiry_date": (datetime.now() + timedelta(days=random.randint(min_days, max_days))).isoformat(),
+                "issued_by": "RDSO",
+                "certificate_id": f"GEN_{random.randint(1000, 9999)}",
+            }
+
         for i, trainset_id in enumerate(self.trainset_ids):
             depot = random.choice(list(self.depots.keys()))
             bay_num = random.randint(1, self.depots[depot]["total_bays"])
-            
-            # Fitness Certificates
-            fitness_certs = {
-                "rolling_stock": {
-                    "status": random.choice(["VALID", "VALID", "VALID", "EXPIRING_SOON", "EXPIRED"]),
-                    "expiry_date": (datetime.now() + timedelta(days=random.randint(-30, 365))).isoformat(),
-                    "issued_by": "RDSO",
-                    "certificate_id": f"RS_{trainset_id}_{random.randint(1000, 9999)}",
-                },
-                "signalling": {
-                    "status": random.choice(["VALID", "VALID", "EXPIRING_SOON", "EXPIRED"]),
-                    "expiry_date": (datetime.now() + timedelta(days=random.randint(-15, 180))).isoformat(),
-                    "issued_by": "RRDA",
-                    "certificate_id": f"SIG_{trainset_id}_{random.randint(1000, 9999)}",
-                },
-                "telecom": {
-                    "status": random.choice(["VALID", "VALID", "EXPIRING_SOON"]),
-                    "expiry_date": (datetime.now() + timedelta(days=random.randint(30, 365))).isoformat(),
-                    "issued_by": "TEC",
-                    "certificate_id": f"TEL_{trainset_id}_{random.randint(1000, 9999)}",
+
+            # Determine group based on index
+            if i < golden_count:
+                group = "A"  # Golden Fleet
+            elif i < golden_count + standby_count:
+                group = "B"  # Standby candidates
+            else:
+                group = "C"  # Critical failures
+
+            # ---------- Fitness Certificates ----------
+            if group in ("A", "B"):
+                # All certificates VALID
+                fitness_certs = {
+                    "rolling_stock": _valid_cert("VALID", 90, 365),
+                    "signalling": _valid_cert("VALID", 60, 365),
+                    "telecom": _valid_cert("VALID", 60, 365),
                 }
+            else:
+                # Start with valid, then introduce one safety‑critical issue
+                fitness_certs = {
+                    "rolling_stock": _valid_cert("VALID", 30, 365),
+                    "signalling": _valid_cert("VALID", 30, 365),
+                    "telecom": _valid_cert("VALID", 30, 365),
+                }
+                # 50% of critical fleet via expired certificate
+                if random.random() < 0.5:
+                    cert_to_expire = random.choice(["rolling_stock", "signalling", "telecom"])
+                    fitness_certs[cert_to_expire]["status"] = "EXPIRED"
+                    fitness_certs[cert_to_expire]["expiry_date"] = (
+                        datetime.now() - timedelta(days=random.randint(1, 60))
+                    ).isoformat()
+
+            # ---------- Job Cards (open / critical) ----------
+            if group == "A":
+                # 0 critical, 0–2 minor
+                critical_cards = 0
+                open_cards = random.randint(0, 2)
+            elif group == "B":
+                # 0 critical, 3–5 minor
+                critical_cards = 0
+                open_cards = random.randint(3, 5)
+            else:
+                # Critical failures: 1+ critical OR already expired cert.
+                # Ensure at least some trains have critical job cards as well.
+                critical_cards = random.randint(1, 3)
+                open_cards = critical_cards + random.randint(0, 5)
+
+            job_cards = {
+                "open_cards": open_cards,
+                "critical_cards": critical_cards,
             }
-            
+
+            # ---------- Mileage (Tier 3) ----------
+            max_mileage = random.choice([50000, 52000, 55000])
+
+            if group == "A":
+                # Golden fleet: mix of low, medium and near‑limit mileage
+                r = random.random()
+                if r < 0.3:
+                    # Near limit (for mileage balancing tests)
+                    current_mileage = int(max_mileage * random.uniform(0.85, 0.97))
+                elif r < 0.6:
+                    # Low mileage
+                    current_mileage = int(max_mileage * random.uniform(0.25, 0.45))
+                else:
+                    # Moderate mileage
+                    current_mileage = int(max_mileage * random.uniform(0.45, 0.7))
+            elif group == "B":
+                # Standby: generally mid‑range mileage
+                current_mileage = int(max_mileage * random.uniform(0.4, 0.8))
+            else:
+                # Critical: allow some to be at / above limit (will be caught by safety gate)
+                if random.random() < 0.5:
+                    current_mileage = int(max_mileage * random.uniform(0.95, 1.05))
+                else:
+                    current_mileage = int(max_mileage * random.uniform(0.4, 0.9))
+
+            # ---------- Branding (Tier 2) ----------
+            advertiser = random.choice(
+                [
+                    "Kerala Tourism",
+                    "Cochin International Airport",
+                    "Federal Bank",
+                    "None",
+                    "MRF Tyres",
+                    "Kalyan Jewellers",
+                ]
+            )
+
+            branding_priority = random.choice(["HIGH", "MEDIUM", "LOW"])
+            branding_status = "OPTIONAL"
+
+            if group == "A":
+                # About 30% of Golden Fleet have REQUIRED branding with high priority
+                if advertiser != "None" and random.random() < 0.3:
+                    branding_status = "REQUIRED"
+                    branding_priority = "HIGH"
+
+            branding = {
+                "current_advertiser": advertiser,
+                "contract_expiry": (
+                    datetime.now() + timedelta(days=random.randint(30, 180))
+                ).isoformat(),
+                "priority": branding_priority,
+                "revenue_per_day": random.uniform(5000, 15000),
+                # Extra flag used for testing Tier 2 behaviour (not mandatory elsewhere)
+                "branding_status": branding_status,
+            }
+
+            # ---------- Overall status ----------
+            if group == "A":
+                status = random.choice(["ACTIVE", "STANDBY"])
+            elif group == "B":
+                status = "STANDBY"
+            else:
+                status = "MAINTENANCE"
+
             trainset = {
                 "trainset_id": trainset_id,
                 "manufacturer": "Alstom",
                 "model": "Kochi Metro Coach",
                 "year_of_manufacture": 2015 + (i // 5),
-                "status": random.choice(["ACTIVE", "MAINTENANCE", "STANDBY", "ACTIVE", "STANDBY"]),
-                "current_mileage": random.randint(15000, 48000),
-                "max_mileage_before_maintenance": 50000,
+                "status": status,
+                "current_mileage": current_mileage,
+                "max_mileage_before_maintenance": max_mileage,
                 "fitness_certificates": fitness_certs,
-                "job_cards": {
-                    "open_cards": random.randint(0, 8),
-                    "critical_cards": random.randint(0, 2)
-                },
-                "branding": {
-                    "current_advertiser": random.choice([
-                        "Kerala Tourism", "Cochin International Airport", "Federal Bank", 
-                        "None", "MRF Tyres", "Kalyan Jewellers"
-                    ]),
-                    "contract_expiry": (datetime.now() + timedelta(days=random.randint(-30, 180))).isoformat(),
-                    "priority": random.choice(["HIGH", "MEDIUM", "LOW"]),
-                    "revenue_per_day": random.uniform(5000, 15000)
-                },
+                "job_cards": job_cards,
+                "branding": branding,
                 "current_location": {
                     "depot": depot,
                     "bay": f"{depot}_BAY_{bay_num:02d}",
                 },
-                "last_updated": datetime.now().isoformat()
+                "last_updated": datetime.now().isoformat(),
             }
-            
+
             trainsets.append(trainset)
-        
+
         return trainsets
 
     async def generate_maximo_job_cards(self):

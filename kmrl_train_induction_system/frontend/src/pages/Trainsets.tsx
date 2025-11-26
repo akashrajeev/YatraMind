@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { trainsetsApi } from "@/services/api";
+import { trainsetsApi, optimizationApi } from "@/services/api";
 import { Trainset } from "@/types/api";
 import { 
   Train, 
@@ -21,7 +21,7 @@ import {
   Upload,
   Download
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const Trainsets = () => {
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,6 +38,24 @@ const Trainsets = () => {
     }).then(res => res.data),
     refetchInterval: 30000,
   });
+
+  // Fetch latest induction decisions so we can display INDUCT/STANDBY/MAINTENANCE
+  const { data: latestDecisions = [] } = useQuery({
+    queryKey: ['latest-induction-for-trainsets'],
+    queryFn: () => optimizationApi.getLatest().then(res => res.data),
+    refetchInterval: 60000,
+  });
+
+  // Map trainset_id -> decision for quick lookup
+  const decisionMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    (latestDecisions as any[]).forEach((d) => {
+      if (d?.trainset_id && d?.decision) {
+        map[d.trainset_id] = d.decision;
+      }
+    });
+    return map;
+  }, [latestDecisions]);
 
   // Update trainset mutation
   const updateMutation = useMutation({
@@ -66,6 +84,20 @@ const Trainsets = () => {
         return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Standby</Badge>;
       default:
         return <Badge variant="outline">{status}</Badge>;
+    }
+  };
+
+  const getDecisionBadge = (decision?: string) => {
+    if (!decision) return null;
+    switch (decision) {
+      case "INDUCT":
+        return <Badge variant="success"><CheckCircle className="h-3 w-3 mr-1" />Induct</Badge>;
+      case "STANDBY":
+        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Standby</Badge>;
+      case "MAINTENANCE":
+        return <Badge variant="warning"><Wrench className="h-3 w-3 mr-1" />Maintenance</Badge>;
+      default:
+        return <Badge variant="outline">{decision}</Badge>;
     }
   };
 
@@ -189,7 +221,10 @@ const Trainsets = () => {
                     <Train className="h-5 w-5" />
                     {trainset.trainset_id}
                   </CardTitle>
-                  {getStatusBadge(trainset.status)}
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(trainset.status)}
+                    {getDecisionBadge(decisionMap[trainset.trainset_id])}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
