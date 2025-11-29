@@ -59,6 +59,7 @@ class Settings(BaseSettings):
         env_file=".env",
         case_sensitive=False,
         extra="ignore",
+        protected_namespaces=('settings_',),  # Fix warning for model_path field
     )
 
     # No custom __init__; rely on pydantic-settings to read from .env and env vars

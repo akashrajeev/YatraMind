@@ -25,16 +25,22 @@ const useSidebar = () => React.useContext(SidebarContext);
 const Sidebar = React.forwardRef<
   HTMLDivElement,
   React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
-  <div
-    ref={ref}
-    className={cn(
-      "flex h-full w-64 flex-col border-r bg-card transition-all duration-300",
-      className
-    )}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  const { state } = useSidebar();
+  const widthClass = state === "collapsed" ? "w-16" : "w-64";
+
+  return (
+    <div
+      ref={ref}
+      className={cn(
+        "flex h-full flex-col border-r bg-card transition-all duration-300",
+        widthClass,
+        className
+      )}
+      {...props}
+    />
+  );
+});
 Sidebar.displayName = "Sidebar";
 
 const SidebarContent = React.forwardRef<

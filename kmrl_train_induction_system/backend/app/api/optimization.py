@@ -1,7 +1,7 @@
 # backend/app/api/optimization.py
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from fastapi import Depends
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 from datetime import datetime
 import random
 from app.models.trainset import OptimizationRequest, InductionDecision
@@ -16,7 +16,9 @@ from app.utils.explainability import (
     render_explanation_text
 )
 from app.config import settings
-from app.security import require_api_key
+from app.security import require_api_key, require_role
+from app.models.user import UserRole, User
+from pydantic import BaseModel, Field
 import asyncio
 import json
 import logging
@@ -321,7 +323,37 @@ async def simulate_what_if(
 async def get_latest_ranked_list():
     """Get latest ranked induction list stored in MongoDB"""
     try:
-        # Always regenerate the ranked list instead of using cached data
+        # First, check if there's a manually adjusted list stored
+        latest_collection = await cloud_db_manager.get_collection("latest_induction")
+        
+        # First priority: Get manually adjusted list if it exists
+        manually_adjusted_doc = await latest_collection.find_one(
+            {"_meta.manually_adjusted": True},
+            sort=[("_meta.updated_at", -1)]
+        )
+        
+        if manually_adjusted_doc and "decisions" in manually_adjusted_doc and len(manually_adjusted_doc["decisions"]) > 0:
+            logger.info("Returning manually adjusted ranked list")
+            return [InductionDecision(**d) for d in manually_adjusted_doc["decisions"]]
+        
+        # Second priority: Get most recent list (if recent enough)
+        latest_doc = await latest_collection.find_one(sort=[("created_at", -1)])
+        
+        if latest_doc and "decisions" in latest_doc and len(latest_doc["decisions"]) > 0:
+            # Check if it's recent (within last hour) - if so, return cached version
+            created_at_str = latest_doc.get("created_at") or latest_doc.get("_meta", {}).get("updated_at")
+            if created_at_str:
+                try:
+                    created_at = datetime.fromisoformat(created_at_str.replace('Z', '+00:00'))
+                    time_diff = datetime.utcnow() - created_at.replace(tzinfo=None)
+                    if time_diff.total_seconds() < 3600:  # Less than 1 hour old
+                        logger.info("Returning cached ranked list")
+                        return [InductionDecision(**d) for d in latest_doc["decisions"]]
+                except Exception:
+                    pass  # If date parsing fails, regenerate
+        
+        # If no stored list or it's too old, regenerate
+        logger.info("Regenerating ranked list")
         # Get all trainsets from database and create ranked list
         trainsets_collection = await cloud_db_manager.get_collection("trainsets")
         trainsets = []
@@ -563,13 +595,19 @@ async def get_latest_ranked_list():
         
         logger.info(f"Created {len(mock_decisions)} ranked decisions, returning top {len(top_decisions)}")
         
-        # Store the ranked list
-        latest_collection = await cloud_db_manager.get_collection("latest_induction")
-        await latest_collection.insert_one({
-            "decisions": top_decisions,
-            "created_at": datetime.utcnow().isoformat(),
-            "total_trainsets": len(mock_decisions)
-        })
+        # Store the ranked list (only if not manually adjusted)
+        # Don't overwrite manually adjusted lists
+        existing_doc = await latest_collection.find_one(sort=[("_meta.updated_at", -1), ("created_at", -1)])
+        if not existing_doc or not existing_doc.get("_meta", {}).get("manually_adjusted", False):
+            await latest_collection.insert_one({
+                "_meta": {
+                    "updated_at": datetime.utcnow().isoformat(),
+                    "manually_adjusted": False
+                },
+                "decisions": top_decisions,
+                "created_at": datetime.utcnow().isoformat(),
+                "total_trainsets": len(mock_decisions)
+            })
         
         logger.info(f"Stored ranked list with {len(top_decisions)} decisions")
         return top_decisions
@@ -743,3 +781,76 @@ async def write_optimization_metrics(result: List[InductionDecision]):
         
     except Exception as e:
         logger.error(f"Error writing optimization metrics: {e}")
+
+
+class RankedListReorderRequest(BaseModel):
+    """Request model for reordering ranked induction list"""
+    trainset_ids: List[str] = Field(..., description="Ordered list of trainset IDs in new order")
+    reason: Optional[str] = Field(None, description="Reason for manual reordering")
+
+
+@router.post("/latest/reorder", response_model=List[InductionDecision])
+async def reorder_ranked_list(
+    reorder_request: RankedListReorderRequest,
+    current_user: User = Depends(require_role(UserRole.OPERATIONS_MANAGER.value)),
+    _auth=Depends(require_api_key),
+):
+    """Manually reorder the ranked induction list (Admin only)"""
+    try:
+        # Get current ranked list
+        latest_collection = await cloud_db_manager.get_collection("latest_induction")
+        # Try to get the most recent document, checking both _meta.updated_at and created_at
+        latest_doc = await latest_collection.find_one(sort=[("_meta.updated_at", -1), ("created_at", -1)])
+        
+        if not latest_doc or "decisions" not in latest_doc:
+            raise HTTPException(status_code=404, detail="No ranked list found. Please run optimization first.")
+        
+        current_decisions = latest_doc["decisions"]
+        
+        # Create a map of trainset_id to decision for quick lookup
+        decision_map = {d["trainset_id"]: d for d in current_decisions}
+        
+        # Reorder decisions based on provided order
+        reordered_decisions = []
+        for trainset_id in reorder_request.trainset_ids:
+            if trainset_id in decision_map:
+                decision = decision_map[trainset_id].copy()
+                # Mark as manually adjusted
+                decision["manually_adjusted"] = True
+                decision["adjusted_by"] = current_user.username
+                decision["adjusted_at"] = datetime.utcnow().isoformat()
+                decision["adjustment_reason"] = reorder_request.reason
+                reordered_decisions.append(decision)
+            else:
+                logger.warning(f"Trainset {trainset_id} not found in current ranked list")
+        
+        # Add any remaining decisions that weren't in the reorder request (append to end)
+        for decision in current_decisions:
+            if decision["trainset_id"] not in reorder_request.trainset_ids:
+                reordered_decisions.append(decision)
+        
+        # Update the ranked list in database
+        # Delete old documents and insert the new one with manual adjustment flag
+        await latest_collection.delete_many({})
+        await latest_collection.insert_one({
+            "_meta": {
+                "updated_at": datetime.utcnow().isoformat(),
+                "manually_adjusted": True,
+                "adjusted_by": current_user.username,
+                "adjustment_reason": reorder_request.reason
+            },
+            "decisions": reordered_decisions,
+            "created_at": datetime.utcnow().isoformat(),
+            "total_trainsets": len(reordered_decisions)
+        })
+        
+        logger.info(f"Ranked list manually reordered by {current_user.username} with {len(reordered_decisions)} decisions")
+        
+        # Return as InductionDecision objects
+        return [InductionDecision(**d) for d in reordered_decisions]
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error reordering ranked list: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to reorder ranked list: {str(e)}")

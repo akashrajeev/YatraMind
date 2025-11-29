@@ -88,6 +88,8 @@ export const optimizationApi = {
   getLatest: () => api.get('/optimization/latest'),
   getStablingGeometry: () => api.get('/optimization/stabling-geometry'),
   getShuntingSchedule: () => api.get('/optimization/shunting-schedule'),
+  reorderRankedList: (data: { trainset_ids: string[]; reason?: string }) => 
+    api.post('/optimization/latest/reorder', data),
 };
 
 // Trainsets API
