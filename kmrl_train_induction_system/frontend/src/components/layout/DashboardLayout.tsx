@@ -67,7 +67,11 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
               <div className="flex items-center gap-3">
                 <ThemeToggle />
 
-                <Button variant="ghost" size="icon">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate("/settings")}
+                >
                   <Settings className="h-4 w-4" />
                 </Button>
 

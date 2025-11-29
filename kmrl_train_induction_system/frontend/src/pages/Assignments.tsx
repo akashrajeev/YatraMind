@@ -2,16 +2,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { assignmentApi, optimizationApi, trainsetsApi } from "@/services/api";
 import { Assignment, AssignmentSummary } from "@/types/api";
-import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info } from "lucide-react";
+import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info, Edit2, Save, X, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
+import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
 
 const Assignments = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [selectedTrainset, setSelectedTrainset] = useState<string | null>(null);
   const [explanationData, setExplanationData] = useState<any>(null);
@@ -19,6 +24,9 @@ const Assignments = () => {
   const [trainsetDetails, setTrainsetDetails] = useState<any>(null);
   const [showTrainsetDetails, setShowTrainsetDetails] = useState(false);
   const [defaultTab, setDefaultTab] = useState("ranked");
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editedRankedList, setEditedRankedList] = useState<any[]>([]);
+  const [reorderReason, setReorderReason] = useState("");
 
   // Check for tab parameter from URL
   useEffect(() => {
@@ -46,6 +54,73 @@ const Assignments = () => {
     queryFn: () => optimizationApi.getLatest().then(res => res.data),
     refetchInterval: 60000,
   });
+
+  // Initialize edited list when entering edit mode
+  useEffect(() => {
+    if (isEditMode && rankedList.length > 0) {
+      setEditedRankedList([...rankedList]);
+    }
+  }, [isEditMode, rankedList]);
+
+  // Check if user is admin (OPERATIONS_MANAGER)
+  const isAdmin = user?.role === 'OPERATIONS_MANAGER';
+
+  // Reorder mutation
+  const reorderMutation = useMutation({
+    mutationFn: (data: { trainset_ids: string[]; reason?: string }) => 
+      optimizationApi.reorderRankedList(data),
+    onSuccess: () => {
+      toast.success("Ranked list updated", {
+        description: "The AI-ranked induction list has been manually adjusted.",
+      });
+      setIsEditMode(false);
+      setReorderReason("");
+      queryClient.invalidateQueries({ queryKey: ['ranked-induction-list'] });
+    },
+    onError: (error: any) => {
+      const errorMessage = error.response?.data?.detail || error.message || "Failed to update ranked list";
+      toast.error("Update Failed", {
+        description: errorMessage,
+      });
+      console.error("Reorder error:", error);
+    },
+  });
+
+  // Handle drag end
+  const handleDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+
+    const items = Array.from(editedRankedList);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setEditedRankedList(items);
+  };
+
+  // Move item up
+  const moveItemUp = (index: number) => {
+    if (index === 0) return;
+    const items = [...editedRankedList];
+    [items[index - 1], items[index]] = [items[index], items[index - 1]];
+    setEditedRankedList(items);
+  };
+
+  // Move item down
+  const moveItemDown = (index: number) => {
+    if (index === editedRankedList.length - 1) return;
+    const items = [...editedRankedList];
+    [items[index], items[index + 1]] = [items[index + 1], items[index]];
+    setEditedRankedList(items);
+  };
+
+  // Save reordered list
+  const handleSaveReorder = () => {
+    const trainsetIds = editedRankedList.map(item => item.trainset_id);
+    reorderMutation.mutate({
+      trainset_ids: trainsetIds,
+      reason: reorderReason || undefined,
+    });
+  };
 
   // Fetch conflict alerts
   const { data: conflictAlerts = [] } = useQuery({
@@ -237,78 +312,191 @@ const Assignments = () => {
           ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">AI-Ranked Induction List</h3>
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Brain className="h-3 w-3" />
-                  ML Optimized
-                </Badge>
-              </div>
-              {rankedList.map((decision: any, index: number) => (
-                <Card key={decision.trainset_id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">
-                          {index + 1}
-                        </div>
-                        <CardTitle className="text-lg">{decision.trainset_id}</CardTitle>
-                        <Badge variant={decision.decision === "INDUCT" ? "success" : "secondary"}>
-                          {decision.decision}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-muted-foreground">
-                          Score: {Math.round(decision.score * 100)}%
-                        </span>
-                        <span className="text-sm font-medium text-muted-foreground">
-                          Confidence: {Math.round(decision.confidence_score * 100)}%
-                        </span>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
-                      <div>
-                        <h4 className="font-medium text-sm text-muted-foreground mb-2">Top Reasons:</h4>
-                        <ul className="list-disc list-inside text-sm space-y-1">
-                          {decision.top_reasons?.slice(0, 3).map((reason: string, i: number) => (
-                            <li key={i} className="text-green-600">{reason}</li>
-                          ))}
-                        </ul>
-                      </div>
-                      {decision.top_risks && decision.top_risks.length > 0 && (
-                        <div>
-                          <h4 className="font-medium text-sm text-muted-foreground mb-2">Risks:</h4>
-                          <ul className="list-disc list-inside text-sm space-y-1">
-                            {decision.top_risks.slice(0, 2).map((risk: string, i: number) => (
-                              <li key={i} className="text-red-600">{risk}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <Button 
-                          size="sm" 
+                <div className="flex items-center gap-3">
+                  <h3 className="text-lg font-semibold">AI-Ranked Induction List</h3>
+                  <Badge variant="outline" className="flex items-center gap-1">
+                    <Brain className="h-3 w-3" />
+                    ML Optimized
+                  </Badge>
+                  {isEditMode && (
+                    <Badge variant="destructive" className="flex items-center gap-1">
+                      <Edit2 className="h-3 w-3" />
+                      Edit Mode
+                    </Badge>
+                  )}
+                </div>
+                {isAdmin && (
+                  <div className="flex items-center gap-2">
+                    {!isEditMode ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditMode(true)}
+                      >
+                        <Edit2 className="h-4 w-4 mr-2" />
+                        Adjust Order
+                      </Button>
+                    ) : (
+                      <>
+                        <Button
                           variant="outline"
-                          onClick={() => handleExplainDecision(decision.trainset_id, decision.decision)}
-                          disabled={explanationMutation.isPending}
+                          size="sm"
+                          onClick={() => {
+                            setIsEditMode(false);
+                            setEditedRankedList([...rankedList]);
+                            setReorderReason("");
+                          }}
                         >
-                          <Eye className="h-4 w-4 mr-2" />
-                          Explain Decision
+                          <X className="h-4 w-4 mr-2" />
+                          Cancel
                         </Button>
-                            <Button 
-                              size="sm" 
-                              variant="secondary"
-                              onClick={() => handleViewDetails(decision.trainset_id)}
-                            >
-                              <Info className="h-4 w-4 mr-2" />
-                              View Details
-                            </Button>
-                      </div>
-                    </div>
-                  </CardContent>
+                        <Button
+                          variant="industrial"
+                          size="sm"
+                          onClick={handleSaveReorder}
+                          disabled={reorderMutation.isPending}
+                        >
+                          <Save className="h-4 w-4 mr-2" />
+                          {reorderMutation.isPending ? "Saving..." : "Save Order"}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
+              {isEditMode && (
+                <Card className="p-4 bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                  <div className="space-y-3">
+                    <Label htmlFor="reorder-reason">Reason for adjustment (optional):</Label>
+                    <Input
+                      id="reorder-reason"
+                      placeholder="e.g., Operational priority, maintenance schedule conflict..."
+                      value={reorderReason}
+                      onChange={(e) => setReorderReason(e.target.value)}
+                    />
+                    <p className="text-sm text-muted-foreground">
+                      Drag items to reorder or use the arrow buttons. Click "Save Order" to apply changes.
+                    </p>
+                  </div>
                 </Card>
-              ))}
+              )}
+              <DragDropContext onDragEnd={handleDragEnd}>
+                <Droppable droppableId="ranked-list">
+                  {(provided) => (
+                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                      {(isEditMode ? editedRankedList : rankedList).map((decision: any, index: number) => (
+                        <Draggable
+                          key={decision.trainset_id}
+                          draggableId={decision.trainset_id}
+                          index={index}
+                          isDragDisabled={!isEditMode}
+                        >
+                          {(provided, snapshot) => (
+                            <Card
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`hover:shadow-md transition-shadow ${
+                                snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
+                              } ${isEditMode ? 'cursor-move' : ''}`}
+                            >
+                              <CardHeader>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    {isEditMode && (
+                                      <div {...provided.dragHandleProps} className="cursor-grab active:cursor-grabbing">
+                                        <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                      </div>
+                                    )}
+                                    <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">
+                                      {index + 1}
+                                    </div>
+                                    <CardTitle className="text-lg">{decision.trainset_id}</CardTitle>
+                                    <Badge variant={decision.decision === "INDUCT" ? "success" : "secondary"}>
+                                      {decision.decision}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {isEditMode && (
+                                      <div className="flex flex-col gap-1 mr-2">
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => moveItemUp(index)}
+                                          disabled={index === 0}
+                                        >
+                                          <ArrowUp className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => moveItemDown(index)}
+                                          disabled={index === editedRankedList.length - 1}
+                                        >
+                                          <ArrowDown className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    )}
+                                    <span className="text-sm font-medium text-muted-foreground">
+                                      Score: {Math.round(decision.score * 100)}%
+                                    </span>
+                                    <span className="text-sm font-medium text-muted-foreground">
+                                      Confidence: {Math.round(decision.confidence_score * 100)}%
+                                    </span>
+                                  </div>
+                                </div>
+                              </CardHeader>
+                              <CardContent>
+                                <div className="space-y-3">
+                                  <div>
+                                    <h4 className="font-medium text-sm text-muted-foreground mb-2">Top Reasons:</h4>
+                                    <ul className="list-disc list-inside text-sm space-y-1">
+                                      {decision.top_reasons?.slice(0, 3).map((reason: string, i: number) => (
+                                        <li key={i} className="text-green-600">{reason}</li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                  {decision.top_risks && decision.top_risks.length > 0 && (
+                                    <div>
+                                      <h4 className="font-medium text-sm text-muted-foreground mb-2">Risks:</h4>
+                                      <ul className="list-disc list-inside text-sm space-y-1">
+                                        {decision.top_risks.slice(0, 2).map((risk: string, i: number) => (
+                                          <li key={i} className="text-red-600">{risk}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+                                  <div className="flex gap-2">
+                                    <Button 
+                                      size="sm" 
+                                      variant="outline"
+                                      onClick={() => handleExplainDecision(decision.trainset_id, decision.decision)}
+                                      disabled={explanationMutation.isPending}
+                                    >
+                                      <Eye className="h-4 w-4 mr-2" />
+                                      Explain Decision
+                                    </Button>
+                                    <Button 
+                                      size="sm" 
+                                      variant="secondary"
+                                      onClick={() => handleViewDetails(decision.trainset_id)}
+                                    >
+                                      <Info className="h-4 w-4 mr-2" />
+                                      View Details
+                                    </Button>
+                                  </div>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
             </div>
           )}
         </TabsContent>

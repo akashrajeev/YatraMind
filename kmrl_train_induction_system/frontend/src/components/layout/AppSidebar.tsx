@@ -105,7 +105,7 @@ export function AppSidebar() {
       <SidebarContent className="p-4">
         {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <SidebarGroupLabel className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${isCollapsed ? "sr-only" : ""}`}>
             Operations
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -115,9 +115,11 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to={item.url} 
-                      className={`${getNavClass(item.url)} transition-all duration-200`}
+                      className={`${getNavClass(item.url)} transition-all duration-200 ${
+                        isCollapsed ? "h-10 w-10 px-0 justify-center" : ""
+                      }`}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className={isCollapsed ? "h-5 w-5" : "h-4 w-4"} />
                       {!isCollapsed && (
                         <>
                           <span>{item.title}</span>
@@ -138,7 +140,7 @@ export function AppSidebar() {
 
         {/* Reports Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <SidebarGroupLabel className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${isCollapsed ? "sr-only" : ""}`}>
             Analytics
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -148,9 +150,11 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to={item.url} 
-                      className={`${getNavClass(item.url)} transition-all duration-200`}
+                      className={`${getNavClass(item.url)} transition-all duration-200 ${
+                        isCollapsed ? "h-10 w-10 px-0 justify-center" : ""
+                      }`}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className={isCollapsed ? "h-5 w-5" : "h-4 w-4"} />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -162,7 +166,7 @@ export function AppSidebar() {
 
         {/* System Section */}
         <SidebarGroup>
-          <SidebarGroupLabel className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+          <SidebarGroupLabel className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${isCollapsed ? "sr-only" : ""}`}>
             System
           </SidebarGroupLabel>
           <SidebarGroupContent>
@@ -172,9 +176,11 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink 
                       to={item.url} 
-                      className={`${getNavClass(item.url)} transition-all duration-200`}
+                      className={`${getNavClass(item.url)} transition-all duration-200 ${
+                        isCollapsed ? "h-10 w-10 px-0 justify-center" : ""
+                      }`}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className={isCollapsed ? "h-5 w-5" : "h-4 w-4"} />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>

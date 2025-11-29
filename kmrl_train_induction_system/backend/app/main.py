@@ -58,6 +58,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Metrics (must be added before startup)
+if _HAS_PROM:
+    Instrumentator().instrument(app).expose(app, include_in_schema=False)
+
 # Include API routers
 app.include_router(trainsets.router, prefix="/api/trainsets", tags=["Trainsets"])
 app.include_router(optimization.router, prefix="/api/optimization", tags=["Optimization"])
@@ -128,10 +132,6 @@ async def startup_event():
         # Nightly optimization at 4:30 AM IST (Asia/Kolkata) -> convert to server TZ by cron
         scheduler.add_job(lambda: celery_app.send_task("optimization.nightly_run"), "cron", hour=23, minute=59, id="nightly_opt")
         scheduler.start()
-
-        # Metrics
-        if _HAS_PROM:
-            Instrumentator().instrument(app).expose(app, include_in_schema=False)
     except Exception as e:
         logger.error(f"Startup failed: {e}")
 
