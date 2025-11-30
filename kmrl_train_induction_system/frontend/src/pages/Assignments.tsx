@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { assignmentApi, optimizationApi, trainsetsApi } from "@/services/api";
 import { Assignment, AssignmentSummary } from "@/types/api";
-import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info, Edit2, Save, X, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info, Edit2, Save, X, ArrowUp, ArrowDown, GripVertical, Calculator } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -818,6 +818,29 @@ const Assignments = () => {
                   </p>
                 </div>
               </div>
+
+              {explanationData.score_details && (
+                <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                  <h4 className="font-medium mb-3 flex items-center gap-2 text-sm">
+                    <Calculator className="h-4 w-4" />
+                    Score Calculation
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Tier 2 Score (Branding/Defects)</span>
+                      <span className="font-mono font-medium">{explanationData.score_details.tier2_score?.toFixed(1)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Tier 3 Score (Mileage/Ops)</span>
+                      <span className="font-mono font-medium">{explanationData.score_details.tier3_score?.toFixed(1)}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Formula</span>
+                      <span className="font-mono text-xs text-muted-foreground">{explanationData.score_details.formula}</span>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-3">

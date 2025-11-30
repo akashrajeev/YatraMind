@@ -115,7 +115,7 @@ def _calculate_tier3_score(trainset: Dict[str, Any]) -> float:
     
     return score
 
-def calculate_composite_score(trainset: Dict[str, Any], decision: str) -> float:
+def calculate_composite_score(trainset: Dict[str, Any], decision: str) -> Dict[str, Any]:
     """Calculate composite score based on Tiered Constraint Hierarchy (Matches optimizer.py)"""
     
     # Tier 1: Safety Compliance (binary - passed or failed)
@@ -132,10 +132,18 @@ def calculate_composite_score(trainset: Dict[str, Any], decision: str) -> float:
     # Range: -3000 to +3000 maps to 0.0 to 1.0
     normalized = min(1.0, max(0.0, (combined + 3000) / 6000)) 
     
+    final_score = normalized
     if safety_score < 1.0:
-        return 0.0
+        final_score = 0.0
     
-    return normalized
+    return {
+        "final_score": final_score,
+        "tier2_score": tier2_score,
+        "tier3_score": tier3_score,
+        "combined_score": combined,
+        "safety_score": safety_score,
+        "formula": "(Tier 2 * 10 + Tier 3 + 3000) / 6000"
+    }
 
 
 def _calculate_safety_compliance_score(trainset: Dict[str, Any]) -> float:
@@ -360,7 +368,7 @@ def generate_comprehensive_explanation(trainset: Dict[str, Any], decision: str) 
     """Generate comprehensive explanation for assignment decision"""
     
     # Calculate composite score
-    score = calculate_composite_score(trainset, decision)
+    score_details = calculate_composite_score(trainset, decision)
     
     # Get top reasons and risks
     reasons_risks = top_reasons_and_risks(trainset)
@@ -372,7 +380,8 @@ def generate_comprehensive_explanation(trainset: Dict[str, Any], decision: str) 
     shap_values = generate_shap_values(trainset)
     
     return {
-        "score": score,
+        "score": score_details["final_score"],
+        "score_details": score_details,
         "top_reasons": reasons_risks["top_reasons"],
         "top_risks": reasons_risks["top_risks"],
         "violations": violations,
