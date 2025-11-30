@@ -109,8 +109,10 @@ class TrainInductionOptimizer:
         # Normalize to 0-1 range for UI display
         # Tier 2 is weighted 10x Tier 3
         combined = (tier2_score * 10.0) + tier3_score
-        # Approximate normalization based on typical score ranges
-        normalized = min(1.0, max(0.0, (combined + 500) / 3500)) 
+        # Expanded normalization range to ensure eligible but low-scoring trains (Standby)
+        # have a non-zero score (e.g., ~5-10%) instead of being clamped to 0.
+        # Range: -3000 to +3000 maps to 0.0 to 1.0
+        normalized = min(1.0, max(0.0, (combined + 3000) / 6000)) 
         return normalized
     
     def _calculate_tier2_score(self, trainset: Dict[str, Any]) -> float:

@@ -7,7 +7,16 @@ import os
 import numpy as np
 from datetime import datetime, timedelta
 from app.models.trainset import ShapFeature
+from app.utils.normalization import normalize_to_int
 
+# Default weights matching optimizer.py
+WEIGHTS = {
+    "BRANDING_OBLIGATION": 250.0,
+    "MINOR_DEFECT_PENALTY_PER_DEFECT": -50.0,
+    "MILEAGE_BALANCING": 50.0,
+    "CLEANING_DUE_PENALTY": -30.0,
+    "SHUNTING_COMPLEXITY_PENALTY": -20.0
+}
 
 def _jinja_env() -> Environment:
     base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")
@@ -18,176 +27,150 @@ def _jinja_env() -> Environment:
         lstrip_blocks=True,
     )
 
+def _parse_cleaning_date(date_str: Any) -> datetime | None:
+    """Helper to safely parse cleaning due date."""
+    if not date_str:
+        return None
+    if isinstance(date_str, datetime):
+        return date_str
+    try:
+        return datetime.fromisoformat(str(date_str).replace('Z', '+00:00'))
+    except ValueError:
+        return None
 
-def calculate_composite_score(trainset: Dict[str, Any], decision: str) -> float:
-    """Calculate composite score based on Tiered Constraint Hierarchy
-    
-    Uses tiered scoring aligned with the new optimization model:
-    - Tier 1: Safety Compliance (binary - passed or failed)
-    - Tier 2: Branding Obligation + Defect Impact
-    - Tier 3: Mileage Optimization
-    """
+def _calculate_tier2_score(trainset: Dict[str, Any]) -> float:
+    """TIER 2: Calculate high priority soft objectives score (Matches optimizer.py)."""
     score = 0.0
     
-    # Tier 1: Safety Compliance (perfect score if passed hard constraints)
-    safety_score = _calculate_safety_compliance_score(trainset)
-    if safety_score < 1.0:
-        # If safety check failed, return low score immediately
-        return 0.0
-    
-    # Tier 2: Branding Obligation (high priority)
-    branding_score = _calculate_branding_obligation_score(trainset)
-    score += branding_score * 0.5  # 50% weight for Tier 2
-    
-    # Tier 2: Defect Impact (penalty for minor defects)
-    defect_impact = _calculate_defect_impact_score(trainset)
-    score += defect_impact * 0.3  # 30% weight for defect impact
-    
-    # Tier 3: Mileage Optimization
-    mileage_score = _calculate_mileage_optimization_score(trainset)
-    score += mileage_score * 0.2  # 20% weight for Tier 3
-    
-    # Adjust based on decision type
-    if decision == "INDUCT":
-        score *= 1.0  # Full score for induction
-    elif decision == "STANDBY":
-        score *= 0.7  # Reduced score for standby
-    elif decision == "MAINTENANCE":
-        score *= 0.3  # Lowest score for maintenance
-    
-    return min(max(score, 0.0), 1.0)
-
-
-def _calculate_safety_compliance_score(trainset: Dict[str, Any]) -> float:
-    """TIER 1: Calculate Safety Compliance score (perfect 1.0 if passed hard constraints)
-    
-    Returns 1.0 if all hard constraints are met:
-    - All fitness certificates valid
-    - No critical job cards
-    - Mileage within limits
-    - Not in maintenance status
-    Returns 0.0 if any critical failure exists
-    """
-    # Check fitness certificates - handle both dict and nested dict structures
-    fitness_certs = trainset.get("fitness_certificates", {})
-    if not isinstance(fitness_certs, dict):
-        fitness_certs = {}
-    
-    for cert_type, cert_data in fitness_certs.items():
-        if isinstance(cert_data, dict):
-            cert_status = str(cert_data.get("status", "")).upper()
-            if cert_status == "EXPIRED":
-                return 0.0  # Critical failure
-        elif isinstance(cert_data, str):
-            if cert_data.upper() == "EXPIRED":
-                return 0.0  # Critical failure
-    
-    # Check critical job cards - handle both dict and direct access
-    job_cards = trainset.get("job_cards", {})
-    if not isinstance(job_cards, dict):
-        job_cards = {}
-    
-    critical_cards = job_cards.get("critical_cards", 0)
-    if isinstance(critical_cards, str):
-        try:
-            critical_cards = int(float(critical_cards))
-        except (ValueError, TypeError):
-            critical_cards = 0
-    
-    if critical_cards > 0:
-        return 0.0  # Critical failure
-    
-    # Check mileage limits
-    current_mileage = trainset.get("current_mileage", 0.0)
-    max_mileage = trainset.get("max_mileage_before_maintenance", float('inf'))
-    if max_mileage > 0 and current_mileage >= max_mileage:
-        return 0.0  # Critical failure
-    
-    # Check maintenance status
-    if trainset.get("status") == "MAINTENANCE":
-        return 0.0  # Critical failure
-    
-    # All hard constraints passed
-    return 1.0
-
-
-def _calculate_branding_obligation_score(trainset: Dict[str, Any]) -> float:
-    """TIER 2: Calculate Branding Obligation score (high score if has active ad-wrap requirement)
-    
-    Returns 0.9-1.0 if train has active branding obligation, lower if not
-    """
+    # Branding obligation
     branding = trainset.get("branding", {})
     if isinstance(branding, dict):
         advertiser = branding.get("current_advertiser")
         priority = branding.get("priority", "LOW")
         
-        # If train is wrapped (has active advertiser)
         if advertiser and advertiser != "None" and advertiser != "":
             if priority == "HIGH":
-                return 1.0  # Maximum obligation
+                score += WEIGHTS["BRANDING_OBLIGATION"]
             elif priority == "MEDIUM":
-                return 0.8  # Medium obligation
+                score += WEIGHTS["BRANDING_OBLIGATION"] * 0.6
             elif priority == "LOW":
-                return 0.6  # Low obligation
-            else:
-                return 0.7  # Default for wrapped train
+                score += WEIGHTS["BRANDING_OBLIGATION"] * 0.3
     
-    # No active branding obligation
-    return 0.1
-
-
-def _calculate_defect_impact_score(trainset: Dict[str, Any]) -> float:
-    """TIER 2: Calculate Defect Impact score (negative impact for minor defects)
-    
-    Returns negative score if train has minor defects (non-critical job cards)
-    Higher absolute value = more defects = more negative impact
-    """
+    # Minor defect penalty
     job_cards = trainset.get("job_cards", {})
-    open_cards = job_cards.get("open_cards", 0)
-    critical_cards = job_cards.get("critical_cards", 0)
+    open_cards = normalize_to_int(job_cards.get("open_cards"), 0)
+    critical_cards = normalize_to_int(job_cards.get("critical_cards"), 0)
     minor_cards = max(0, open_cards - critical_cards)
     
-    if minor_cards == 0:
-        return 1.0  # No minor defects - perfect score
-    elif minor_cards <= 2:
-        return 0.7  # Few minor defects - slight penalty
-    elif minor_cards <= 5:
-        return 0.4  # Moderate minor defects - moderate penalty
-    else:
-        return 0.1  # Many minor defects - high penalty
-
-
-def _calculate_mileage_optimization_score(trainset: Dict[str, Any]) -> float:
-    """TIER 3: Calculate Mileage Optimization score (helps balance fleet mileage)
+    if minor_cards > 0:
+        penalty = WEIGHTS["MINOR_DEFECT_PENALTY_PER_DEFECT"] * minor_cards
+        score += penalty
     
-    Higher score if train is below fleet average mileage (needs mileage to catch up)
-    This helps equalize fleet usage over time
-    """
-    # Get 30-day mileage if available, otherwise use current mileage ratio
-    km_30d = trainset.get("km_30d")
+    return score
+
+def _calculate_tier3_score(trainset: Dict[str, Any]) -> float:
+    """TIER 3: Calculate optimization soft objectives score (Matches optimizer.py)."""
+    score = 0.0
+    
+    # Mileage balancing
     current_mileage = trainset.get("current_mileage", 0.0)
-    max_mileage = trainset.get("max_mileage_before_maintenance", 50000.0)
+    km_30d = trainset.get("km_30d", current_mileage * 0.1)
+    km_30d_norm = min(1.0, km_30d / 5000.0) if km_30d else 0.5
     
-    if km_30d is not None:
-        # Normalize 30-day mileage (assume 5000km is typical for 30 days)
-        km_30d_norm = min(1.0, km_30d / 5000.0) if km_30d > 0 else 0.5
-        # Lower 30-day mileage = higher score (needs mileage to balance fleet)
-        return 1.0 - km_30d_norm * 0.8  # Range from 1.0 (no mileage) to 0.2 (high mileage)
+    if km_30d_norm < 0.5:
+        score += WEIGHTS["MILEAGE_BALANCING"]
     else:
-        # Fallback to current mileage ratio
-        if max_mileage == 0:
-            return 0.5
-        
-        usage_ratio = current_mileage / max_mileage
-        # Lower usage ratio = higher score (needs mileage to catch up)
-        if usage_ratio < 0.3:
-            return 1.0  # Very low mileage - high priority for balancing
-        elif usage_ratio < 0.5:
-            return 0.8  # Low mileage - good for balancing
-        elif usage_ratio < 0.7:
-            return 0.5  # Moderate mileage - neutral
-        else:
-            return 0.3  # High mileage - low priority
+        score += WEIGHTS["MILEAGE_BALANCING"] * (1.0 - km_30d_norm)
+    
+    # Cleaning due penalty
+    requires_cleaning = bool(trainset.get("requires_cleaning", False))
+    cleaning_due_date = trainset.get("cleaning_due_date")
+    
+    if requires_cleaning and cleaning_due_date:
+        try:
+            due_date = _parse_cleaning_date(cleaning_due_date)
+            if due_date:
+                days_until_due = (due_date - datetime.utcnow()).days
+                if days_until_due <= 7:
+                    penalty_factor = 1.0 - (days_until_due / 7.0)
+                    score += WEIGHTS["CLEANING_DUE_PENALTY"] * penalty_factor
+            else:
+                score += WEIGHTS["CLEANING_DUE_PENALTY"] * 0.5
+        except Exception:
+            score += WEIGHTS["CLEANING_DUE_PENALTY"] * 0.5
+    elif requires_cleaning:
+        score += WEIGHTS["CLEANING_DUE_PENALTY"] * 0.3
+    
+    # Shunting complexity penalty
+    is_blocked = bool(trainset.get("is_blocked", False))
+    shunt_complexity = trainset.get("shunt_complexity", 0.0)
+    
+    if is_blocked or shunt_complexity > 0.5:
+        complexity_factor = 1.0 if is_blocked else shunt_complexity
+        score += WEIGHTS["SHUNTING_COMPLEXITY_PENALTY"] * complexity_factor
+    
+    # ML health contribution
+    health_score = float(trainset.get("ml_health_score", 0.85) or 0.85)
+    score += health_score * 100.0
+    
+    return score
+
+def calculate_composite_score(trainset: Dict[str, Any], decision: str) -> float:
+    """Calculate composite score based on Tiered Constraint Hierarchy (Matches optimizer.py)"""
+    
+    # Tier 1: Safety Compliance (binary - passed or failed)
+    safety_score = _calculate_safety_compliance_score(trainset)
+    
+    tier2_score = _calculate_tier2_score(trainset)
+    tier3_score = _calculate_tier3_score(trainset)
+    
+    # Normalize to 0-1 range for UI display (Matches optimizer.py formula)
+    # Tier 2 is weighted 10x Tier 3
+    combined = (tier2_score * 10.0) + tier3_score
+    # Expanded normalization range to ensure eligible but low-scoring trains (Standby)
+    # have a non-zero score (e.g., ~5-10%) instead of being clamped to 0.
+    # Range: -3000 to +3000 maps to 0.0 to 1.0
+    normalized = min(1.0, max(0.0, (combined + 3000) / 6000)) 
+    
+    if safety_score < 1.0:
+        return 0.0
+    
+    return normalized
+
+
+def _calculate_safety_compliance_score(trainset: Dict[str, Any]) -> float:
+    """TIER 1: Calculate Safety Compliance score (perfect 1.0 if passed hard constraints)"""
+    # Check fitness certificates
+    fitness_certs = trainset.get("fitness_certificates", {})
+    if not isinstance(fitness_certs, dict):
+        fitness_certs = {}
+    
+    for cert_data in fitness_certs.values():
+        if isinstance(cert_data, dict):
+            if str(cert_data.get("status", "")).upper() == "EXPIRED":
+                return 0.0
+        elif isinstance(cert_data, str):
+            if cert_data.upper() == "EXPIRED":
+                return 0.0
+    
+    # Check critical job cards
+    job_cards = trainset.get("job_cards", {})
+    critical_cards = normalize_to_int(job_cards.get("critical_cards"), 0)
+    
+    if critical_cards > 0:
+        return 0.0
+    
+    # Check mileage limits
+    current_mileage = trainset.get("current_mileage", 0.0)
+    max_mileage = trainset.get("max_mileage_before_maintenance", float('inf'))
+    if max_mileage > 0 and current_mileage >= max_mileage:
+        return 0.0
+    
+    # Check maintenance status
+    if trainset.get("status") == "MAINTENANCE":
+        return 0.0
+    
+    return 1.0
 
 
 def top_reasons_and_risks(trainset: Dict[str, Any]) -> Dict[str, List[str]]:
@@ -200,17 +183,14 @@ def top_reasons_and_risks(trainset: Dict[str, Any]) -> Dict[str, List[str]]:
     if safety_score == 1.0:
         reasons.append("Safety compliance verified - all certificates valid")
         
-        # Check specific certificate statuses
         fitness_certs = trainset.get("fitness_certificates", {})
         if all(c.get("status") == "VALID" for c in fitness_certs.values()):
             reasons.append("All department certificates valid and current")
         
-        # Check critical job cards
         job_cards = trainset.get("job_cards", {})
-        if job_cards.get("critical_cards", 0) == 0:
+        if normalize_to_int(job_cards.get("critical_cards"), 0) == 0:
             reasons.append("No critical job cards pending")
     else:
-        # Safety compliance failed - add to risks
         fitness_certs = trainset.get("fitness_certificates", {})
         for dept, cert in fitness_certs.items():
             if cert.get("status") == "EXPIRED":
@@ -218,40 +198,54 @@ def top_reasons_and_risks(trainset: Dict[str, Any]) -> Dict[str, List[str]]:
             elif cert.get("status") == "EXPIRING_SOON":
                 risks.append(f"{dept} certificate expiring soon")
         
-        if trainset.get("job_cards", {}).get("critical_cards", 0) > 0:
+        if normalize_to_int(trainset.get("job_cards", {}).get("critical_cards"), 0) > 0:
             risks.append("Open critical job-card - safety compliance failure")
 
     # TIER 2: Branding Obligation reasons
-    branding_score = _calculate_branding_obligation_score(trainset)
     branding = trainset.get("branding", {})
     if isinstance(branding, dict):
         advertiser = branding.get("current_advertiser")
         priority = branding.get("priority", "LOW")
         if advertiser and advertiser not in (None, "None", ""):
             if priority == "HIGH":
-                reasons.append("Mandatory branding commitment - high priority ad-wrap")
+                reasons.insert(0, "CRITICAL: Mandatory branding commitment - Overrides minor defects and mileage")
             elif priority == "MEDIUM":
-                reasons.append("Branding obligation - medium priority wrapped train")
+                reasons.append("Branding obligation (Medium Priority) - wrapped train")
             elif priority == "LOW":
-                reasons.append("Branding commitment - low priority wrapped train")
+                reasons.append("Branding commitment (Low Priority) - wrapped train")
     
     # TIER 2: Defect Impact reasons
-    defect_score = _calculate_defect_impact_score(trainset)
     job_cards = trainset.get("job_cards", {})
-    minor_cards = max(0, job_cards.get("open_cards", 0) - job_cards.get("critical_cards", 0))
+    open_cards = normalize_to_int(job_cards.get("open_cards"), 0)
+    critical_cards = normalize_to_int(job_cards.get("critical_cards"), 0)
+    minor_cards = max(0, open_cards - critical_cards)
+    
     if minor_cards == 0:
         reasons.append("No minor defects - optimal condition for service")
-    elif minor_cards > 5:
-        risks.append(f"{minor_cards} minor defects - prefer depot maintenance if possible")
+    else:
+        # Include ALL pending job cards as risks/warnings as requested
+        risks.append(f"{minor_cards} minor job cards pending - requires attention")
+        if minor_cards > 5:
+            risks.append("High number of minor defects - prefer depot maintenance")
 
     # TIER 3: Mileage Optimization reasons
-    mileage_score = _calculate_mileage_optimization_score(trainset)
+    # Use helper to get score for reasoning
+    mileage_score = 0.0
+    current_mileage = trainset.get("current_mileage", 0.0)
+    km_30d = trainset.get("km_30d", current_mileage * 0.1)
+    km_30d_norm = min(1.0, km_30d / 5000.0) if km_30d else 0.5
+    
+    if km_30d_norm < 0.5:
+        mileage_score = 1.0 # Good
+    else:
+        mileage_score = 1.0 - km_30d_norm
+        
     if mileage_score > 0.8:
-        reasons.append("Low mileage - good for fleet balancing")
+        reasons.append("Low mileage (Secondary Factor) - good for fleet balancing")
     elif mileage_score > 0.6:
-        reasons.append("Below-average mileage - helps equalize fleet usage")
+        reasons.append("Below-average mileage (Secondary Factor) - helps equalize fleet usage")
     elif mileage_score < 0.4:
-        risks.append("High mileage - lower priority for service")
+        risks.append("High mileage (Secondary Factor) - lower priority but acceptable")
 
     return {
         "top_reasons": reasons,
@@ -260,81 +254,61 @@ def top_reasons_and_risks(trainset: Dict[str, Any]) -> Dict[str, List[str]]:
 
 
 def generate_shap_values(trainset: Dict[str, Any], ml_features: List[str] = None) -> List[ShapFeature]:
-    """Generate SHAP values for top features based on Tiered Constraint Hierarchy
-    
-    New tiered metrics:
-    - Tier 1: Safety Compliance
-    - Tier 2: Branding Obligation, Defect Impact
-    - Tier 3: Mileage Optimization
-    """
+    """Generate SHAP values for top features based on Tiered Constraint Hierarchy"""
     shap_features = []
     
-    # TIER 1: Safety Compliance (always shown if relevant)
+    # TIER 1: Safety Compliance
     safety_score = _calculate_safety_compliance_score(trainset)
     if safety_score < 1.0:
-        shap_features.append(ShapFeature(
-            name="Safety Compliance",
-            value=safety_score,
-            impact="negative"  # Failed safety check
-        ))
+        shap_features.append(ShapFeature(name="Safety Compliance", value=1.0, impact="negative"))
     else:
-        shap_features.append(ShapFeature(
-            name="Safety Compliance",
-            value=1.0,
-            impact="positive"  # Passed all safety checks
-        ))
+        shap_features.append(ShapFeature(name="Safety Compliance", value=1.0, impact="positive"))
     
-    # TIER 2: Branding Obligation
-    branding_score = _calculate_branding_obligation_score(trainset)
+    # TIER 2: Branding
     branding = trainset.get("branding", {})
     if isinstance(branding, dict) and branding.get("current_advertiser") not in (None, "None", ""):
-        impact = "positive" if branding_score >= 0.6 else "neutral"
-        shap_features.append(ShapFeature(
-            name="Branding Obligation",
-            value=branding_score,
-            impact=impact
-        ))
-    
-    # TIER 2: Defect Impact (negative impact)
-    defect_score = _calculate_defect_impact_score(trainset)
-    job_cards = trainset.get("job_cards", {})
-    minor_cards = max(0, job_cards.get("open_cards", 0) - job_cards.get("critical_cards", 0))
-    if minor_cards > 0:
-        # Show as negative impact (lower defect_score = more defects)
-        impact_value = 1.0 - defect_score  # Invert so higher = more defects
-        shap_features.append(ShapFeature(
-            name="Defect Impact",
-            value=impact_value,
-            impact="negative"
-        ))
-    
-    # TIER 3: Mileage Optimization
-    mileage_score = _calculate_mileage_optimization_score(trainset)
-    # Get 30-day mileage for context
-    km_30d = trainset.get("km_30d")
-    if km_30d is not None:
-        km_30d_norm = min(1.0, km_30d / 5000.0) if km_30d > 0 else 0.5
-        impact = "positive" if mileage_score > 0.7 else "neutral" if mileage_score > 0.4 else "negative"
-        shap_features.append(ShapFeature(
-            name="Mileage Optimization",
-            value=mileage_score,
-            impact=impact
-        ))
+        priority = branding.get("priority", "LOW")
+        branding_score = 1.0 if priority == "HIGH" else 0.8 if priority == "MEDIUM" else 0.6
+        shap_features.append(ShapFeature(name="Branding Obligation", value=branding_score, impact="positive"))
     else:
-        # Use current mileage ratio
-        current_mileage = trainset.get("current_mileage", 0.0)
-        max_mileage = trainset.get("max_mileage_before_maintenance", 50000.0)
-        if max_mileage > 0:
-            usage_ratio = current_mileage / max_mileage
-            impact = "positive" if mileage_score > 0.7 else "neutral" if mileage_score > 0.4 else "negative"
-            shap_features.append(ShapFeature(
-                name="Mileage Optimization",
-                value=mileage_score,
-                impact=impact
-            ))
+        # No branding is neutral/slight negative in a competitive list? 
+        # Actually, let's keep it neutral or omitted if 0.
+        # But user asked "why are some factors zero". 
+        # If we explicitly show it as 0.0, it answers "No branding".
+        shap_features.append(ShapFeature(name="Branding Obligation", value=0.0, impact="neutral"))
+
+    # TIER 2: Defect Impact
+    job_cards = trainset.get("job_cards", {})
+    open_cards = normalize_to_int(job_cards.get("open_cards"), 0)
+    critical_cards = normalize_to_int(job_cards.get("critical_cards"), 0)
+    minor_cards = max(0, open_cards - critical_cards)
     
-    # Sort by importance (safety first, then by value impact)
-    # Safety compliance always first if failed, then by tier priority
+    if minor_cards > 0:
+        # Normalize impact for display (0 to 1 scale)
+        impact = min(1.0, minor_cards / 5.0) # 5 defects = max visual negative impact
+        shap_features.append(ShapFeature(name="Defect Impact", value=impact, impact="negative"))
+    else:
+        # No defects = Positive Impact!
+        shap_features.append(ShapFeature(name="Defect Impact", value=1.0, impact="positive"))
+    
+    # TIER 3: Mileage
+    current_mileage = trainset.get("current_mileage", 0.0)
+    km_30d = trainset.get("km_30d", current_mileage * 0.1)
+    km_30d_norm = min(1.0, km_30d / 5000.0) if km_30d else 0.5
+    mileage_val = 1.0 - km_30d_norm
+    
+    if mileage_val > 0.6:
+        # Low mileage = Positive
+        shap_features.append(ShapFeature(name="Mileage Optimization", value=mileage_val, impact="positive"))
+    elif mileage_val < 0.4:
+        # High mileage = Negative
+        # Show magnitude of "badness" (1.0 - val)
+        shap_features.append(ShapFeature(name="Mileage Optimization", value=(1.0 - mileage_val), impact="negative"))
+    else:
+        # Average mileage = Neutral
+        shap_features.append(ShapFeature(name="Mileage Optimization", value=0.5, impact="neutral"))
+    
+    # Sort by importance
     def sort_key(f: ShapFeature) -> tuple:
         tier_priority = {
             "Safety Compliance": 0,
@@ -342,7 +316,6 @@ def generate_shap_values(trainset: Dict[str, Any], ml_features: List[str] = None
             "Defect Impact": 2,
             "Mileage Optimization": 3
         }.get(f.name, 99)
-        # Negative values (bad) should come first for visibility
         return (tier_priority, -abs(f.value) if f.impact == "negative" else abs(f.value))
     
     shap_features.sort(key=sort_key)
@@ -363,7 +336,7 @@ def detect_rule_violations(trainset: Dict[str, Any], decision: str) -> List[str]
     
     # Check job card violations
     job_cards = trainset.get("job_cards", {})
-    if job_cards.get("critical_cards", 0) > 0:
+    if normalize_to_int(job_cards.get("critical_cards"), 0) > 0:
         violations.append("Open critical job-card")
     
     # Check mileage violations

@@ -235,6 +235,13 @@ async def get_trainset_details(
         
         return {
             "trainset_id": trainset_id,
+            "status": trainset.get("status", "ACTIVE"),
+            "current_mileage": trainset.get("current_mileage", 0) or trainset.get("mileage", {}).get("total_km", 0),
+            "location": trainset.get("current_location", {}).get("depot", "Depot"),
+            "commission_date": trainset.get("commission_date", "2020-01-01"),
+            "fitness_certificates": trainset.get("fitness_certificates", {}),
+            "job_cards": trainset.get("job_cards", {}),
+            "branding": trainset.get("branding", {}),
             "basic_info": {
                 "status": trainset.get("status", "ACTIVE"),
                 "model": trainset.get("model", "KMRL-2024"),
@@ -254,7 +261,6 @@ async def get_trainset_details(
             "maintenance_logs": maintenance_logs,
             "sensor_data": sensor_data[-20:],  # Last 20 sensor readings
             "certificates": trainset.get("certificates", {}),
-            "branding": trainset.get("branding", {}),
             "cleaning_schedule": trainset.get("cleaning_schedule", {}),
             "mileage": trainset.get("mileage", {}),
             "recommendations": [
