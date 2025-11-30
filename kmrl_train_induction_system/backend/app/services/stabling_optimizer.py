@@ -1,5 +1,6 @@
 # backend/app/services/stabling_optimizer.py
 import math
+import re
 from typing import List, Dict, Any, Tuple
 from datetime import datetime, timedelta
 import logging
@@ -212,10 +213,8 @@ class StablingGeometryOptimizer:
                 current_pos = depot_layout["bay_positions"].get(current_bay, {"x": 0, "y": 0})
                 assigned_pos = depot_layout["bay_positions"].get(assigned_bay, {"x": 0, "y": 0})
                 
-                distance = math.sqrt(
-                    (assigned_pos["x"] - current_pos["x"])**2 + 
-                    (assigned_pos["y"] - current_pos["y"])**2
-                )
+                # Use Manhattan distance (grid-like movement: Bay -> Turnout -> Bay)
+                distance = abs(assigned_pos["x"] - current_pos["x"]) + abs(assigned_pos["y"] - current_pos["y"])
                 
                 # Estimate shunting time based on distance and complexity
                 estimated_time = self._estimate_shunting_time(distance, current_bay, assigned_bay)
@@ -234,8 +233,10 @@ class StablingGeometryOptimizer:
     def _extract_bay_number(self, bay_string: str) -> int:
         """Extract bay number from bay string (e.g., 'Aluva_BAY_05' -> 5)"""
         try:
-            if "_BAY_" in bay_string:
-                return int(bay_string.split("_BAY_")[1])
+            # Use regex to find the first sequence of digits
+            match = re.search(r'(\d+)', bay_string)
+            if match:
+                return int(match.group(1))
             return 0
         except (ValueError, IndexError):
             return 0

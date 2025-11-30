@@ -59,10 +59,19 @@ class DataIngestionService:
     async def _ingest_maximo_data(self) -> Dict[str, Any]:
         """Ingest job card data from IBM Maximo"""
         try:
-            # Prefer real Maximo API if configured; fallback to simulated
-            if settings.maximo_base_url and (settings.maximo_api_key or (settings.maximo_username and settings.maximo_password)):
-                maximo_data = await self._fetch_maximo_job_cards_api()
+            # Check if Maximo API is configured
+            is_configured = settings.maximo_base_url and (settings.maximo_api_key or (settings.maximo_username and settings.maximo_password))
+            
+            if is_configured:
+                try:
+                    maximo_data = await self._fetch_maximo_job_cards_api()
+                except Exception as api_err:
+                    # CRITICAL: Do NOT fallback to simulation in production if API fails
+                    logger.error(f"Maximo API failed: {api_err}")
+                    raise  # Propagate error to prevent split-brain/fake data
             else:
+                # Only use simulation if explicitly NOT configured (Dev mode)
+                logger.warning("Maximo API not configured - using SIMULATED data")
                 maximo_data = await self._fetch_maximo_job_cards()
             
             # Clean and validate data
@@ -74,7 +83,7 @@ class DataIngestionService:
                 target_collection="job_cards",
                 raw_payload={"count": len(maximo_data)},
                 normalized_docs=cleaned_data,
-                metadata={"mode": "api" if settings.maximo_base_url else "simulated"},
+                metadata={"mode": "api" if is_configured else "simulated"},
             )
             
             return {"count": len(cleaned_data), "source": "maximo"}
