@@ -6,12 +6,12 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { optimizationApi } from "@/services/api";
-import { 
-  Brain, 
-  Play, 
-  Settings, 
-  BarChart3, 
-  Target, 
+import {
+  Brain,
+  Play,
+  Settings,
+  BarChart3,
+  Target,
   Zap,
   AlertTriangle,
   CheckCircle,
@@ -20,14 +20,13 @@ import {
   Download,
   Upload,
   RefreshCw,
-  Train
+  Train,
+  Eye
 } from "lucide-react";
 import { useState } from "react";
 
 const Optimization = () => {
   const [optimizationParams, setOptimizationParams] = useState({
-    target_date: new Date().toISOString().split('T')[0],
-    required_service_hours: 14,
     constraints: {}
   });
 
@@ -72,9 +71,9 @@ const Optimization = () => {
   const runOptimizationMutation = useMutation({
     mutationFn: optimizationApi.runOptimization,
     onSuccess: () => {
-      queryClient.invalidateQueries(['optimization-latest']);
-      queryClient.invalidateQueries(['optimization-stabling']);
-      queryClient.invalidateQueries(['optimization-shunting']);
+      queryClient.invalidateQueries({ queryKey: ['optimization-latest'] });
+      queryClient.invalidateQueries({ queryKey: ['optimization-stabling'] });
+      queryClient.invalidateQueries({ queryKey: ['optimization-shunting'] });
     },
   });
 
@@ -179,33 +178,10 @@ const Optimization = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="target-date">Target Date</Label>
-                  <Input
-                    id="target-date"
-                    type="date"
-                    value={optimizationParams.target_date}
-                    onChange={(e) => setOptimizationParams(prev => ({
-                      ...prev,
-                      target_date: e.target.value
-                    }))}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="service-hours">Required Service Hours</Label>
-                  <Input
-                    id="service-hours"
-                    type="number"
-                    value={optimizationParams.required_service_hours}
-                    onChange={(e) => setOptimizationParams(prev => ({
-                      ...prev,
-                      required_service_hours: parseInt(e.target.value) || 14
-                    }))}
-                  />
-                </div>
+              <div className="text-sm text-muted-foreground mb-4">
+                Click the button below to run the AI/ML optimization engine. The system will automatically select the best trainsets for induction based on current health, maintenance schedules, and operational constraints.
               </div>
-              <Button 
+              <Button
                 onClick={() => runOptimizationMutation.mutate(optimizationParams)}
                 disabled={runOptimizationMutation.isPending}
                 className="w-full"
@@ -250,8 +226,8 @@ const Optimization = () => {
                         <span className="text-sm text-muted-foreground">
                           Confidence: {Math.round(decision.confidence_score * 100)}%
                         </span>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
                           onClick={() => explainMutation.mutate({
                             trainsetId: decision.trainset_id,
@@ -389,7 +365,7 @@ const Optimization = () => {
                 </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={() => runSimulationMutation.mutate(simulationParams)}
                 disabled={runSimulationMutation.isPending}
                 className="w-full"
@@ -550,8 +526,8 @@ const Optimization = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl">What-If Simulation Results</CardTitle>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => setShowSimulationResults(false)}
                 >
@@ -579,14 +555,14 @@ const Optimization = () => {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Weights:</span>
                       <span className="text-xs">
-                        R:{simulationResults.scenario?.weights?.readiness} 
+                        R:{simulationResults.scenario?.weights?.readiness}
                         R:{simulationResults.scenario?.weights?.reliability}
                         B:{simulationResults.scenario?.weights?.branding}
                       </span>
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="font-semibold text-lg mb-3">Simulation Summary</h3>
                   <div className="space-y-2 text-sm">
@@ -633,12 +609,12 @@ const Optimization = () => {
                       <div className="flex items-center gap-4 text-sm">
                         <span>Score: {Math.round((result.score || 0) * 100)}%</span>
                         <span>Confidence: {Math.round((result.confidence_score || 0) * 100)}%</span>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           variant="outline"
-                          onClick={() => explainMutation.mutate({ 
-                            trainsetId: result.trainset_id, 
-                            decision: result.decision 
+                          onClick={() => explainMutation.mutate({
+                            trainsetId: result.trainset_id,
+                            decision: result.decision
                           })}
                         >
                           <Eye className="h-3 w-3 mr-1" />
@@ -672,8 +648,8 @@ const Optimization = () => {
                 <CardTitle className="text-xl">
                   AI Decision Explanation - {explanationData.trainset_id}
                 </CardTitle>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => setShowExplanation(false)}
                 >
@@ -694,7 +670,7 @@ const Optimization = () => {
                     ))}
                   </ul>
                 </div>
-                
+
                 <div>
                   <h3 className="font-semibold text-lg mb-3 text-red-600">Risks & Violations</h3>
                   <ul className="space-y-2">
@@ -723,11 +699,10 @@ const Optimization = () => {
                         <span className="text-sm font-medium">{feature.name}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{feature.value}</span>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            feature.impact === 'positive' 
-                              ? 'bg-green-100 text-green-800' 
+                          <span className={`text-xs px-2 py-1 rounded ${feature.impact === 'positive'
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
-                          }`}>
+                            }`}>
                             {feature.impact === 'positive' ? '↑' : '↓'}
                           </span>
                         </div>

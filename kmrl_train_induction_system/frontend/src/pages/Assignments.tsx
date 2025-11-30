@@ -67,7 +67,7 @@ const Assignments = () => {
 
   // Reorder mutation
   const reorderMutation = useMutation({
-    mutationFn: (data: { trainset_ids: string[]; reason?: string }) => 
+    mutationFn: (data: { trainset_ids: string[]; reason?: string }) =>
       optimizationApi.reorderRankedList(data),
     onSuccess: () => {
       toast.success("Ranked list updated", {
@@ -185,7 +185,7 @@ const Assignments = () => {
 
   // Explanation mutation
   const explanationMutation = useMutation({
-    mutationFn: ({ trainsetId, decision }: { trainsetId: string; decision: string }) => 
+    mutationFn: ({ trainsetId, decision }: { trainsetId: string; decision: string }) =>
       optimizationApi.explainAssignment(trainsetId, decision),
     onSuccess: (data) => {
       setExplanationData(data.data);
@@ -260,12 +260,7 @@ const Assignments = () => {
             variant="industrial"
             disabled={optimizationMutation.isPending}
             onClick={() => {
-              const tomorrow = new Date();
-              tomorrow.setDate(tomorrow.getDate() + 1);
-              optimizationMutation.mutate({
-                target_date: tomorrow.toISOString(),
-                required_service_hours: 14,
-              });
+              optimizationMutation.mutate({});
             }}
           >
             <Plus className="h-4 w-4 mr-2" />
@@ -274,8 +269,8 @@ const Assignments = () => {
         </div>
       </div>
 
-          {/* Assignments Tabs */}
-          <Tabs defaultValue={defaultTab} className="w-full">
+      {/* Assignments Tabs */}
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="ranked">
             <Target className="h-4 w-4 mr-2" />
@@ -395,9 +390,8 @@ const Assignments = () => {
                             <Card
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              className={`hover:shadow-md transition-shadow ${
-                                snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
-                              } ${isEditMode ? 'cursor-move' : ''}`}
+                              className={`hover:shadow-md transition-shadow ${snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
+                                } ${isEditMode ? 'cursor-move' : ''}`}
                             >
                               <CardHeader>
                                 <div className="flex items-center justify-between">
@@ -468,8 +462,8 @@ const Assignments = () => {
                                     </div>
                                   )}
                                   <div className="flex gap-2">
-                                    <Button 
-                                      size="sm" 
+                                    <Button
+                                      size="sm"
                                       variant="outline"
                                       onClick={() => handleExplainDecision(decision.trainset_id, decision.decision)}
                                       disabled={explanationMutation.isPending}
@@ -477,8 +471,8 @@ const Assignments = () => {
                                       <Eye className="h-4 w-4 mr-2" />
                                       Explain Decision
                                     </Button>
-                                    <Button 
-                                      size="sm" 
+                                    <Button
+                                      size="sm"
                                       variant="secondary"
                                       onClick={() => handleViewDetails(decision.trainset_id)}
                                     >
@@ -611,16 +605,16 @@ const Assignments = () => {
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasoning}</p>
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => handleViewDetails(assignment.trainset_id)}
                     >
                       <Info className="h-4 w-4 mr-2" />
                       View Details
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="secondary"
                       onClick={(e) => {
                         e.preventDefault();
@@ -630,8 +624,8 @@ const Assignments = () => {
                           return;
                         }
                         console.log("Override clicked - Assignment:", assignment);
-                        const newDecision = assignment.decision.decision === "INDUCT" ? "STANDBY" : 
-                                            assignment.decision.decision === "STANDBY" ? "MAINTENANCE" : "INDUCT";
+                        const newDecision = assignment.decision.decision === "INDUCT" ? "STANDBY" :
+                          assignment.decision.decision === "STANDBY" ? "MAINTENANCE" : "INDUCT";
                         overrideMutation.mutate({
                           assignment_id: assignment.id,
                           user_id: "system",
@@ -643,8 +637,8 @@ const Assignments = () => {
                     >
                       {overrideMutation.isPending ? "Overriding..." : "Override"}
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="industrial"
                       onClick={(e) => {
                         e.preventDefault();
@@ -719,8 +713,8 @@ const Assignments = () => {
                     <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasons[0]}</p>
                   )}
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => handleViewDetails(assignment.trainset_id)}
                     >
@@ -785,8 +779,8 @@ const Assignments = () => {
                     </div>
                   )}
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => handleViewDetails(assignment.trainset_id)}
                     >
@@ -800,218 +794,8 @@ const Assignments = () => {
           )}
         </TabsContent>
       </Tabs>
+    </div>
+  );
+};
 
-      {/* Explanation Modal */}
-      {showExplanation && explanationData && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
-          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 text-foreground dark:text-slate-100 shadow-2xl border border-slate-200 dark:border-slate-800">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl text-foreground dark:text-white">
-                  AI Decision Explanation - {selectedTrainset}
-                </CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  onClick={() => setShowExplanation(false)}
-                >
-                  ×
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-green-600 dark:text-green-400">Top Reasons</h3>
-                  <ul className="space-y-2">
-                    {explanationData.top_reasons?.map((reason: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500 dark:text-green-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-foreground dark:text-slate-100">{reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-                
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-red-600 dark:text-red-400">Risks & Violations</h3>
-                  <ul className="space-y-2">
-                    {explanationData.top_risks?.map((risk: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-foreground dark:text-slate-100">{risk}</span>
-                      </li>
-                    ))}
-                    {explanationData.violations?.map((violation: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 dark:text-red-400 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-red-600 dark:text-red-300">{violation}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {explanationData.shap_values && explanationData.shap_values.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-foreground dark:text-white">Feature Impact Analysis</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {explanationData.shap_values.map((feature: any, i: number) => (
-                      <div
-                        key={i}
-                        className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-800/70 border border-gray-100 dark:border-slate-700"
-                      >
-                        <span className="text-sm font-medium text-foreground dark:text-slate-100">{feature.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm text-foreground dark:text-slate-200">{feature.value}</span>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            feature.impact === 'positive' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' 
-                              : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
-                          }`}>
-                            {feature.impact === 'positive' ? '↑' : '↓'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowExplanation(false)}>
-                  Close
-                </Button>
-                <Button onClick={() => window.print()}>
-                  Print Explanation
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-          )}
-
-          {/* Trainset Details Modal */}
-          {showTrainsetDetails && trainsetDetails && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">
-                      Trainset Details - {trainsetDetails.trainset_id}
-                    </CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => setShowTrainsetDetails(false)}
-                    >
-                      ×
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-semibold text-lg mb-3">Basic Information</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Status:</span>
-                          <Badge variant={trainsetDetails.basic_info.status === 'ACTIVE' ? 'success' : 'secondary'}>
-                            {trainsetDetails.basic_info.status}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Model:</span>
-                          <span>{trainsetDetails.basic_info.model}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Manufacturer:</span>
-                          <span>{trainsetDetails.basic_info.manufacturer}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Commission Date:</span>
-                          <span>{trainsetDetails.basic_info.commission_date}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Last Inspection:</span>
-                          <span>{trainsetDetails.basic_info.last_inspection}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <h3 className="font-semibold text-lg mb-3">Operational Metrics</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total Assignments:</span>
-                          <span>{trainsetDetails.operational_metrics.total_assignments}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Success Rate:</span>
-                          <span className="text-green-600">{trainsetDetails.operational_metrics.success_rate}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Fitness Score:</span>
-                          <span className="text-blue-600">{Math.round(trainsetDetails.operational_metrics.current_fitness_score * 100)}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Failure Risk:</span>
-                          <span className="text-red-600">{Math.round(trainsetDetails.operational_metrics.predicted_failure_risk * 100)}%</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="font-semibold text-lg mb-3">Performance Data</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm text-muted-foreground">Operational Hours</div>
-                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.operational_hours.toLocaleString()}</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm text-muted-foreground">Total Mileage</div>
-                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.mileage.toLocaleString()} km</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm text-muted-foreground">Avg Sensor Health</div>
-                        <div className="text-lg font-semibold">{Math.round(trainsetDetails.performance_data.avg_sensor_health * 100)}%</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm text-muted-foreground">Next Maintenance</div>
-                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.next_scheduled_maintenance?.split('T')[0] || 'N/A'}</div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {trainsetDetails.recommendations && trainsetDetails.recommendations.filter(r => r).length > 0 && (
-                    <div>
-                      <h3 className="font-semibold text-lg mb-3">Recommendations</h3>
-                      <ul className="space-y-2">
-                        {trainsetDetails.recommendations.filter(r => r).map((rec: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2">
-                            <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm">{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setShowTrainsetDetails(false)}>
-                      Close
-                    </Button>
-                    <Button onClick={() => window.print()}>
-                      Print Details
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-      );
-    };
-
-    export default Assignments;
+export default Assignments;

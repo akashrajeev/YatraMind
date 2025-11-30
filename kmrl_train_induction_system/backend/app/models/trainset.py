@@ -55,8 +55,6 @@ class OptimizationWeights(BaseModel):
 
 
 class OptimizationRequest(BaseModel):
-    target_date: datetime = Field(default_factory=datetime.utcnow)
-    required_service_hours: int = 14
     override_constraints: Optional[Dict[str, Any]] = None
     weights: Optional[OptimizationWeights] = Field(
         default=None,
