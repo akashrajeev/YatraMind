@@ -36,26 +36,35 @@ class TrainInductionOptimizer:
         self.weights = WEIGHTS.copy()
         self.rule_engine = DurableRulesEngine()
     
-    def _apply_final_sorting(self, decisions: List[InductionDecision]) -> List[InductionDecision]:
+    def _apply_final_sorting(self, decisions: List[InductionDecision], trainsets: List[Dict[str, Any]]) -> List[InductionDecision]:
         """Post-processing: Strict sorting
         
         Strict Sorting:
            - Priority 1: Status (INDUCT > STANDBY > MAINTENANCE)
            - Priority 2: Score (descending within status groups)
-           - Priority 3: Rank (as tie-breaker)
+           - Priority 3: Mileage (ascending) - Balance fleet usage
+           - Priority 4: Rank/ID (as final tie-breaker)
         """
         # Priority 1: Status order (INDUCT=0, STANDBY=1, MAINTENANCE=2)
         status_order = {"INDUCT": 0, "STANDBY": 1, "MAINTENANCE": 2}
         
-        # Priority 2: Score (descending)
-        # Priority 3: Rank (use trainset_id as tie-breaker if no explicit rank)
+        # Create a map for quick mileage lookup
+        mileage_map = {t.get("trainset_id"): t.get("current_mileage", 0.0) for t in trainsets}
+        
         def sort_key(decision: InductionDecision) -> tuple:
             status_priority = status_order.get(decision.decision, 99)
             score_value = decision.score if decision.score is not None else 0.0
-            # Use trainset_id as rank tie-breaker (lexicographic)
+            
+            # Priority 3: Mileage (ascending)
+            # We want lower mileage trains to be preferred if scores are tied (to balance usage)
+            # But wait, if scores are tied, it means they are equally good candidates.
+            # Lower mileage = better for balancing? Yes, usually we want to use under-utilized trains.
+            mileage = mileage_map.get(decision.trainset_id, float('inf'))
+            
+            # Priority 4: ID
             rank_value = decision.trainset_id
             
-            return (status_priority, -score_value, rank_value)
+            return (status_priority, -score_value, mileage, rank_value)
         
         sorted_decisions = sorted(decisions, key=sort_key)
         
@@ -212,7 +221,8 @@ class TrainInductionOptimizer:
             solver.Add(solver.Sum([x_vars[i] for i in x_vars]) <= target)
 
             # Lexicographic objective: Tier 2 dominates Tier 3
-            tier2_scale = 10000.0
+            # Reduced from 10000.0 to 10.0 to prevent branding dominance
+            tier2_scale = 10.0
             objective_terms = []
             
             for i in x_vars:
@@ -378,7 +388,7 @@ class TrainInductionOptimizer:
             logger.info("Safety sanity check passed - all inducted trains meet Tier 1 constraints")
             
             # POST-PROCESSING: Strict Sorting (Safety Gate logic moved to filtering)
-            decisions = self._apply_final_sorting(decisions)
+            decisions = self._apply_final_sorting(decisions, trainsets)
             
             return decisions
             
@@ -480,7 +490,7 @@ class TrainInductionOptimizer:
             tier2_score = self._calculate_tier2_score(trainset)
             tier3_score = self._calculate_tier3_score(trainset)
             
-            tier2_scale = 10000.0
+            tier2_scale = 10.0
             combined_score = tier2_scale * tier2_score + tier3_score
             
             # Boost score for forced trains to ensure they are picked
@@ -594,52 +604,6 @@ class TrainInductionOptimizer:
                         logger.error(error_msg)
                         raise ValueError(error_msg)
         
-        decisions = self._apply_final_sorting(decisions)
+        decisions = self._apply_final_sorting(decisions, eligible_trainsets)
         
         return decisions
-
-    def _needs_maintenance(self, trainset: Dict[str, Any]) -> bool:
-        """Check if trainset needs maintenance (soft constraint)"""
-        # Example: if mileage is high or minor defects are high
-        current_mileage = trainset.get("current_mileage", 0.0)
-        max_mileage = trainset.get("max_mileage_before_maintenance", 50000.0)
-        if current_mileage > max_mileage * 0.9:
-            return True
-        
-        job_cards = trainset.get("job_cards", {})
-        open_cards = normalize_to_int(job_cards.get("open_cards"), 0)
-        if open_cards > 5:
-            return True
-            
-        return False
-
-    def _get_tiered_induction_reasons(self, trainset: Dict[str, Any], tier2: float, tier3: float) -> List[str]:
-        """Generate human-readable reasons for induction based on scores"""
-        reasons = []
-        if tier2 > 0:
-            reasons.append("High priority revenue/branding obligation met")
-        if tier3 > 100:
-            reasons.append("Strong optimization score (mileage/health)")
-        return reasons
-
-    def _calculate_normalized_optimization_score(self, trainset: Dict[str, Any], tier2: float, tier3: float, decision: str) -> float:
-        """Calculate normalized score for UI display"""
-        # Normalize to 0-1 range for display
-        # This is arbitrary but helps UI visualization
-        base_score = 0.5
-        if decision == "INDUCT":
-            base_score = 0.8
-        elif decision == "STANDBY":
-            base_score = 0.6
-        elif decision == "MAINTENANCE":
-            base_score = 0.2
-            
-        # Add small variance based on actual scores
-        variance = (tier2 + tier3) / 10000.0
-        return min(0.99, max(0.01, base_score + variance))
-
-    def _parse_cleaning_date(self, date_str: str) -> Optional[datetime]:
-        try:
-            return datetime.fromisoformat(date_str)
-        except:
-            return None
