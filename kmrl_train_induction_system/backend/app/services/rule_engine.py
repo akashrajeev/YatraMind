@@ -4,6 +4,7 @@ import logging
 from datetime import datetime
 import requests
 from app.config import settings
+from app.utils.normalization import normalize_to_int, normalize_trainset_data
 
 try:
     # durable_rules is optional; we fallback to pure-Python checks if unavailable
@@ -31,62 +32,6 @@ class DurableRulesEngine:
             "maintenance_schedule": self._check_maintenance_schedule,
             "branding_contracts": self._check_branding_contracts
         }
-    
-    def _normalize_to_int(self, value: Any, default: int = 0) -> int:
-        """Safely normalize value to integer, handling strings and edge cases"""
-        if value is None:
-            return default
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
-            return int(value)
-        if isinstance(value, str):
-            try:
-                # Strip whitespace and convert
-                cleaned = value.strip()
-                if not cleaned:
-                    return default
-                return int(float(cleaned))  # Handle "2.0" strings
-            except (ValueError, AttributeError):
-                return default
-        # For other types, try conversion
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            return default
-
-    def _normalize_trainset(self, trainset: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize trainset data for rule evaluation"""
-        normalized = trainset.copy()
-        
-        # Normalize job cards
-        job_cards = normalized.get("job_cards", {})
-        if not isinstance(job_cards, dict):
-            job_cards = {}
-        
-        normalized_job_cards = {
-            "open_cards": self._normalize_to_int(job_cards.get("open_cards"), 0),
-            "critical_cards": self._normalize_to_int(job_cards.get("critical_cards"), 0),
-            "job_cards_list": job_cards.get("job_cards_list", [])
-        }
-        normalized["job_cards"] = normalized_job_cards
-        
-        # Normalize mileage
-        try:
-            normalized["current_mileage"] = float(normalized.get("current_mileage", 0.0))
-        except (ValueError, TypeError):
-            normalized["current_mileage"] = 0.0
-            
-        try:
-            max_m = normalized.get("max_mileage_before_maintenance")
-            if max_m in (None, "", 0):
-                normalized["max_mileage_before_maintenance"] = float('inf')
-            else:
-                normalized["max_mileage_before_maintenance"] = float(max_m)
-        except (ValueError, TypeError):
-            normalized["max_mileage_before_maintenance"] = float('inf')
-            
-        return normalized
 
     async def apply_constraints(self, trainsets: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """Apply all constraint rules to filter trainsets."""
@@ -95,7 +40,7 @@ class DurableRulesEngine:
             valid_trainsets = []
             for trainset in trainsets:
                 # Normalize before validation
-                normalized_ts = self._normalize_trainset(trainset)
+                normalized_ts = normalize_trainset_data(trainset)
                 if await self._validate_trainset(normalized_ts):
                     valid_trainsets.append(trainset)
             logger.info(f"Constraint filtering: {len(valid_trainsets)}/{len(trainsets)} trainsets valid")
@@ -107,7 +52,7 @@ class DurableRulesEngine:
     async def check_constraints(self, trainset: Dict[str, Any]) -> List[str]:
         """Check constraints for a single trainset and return violations."""
         # Normalize before checking
-        normalized_ts = self._normalize_trainset(trainset)
+        normalized_ts = normalize_trainset_data(trainset)
         
         if _HAS_DURABLE:
             try:
@@ -195,7 +140,7 @@ class DurableRulesEngine:
     async def _check_critical_job_cards(self, trainset: Dict[str, Any]) -> str:
         """Check critical job card constraints"""
         job_cards = trainset.get("job_cards", {})
-        # Already normalized by _normalize_trainset
+        # Already normalized by normalize_trainset_data
         if job_cards.get("critical_cards", 0) > 0:
             return f"{job_cards['critical_cards']} critical job cards pending"
         

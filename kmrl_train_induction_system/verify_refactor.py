@@ -34,6 +34,10 @@ async def verify():
         di = DataIngestionService()
         print("data_ingestion instantiated.")
         
+        print("Importing api.optimization...")
+        from app.api import optimization
+        print("api.optimization imported.")
+
         print("ALL MODULES VERIFIED SUCCESSFULLY.")
         
     except Exception as e:

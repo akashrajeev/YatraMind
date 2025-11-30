@@ -4,9 +4,9 @@ from fastapi import Depends
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import random
-from app.models.trainset import OptimizationRequest, InductionDecision
+from app.models.trainset import OptimizationRequest, InductionDecision, OptimizationWeights
 from app.services.optimizer import TrainInductionOptimizer
-from app.services.solver import RoleAssignmentSolver, SolverWeights
+# Removed RoleAssignmentSolver import
 from app.services.rule_engine import DurableRulesEngine
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.utils.cloud_database import cloud_db_manager
@@ -272,44 +272,47 @@ async def simulate_what_if(
             trainset_doc.pop('_id', None)
             trainsets_data.append(trainset_doc)
         
-        # Apply simulation constraints
-        for trainset in trainsets_data:
-            if trainset["trainset_id"] in excluded:
-                trainset["simulation_constraint"] = "EXCLUDED"
-            elif trainset["trainset_id"] in forced:
-                trainset["simulation_constraint"] = "FORCED_INDUCT"
-        
-        # Build features for solver
-        features = []
-        for t in trainsets_data:
-            features.append({
-                "trainset_id": t["trainset_id"],
-                "allowed_service": True,  # could call DurableRulesEngine here
-                "must_ibl": False,
-                "cleaning_available": True,
-                "readiness": 1.0,  # plug-in ML readiness
-                "reliability": t.get("sensor_health_score", 0.8),
-                "branding": 1.0 if t.get("branding", {}).get("priority") == "HIGH" else 0.5,
-                "shunt_cost_norm": 0.2,
-                "km_30d_norm": 0.5,
-            })
-
-        weights = SolverWeights(
+        # Create OptimizationRequest with custom weights
+        weights = OptimizationWeights(
             readiness=w_readiness,
             reliability=w_reliability,
             branding=w_branding,
             shunt=w_shunt,
-            mileage_balance=w_mileage_balance,
+            mileage_balance=w_mileage_balance
         )
-        solver = RoleAssignmentSolver(required_service_count=required_service_count, weights=weights)
-        solve_out = solver.solve(features)
+        
+        request = OptimizationRequest(
+            required_service_hours=required_service_count,
+            weights=weights
+        )
+        
+        # Run optimization with simulation constraints
+        optimizer = TrainInductionOptimizer()
+        decisions = await optimizer.optimize(trainsets_data, request, forced_ids=forced, excluded_ids=excluded)
+        
+        # Map decisions to simulation result format
+        assignments = []
+        for d in decisions:
+            role = "service" if d.decision == "INDUCT" else d.decision.lower()
+            assignments.append({
+                "trainset_id": d.trainset_id,
+                "role": role,
+                "objective_contrib": d.score,
+                "reasons": d.reasons
+            })
+            
+        solve_out = {
+            "status": "ok" if any(d.decision == "INDUCT" for d in decisions) else "infeasible",
+            "assignments": assignments,
+            "objective": sum(d.score for d in decisions if d.decision == "INDUCT")
+        }
         
         return {
             "scenario": {
                 "excluded_trainsets": excluded,
                 "forced_inductions": forced,
                 "required_service_count": required_service_count,
-                "weights": weights.__dict__,
+                "weights": weights.dict(),
             },
             "results": solve_out,
             "simulation_timestamp": datetime.now().isoformat()
@@ -579,7 +582,7 @@ async def get_latest_ranked_list():
                 "shap_values": [
                     {"name": "Fitness Certificates", "value": fitness_score, "impact": "positive"},
                     {"name": "Job Card Status", "value": 0.25 if critical_cards == 0 and open_cards == 0 else 0.05, "impact": "positive"},
-                    {"name": "Sensor Health", "value": trainset.get("sensor_health_score", 0.85), "impact": "positive"},
+                    {"name": "Sensor Health", "value": trainset.get("sensor_health_score", 0.8), "impact": "positive"},
                     {"name": "Mileage Balance", "value": 1.0 - mileage_ratio, "impact": "positive"},
                     {"name": "Branding Priority", "value": branding_priority, "impact": "positive"}
                 ],
@@ -799,58 +802,44 @@ async def reorder_ranked_list(
     try:
         # Get current ranked list
         latest_collection = await cloud_db_manager.get_collection("latest_induction")
-        # Try to get the most recent document, checking both _meta.updated_at and created_at
         latest_doc = await latest_collection.find_one(sort=[("_meta.updated_at", -1), ("created_at", -1)])
         
         if not latest_doc or "decisions" not in latest_doc:
-            raise HTTPException(status_code=404, detail="No ranked list found. Please run optimization first.")
+            raise HTTPException(status_code=404, detail="No active ranked list found to reorder")
         
-        current_decisions = latest_doc["decisions"]
+        current_decisions = {d["trainset_id"]: d for d in latest_doc["decisions"]}
         
-        # Create a map of trainset_id to decision for quick lookup
-        decision_map = {d["trainset_id"]: d for d in current_decisions}
-        
-        # Reorder decisions based on provided order
-        reordered_decisions = []
-        for trainset_id in reorder_request.trainset_ids:
-            if trainset_id in decision_map:
-                decision = decision_map[trainset_id].copy()
-                # Mark as manually adjusted
-                decision["manually_adjusted"] = True
-                decision["adjusted_by"] = current_user.username
-                decision["adjusted_at"] = datetime.utcnow().isoformat()
-                decision["adjustment_reason"] = reorder_request.reason
-                reordered_decisions.append(decision)
+        # Validate all requested IDs exist
+        new_order_decisions = []
+        for tid in reorder_request.trainset_ids:
+            if tid in current_decisions:
+                new_order_decisions.append(current_decisions[tid])
             else:
-                logger.warning(f"Trainset {trainset_id} not found in current ranked list")
+                logger.warning(f"Reorder request contains unknown trainset ID: {tid}")
         
-        # Add any remaining decisions that weren't in the reorder request (append to end)
-        for decision in current_decisions:
-            if decision["trainset_id"] not in reorder_request.trainset_ids:
-                reordered_decisions.append(decision)
+        # Append any missing trainsets (safety fallback)
+        for tid, decision in current_decisions.items():
+            if tid not in reorder_request.trainset_ids:
+                new_order_decisions.append(decision)
         
-        # Update the ranked list in database
-        # Delete old documents and insert the new one with manual adjustment flag
-        await latest_collection.delete_many({})
-        await latest_collection.insert_one({
+        # Update metadata
+        new_doc = {
             "_meta": {
                 "updated_at": datetime.utcnow().isoformat(),
                 "manually_adjusted": True,
                 "adjusted_by": current_user.username,
-                "adjustment_reason": reorder_request.reason
+                "reason": reorder_request.reason
             },
-            "decisions": reordered_decisions,
-            "created_at": datetime.utcnow().isoformat(),
-            "total_trainsets": len(reordered_decisions)
-        })
+            "decisions": new_order_decisions,
+            "created_at": latest_doc.get("created_at", datetime.utcnow().isoformat()),
+            "total_trainsets": len(new_order_decisions)
+        }
         
-        logger.info(f"Ranked list manually reordered by {current_user.username} with {len(reordered_decisions)} decisions")
+        await latest_collection.insert_one(new_doc)
         
-        # Return as InductionDecision objects
-        return [InductionDecision(**d) for d in reordered_decisions]
+        logger.info(f"Ranked list manually reordered by {current_user.username}")
+        return [InductionDecision(**d) for d in new_order_decisions]
         
-    except HTTPException:
-        raise
     except Exception as e:
         logger.error(f"Error reordering ranked list: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to reorder ranked list: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error reordering list: {str(e)}")

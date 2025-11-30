@@ -10,6 +10,7 @@ from app.utils.explainability import (
     calculate_composite_score
 )
 from app.services.rule_engine import DurableRulesEngine
+from app.utils.normalization import normalize_to_int, normalize_trainset_data
 
 logger = logging.getLogger(__name__)
 
@@ -65,66 +66,39 @@ class TrainInductionOptimizer:
         
         return sorted_decisions
     
-    def _normalize_trainset_data(self, trainset: Dict[str, Any]) -> Dict[str, Any]:
-        """Normalize trainset data to ensure correct types (safety bug fix)."""
-        # Normalize job_cards structure
-        job_cards = trainset.get("job_cards", {})
-        if not isinstance(job_cards, dict):
-            job_cards = {}
-        
-        normalized_job_cards = {
-            "open_cards": self._normalize_to_int(job_cards.get("open_cards"), 0),
-            "critical_cards": self._normalize_to_int(job_cards.get("critical_cards"), 0)
-        }
-        
-        # Create normalized copy
-        normalized = trainset.copy()
-        normalized["job_cards"] = normalized_job_cards
-        
-        # Normalize other critical fields
-        if "current_mileage" in normalized:
-            try:
-                normalized["current_mileage"] = float(normalized["current_mileage"])
-            except (ValueError, TypeError):
-                normalized["current_mileage"] = 0.0
-        
-        if "max_mileage_before_maintenance" in normalized:
-            try:
-                max_mileage = normalized["max_mileage_before_maintenance"]
-                if max_mileage in (None, "", 0):
-                    normalized["max_mileage_before_maintenance"] = float('inf')
-                else:
-                    normalized["max_mileage_before_maintenance"] = float(max_mileage)
-            except (ValueError, TypeError):
-                normalized["max_mileage_before_maintenance"] = float('inf')
-        
-        return normalized
-    
-    async def optimize(self, trainsets: List[Dict[str, Any]], request: OptimizationRequest) -> List[InductionDecision]:
+    async def optimize(self, trainsets: List[Dict[str, Any]], request: OptimizationRequest, 
+                      forced_ids: List[str] = None, excluded_ids: List[str] = None) -> List[InductionDecision]:
         """Run tiered constraint hierarchy optimization (Lexicographic Optimization)."""
         try:
             logger.info(f"Starting tiered optimization for {len(trainsets)} trainsets")
             
+            forced_ids = forced_ids or []
+            excluded_ids = excluded_ids or []
+            
             # Update weights from request if provided
             if request.weights:
-                # Map request weights to internal weights keys if needed, or just update known keys
-                # Assuming request.weights is a dict-like object or Pydantic model
-                # If it's a Pydantic model, convert to dict
+                # Map request weights to internal weights keys
+                # Assuming request.weights is a dict or Pydantic model
                 req_weights = request.weights.dict() if hasattr(request.weights, 'dict') else request.weights
                 if req_weights:
-                    # Update specific known weights if they exist in request
-                    # This depends on the structure of OptimizationWeights
-                    # For now, we'll assume direct mapping or manual update
-                    pass 
-                    # TODO: Implement mapping if keys differ. For now, assuming user weights are handled via specific logic or ignored if not matching.
-                    # The user requirement was "Respect User Weights".
-                    # Let's assume request.weights has fields like 'branding_weight', etc.
-                    # We will update self.weights based on these.
-                    # Example:
-                    # if 'branding' in req_weights: self.weights["BRANDING_OBLIGATION"] = req_weights['branding'] * 1000
+                    # Map user-friendly keys to internal keys
+                    # Example mapping based on typical user sliders
+                    if 'branding' in req_weights:
+                        self.weights["BRANDING_OBLIGATION"] = float(req_weights['branding']) * 1000.0
+                    if 'reliability' in req_weights:
+                        # Reliability usually implies avoiding defects
+                        self.weights["MINOR_DEFECT_PENALTY_PER_DEFECT"] = -20.0 * float(req_weights['reliability'])
+                    if 'mileage_balance' in req_weights:
+                        self.weights["MILEAGE_BALANCING"] = 100.0 * float(req_weights['mileage_balance'])
+                    if 'cleaning' in req_weights:
+                        self.weights["CLEANING_DUE_PENALTY"] = -50.0 * float(req_weights['cleaning'])
+                    if 'shunting' in req_weights:
+                        self.weights["SHUNTING_COMPLEXITY_PENALTY"] = -10.0 * float(req_weights['shunting'])
+                    
+                    logger.info(f"Updated optimization weights based on user request: {self.weights}")
             
             # CRITICAL: Normalize all trainset data to ensure type safety (safety bug fix)
-            normalized_trainsets = [self._normalize_trainset_data(ts) for ts in trainsets]
+            normalized_trainsets = [normalize_trainset_data(ts) for ts in trainsets]
             trainsets = normalized_trainsets
             logger.info(f"Normalized {len(trainsets)} trainsets for type safety")
             
@@ -184,6 +158,16 @@ class TrainInductionOptimizer:
                 risk_features = trainset.get("risk_top_features", [])
                 has_critical_risk_ml = any("critical" in str(f).lower() for f in risk_features)
                 
+                # Override for forced induction (unless strictly unsafe?)
+                # Safety first: if it's unsafe, we shouldn't force it unless explicitly overridden with a safety waiver.
+                # For now, we assume simulation respects safety unless user explicitly wants to simulate a disaster (not implemented).
+                # But if it's just "excluded", we respect that.
+                
+                if trainset_id in excluded_ids:
+                    critical_failures.append(trainset) # Treat as excluded
+                    logger.info(f"SIMULATION: {trainset_id} excluded by user request")
+                    continue
+
                 if is_critical or has_critical_risk_ml:
                     critical_failures.append(trainset)
                     reason = "Rule Violation" if is_critical else "ML Critical Risk"
@@ -197,7 +181,7 @@ class TrainInductionOptimizer:
             # Build optimization model with lexicographic scoring
             solver = pywraplp.Solver.CreateSolver("SCIP")
             if solver is None:
-                return await self._optimize_with_tiered_scoring(eligible_trainsets, critical_failures, request)
+                return await self._optimize_with_tiered_scoring(eligible_trainsets, critical_failures, request, forced_ids)
 
             # Create decision variables and compute tiered scores
             x_vars = {}
@@ -208,6 +192,10 @@ class TrainInductionOptimizer:
                 var = solver.BoolVar(f"x_{idx}")
                 x_vars[idx] = var
                 
+                # Simulation Constraints
+                if t.get("trainset_id") in forced_ids:
+                    solver.Add(var == 1)
+                
                 # Tier 2: High Priority Soft Objectives
                 tier2_scores[idx] = self._calculate_tier2_score(t)
                 
@@ -216,6 +204,11 @@ class TrainInductionOptimizer:
 
             # Capacity constraint
             target = max(1, min(request.required_service_hours, len(eligible_trainsets)))
+            # If forced count > target, we must increase target to accommodate forced trains
+            forced_count = sum(1 for t in eligible_trainsets if t.get("trainset_id") in forced_ids)
+            if forced_count > target:
+                target = forced_count
+                
             solver.Add(solver.Sum([x_vars[i] for i in x_vars]) <= target)
 
             # Lexicographic objective: Tier 2 dominates Tier 3
@@ -244,7 +237,7 @@ class TrainInductionOptimizer:
                         "falling back to scoring-based tiered optimization."
                     )
                     return await self._optimize_with_tiered_scoring(
-                        eligible_trainsets, critical_failures, request
+                        eligible_trainsets, critical_failures, request, forced_ids
                     )
 
                 # Process inducted trainsets
@@ -258,6 +251,9 @@ class TrainInductionOptimizer:
                         
                         explanation = generate_comprehensive_explanation(t, "INDUCT")
                         reasons = self._get_tiered_induction_reasons(t, tier2_val, tier3_val)
+                        
+                        if t.get("trainset_id") in forced_ids:
+                            reasons.insert(0, "Forced induction by user simulation")
                         
                         normalized_score = self._calculate_normalized_optimization_score(
                             t, tier2_val, tier3_val, "INDUCT"
@@ -326,8 +322,11 @@ class TrainInductionOptimizer:
                     explanation = generate_comprehensive_explanation(t, "MAINTENANCE")
                     
                     failure_reasons = ["Critical failure detected - requires maintenance"]
+                    if t.get("trainset_id") in excluded_ids:
+                        failure_reasons = ["Excluded by user simulation"]
+                    
                     job_cards = t.get("job_cards", {})
-                    critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+                    critical_cards = normalize_to_int(job_cards.get("critical_cards"), 0)
                     if critical_cards > 0:
                         failure_reasons.append(f"{critical_cards} critical job cards open")
                     
@@ -350,7 +349,7 @@ class TrainInductionOptimizer:
                         )
                     )
             else:
-                return await self._optimize_with_tiered_scoring(eligible_trainsets, critical_failures, request)
+                return await self._optimize_with_tiered_scoring(eligible_trainsets, critical_failures, request, forced_ids)
 
             logger.info(f"Tiered optimization completed: {len([d for d in decisions if d.decision=='INDUCT'])} inducted")
             
@@ -363,6 +362,15 @@ class TrainInductionOptimizer:
                     if original_trainset:
                         # Re-check critical failure conditions via Rule Engine
                         if await self._has_critical_failure(original_trainset):
+                            # If forced, we might allow it with a warning? 
+                            # For now, strict safety unless we add a specific "unsafe_override" flag.
+                            # Simulation "force_induct" implies "I want this train", but if it's unsafe, 
+                            # the system should probably still reject it or flag it heavily.
+                            # Given the user context "Refactoring Critical Logic Flaws", safety is paramount.
+                            # But for "What-if", maybe they want to see what happens?
+                            # Let's stick to safety. If it's forced but unsafe, it should fail this check.
+                            # However, if we filtered it out in Tier 1, it wouldn't be here.
+                            # So this check is for trains that PASSED Tier 1.
                             error_msg = f"SAFETY VIOLATION: Train {trainset_id} with critical failure made it to final INDUCT list!"
                             logger.error(error_msg)
                             raise ValueError(error_msg)
@@ -377,27 +385,6 @@ class TrainInductionOptimizer:
         except Exception as e:
             logger.error(f"Optimization failed: {e}", exc_info=True)
             raise
-    
-    def _normalize_to_int(self, value: Any, default: int = 0) -> int:
-        """Safely normalize value to integer, handling strings and edge cases"""
-        if value is None:
-            return default
-        if isinstance(value, int):
-            return value
-        if isinstance(value, float):
-            return int(value)
-        if isinstance(value, str):
-            try:
-                cleaned = value.strip()
-                if not cleaned:
-                    return default
-                return int(float(cleaned))
-            except (ValueError, AttributeError):
-                return default
-        try:
-            return int(value)
-        except (ValueError, TypeError):
-            return default
     
     async def _has_critical_failure(self, trainset: Dict[str, Any]) -> bool:
         """TIER 1: Check if trainset has critical failure using Rule Engine."""
@@ -428,8 +415,8 @@ class TrainInductionOptimizer:
         
         # Minor defect penalty
         job_cards = trainset.get("job_cards", {})
-        open_cards = self._normalize_to_int(job_cards.get("open_cards"), 0)
-        critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+        open_cards = normalize_to_int(job_cards.get("open_cards"), 0)
+        critical_cards = normalize_to_int(job_cards.get("critical_cards"), 0)
         minor_cards = max(0, open_cards - critical_cards)
         
         if minor_cards > 0:
@@ -485,8 +472,9 @@ class TrainInductionOptimizer:
         
         return score
 
-    async def _optimize_with_tiered_scoring(self, eligible_trainsets: List[Dict[str, Any]], critical_failures: List[Dict[str, Any]], request: OptimizationRequest) -> List[InductionDecision]:
+    async def _optimize_with_tiered_scoring(self, eligible_trainsets: List[Dict[str, Any]], critical_failures: List[Dict[str, Any]], request: OptimizationRequest, forced_ids: List[str] = None) -> List[InductionDecision]:
         """Fallback tiered scoring-based optimization when OR-Tools is unavailable."""
+        forced_ids = forced_ids or []
         scored_trainsets = []
         for trainset in eligible_trainsets:
             tier2_score = self._calculate_tier2_score(trainset)
@@ -495,11 +483,20 @@ class TrainInductionOptimizer:
             tier2_scale = 10000.0
             combined_score = tier2_scale * tier2_score + tier3_score
             
+            # Boost score for forced trains to ensure they are picked
+            if trainset.get("trainset_id") in forced_ids:
+                combined_score += 1e9
+            
             scored_trainsets.append((trainset, tier2_score, tier3_score, combined_score))
         
         scored_trainsets.sort(key=lambda x: x[3], reverse=True)
         
         target_inductions = min(request.required_service_hours, len(scored_trainsets))
+        # Adjust target for forced
+        forced_count = sum(1 for t in eligible_trainsets if t.get("trainset_id") in forced_ids)
+        if forced_count > target_inductions:
+            target_inductions = forced_count
+            
         decisions: List[InductionDecision] = []
         inducted = 0
         
@@ -508,6 +505,9 @@ class TrainInductionOptimizer:
                 confidence = min(1.0, max(0.5, (combined_score + 5000) / 10000))
                 explanation = generate_comprehensive_explanation(trainset, "INDUCT")
                 reasons = self._get_tiered_induction_reasons(trainset, tier2_score, tier3_score)
+                if trainset.get("trainset_id") in forced_ids:
+                    reasons.insert(0, "Forced induction by user simulation")
+                    
                 normalized_score = self._calculate_normalized_optimization_score(
                     trainset, tier2_score, tier3_score, "INDUCT"
                 )
@@ -562,7 +562,7 @@ class TrainInductionOptimizer:
             
             failure_reasons = ["Critical failure detected - requires maintenance"]
             job_cards = trainset.get("job_cards", {})
-            critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+            critical_cards = normalize_to_int(job_cards.get("critical_cards"), 0)
             if critical_cards > 0:
                 failure_reasons.append(f"{critical_cards} critical job cards open")
             
@@ -607,7 +607,7 @@ class TrainInductionOptimizer:
             return True
         
         job_cards = trainset.get("job_cards", {})
-        open_cards = self._normalize_to_int(job_cards.get("open_cards"), 0)
+        open_cards = normalize_to_int(job_cards.get("open_cards"), 0)
         if open_cards > 5:
             return True
             
