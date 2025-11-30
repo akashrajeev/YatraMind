@@ -254,8 +254,8 @@ def top_reasons_and_risks(trainset: Dict[str, Any]) -> Dict[str, List[str]]:
         risks.append("High mileage - lower priority for service")
 
     return {
-        "top_reasons": reasons[:3],
-        "top_risks": risks[:3],
+        "top_reasons": reasons,
+        "top_risks": risks,
     }
 
 
@@ -346,7 +346,7 @@ def generate_shap_values(trainset: Dict[str, Any], ml_features: List[str] = None
         return (tier_priority, -abs(f.value) if f.impact == "negative" else abs(f.value))
     
     shap_features.sort(key=sort_key)
-    return shap_features[:5]
+    return shap_features
 
 
 def detect_rule_violations(trainset: Dict[str, Any], decision: str) -> List[str]:
@@ -441,5 +441,3 @@ def render_explanation_text(context: Dict[str, Any]) -> str:
             lines.append(f"  • {feature.get('name', 'Unknown')}: {feature.get('value', 0.0):.4f} {impact_symbol}")
     
     return "\n".join(lines)
-
-

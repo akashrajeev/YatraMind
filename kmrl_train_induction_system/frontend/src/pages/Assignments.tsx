@@ -794,6 +794,178 @@ const Assignments = () => {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Explanation Modal */}
+      {showExplanation && explanationData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-background border border-border rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="text-lg font-semibold">Induction Decision Explanation</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowExplanation(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-medium text-muted-foreground">Trainset</h4>
+                  <p className="text-2xl font-bold">{selectedTrainset}</p>
+                </div>
+                <div className="text-right">
+                  <h4 className="text-sm font-medium text-muted-foreground">Composite Score</h4>
+                  <p className="text-2xl font-bold text-primary">
+                    {Math.round(explanationData.score * 100)}%
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h4 className="font-medium flex items-center gap-2 text-green-600">
+                    <CheckCircle className="h-4 w-4" />
+                    Top Reasons
+                  </h4>
+                  <ul className="space-y-2">
+                    {explanationData.top_reasons?.map((reason: string, i: number) => (
+                      <li key={i} className="text-sm p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-100 dark:border-green-900">
+                        {reason}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <div className="space-y-3">
+                  <h4 className="font-medium flex items-center gap-2 text-red-600">
+                    <AlertTriangle className="h-4 w-4" />
+                    Risks & Violations
+                  </h4>
+                  <ul className="space-y-2">
+                    {explanationData.top_risks?.map((risk: string, i: number) => (
+                      <li key={i} className="text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-100 dark:border-red-900">
+                        {risk}
+                      </li>
+                    ))}
+                    {explanationData.violations?.map((violation: string, i: number) => (
+                      <li key={i} className="text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-100 dark:border-red-900 font-medium">
+                        {violation}
+                      </li>
+                    ))}
+                    {(!explanationData.top_risks?.length && !explanationData.violations?.length) && (
+                      <li className="text-sm text-muted-foreground italic">No significant risks detected</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+
+              {explanationData.shap_values && explanationData.shap_values.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-medium flex items-center gap-2">
+                    <BarChart3 className="h-4 w-4" />
+                    Key Contributing Factors
+                  </h4>
+                  <div className="space-y-2">
+                    {explanationData.shap_values.map((feature: any, i: number) => (
+                      <div key={i} className="flex items-center justify-between text-sm p-2 border border-border rounded">
+                        <span>{feature.name}</span>
+                        <div className="flex items-center gap-2">
+                          <div className={`h-2 w-24 rounded-full bg-secondary overflow-hidden`}>
+                            <div
+                              className={`h-full ${feature.impact === 'positive' ? 'bg-green-500' : feature.impact === 'negative' ? 'bg-red-500' : 'bg-gray-500'}`}
+                              style={{ width: `${Math.abs(feature.value) * 100}%` }}
+                            />
+                          </div>
+                          <span className={`font-mono text-xs ${feature.impact === 'positive' ? 'text-green-600' : feature.impact === 'negative' ? 'text-red-600' : 'text-muted-foreground'}`}>
+                            {feature.impact === 'positive' ? '+' : ''}{feature.value.toFixed(2)}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-border flex justify-end">
+              <Button onClick={() => setShowExplanation(false)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Trainset Details Modal */}
+      {showTrainsetDetails && trainsetDetails && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-background border border-border rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="text-lg font-semibold">Trainset Details: {trainsetDetails.trainset_id}</h3>
+              <Button variant="ghost" size="sm" onClick={() => setShowTrainsetDetails(false)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="p-3 bg-secondary/10 rounded-lg">
+                  <div className="text-sm text-muted-foreground">Status</div>
+                  <div className="font-medium">{trainsetDetails.status}</div>
+                </div>
+                <div className="p-3 bg-secondary/10 rounded-lg">
+                  <div className="text-sm text-muted-foreground">Mileage</div>
+                  <div className="font-medium">{trainsetDetails.current_mileage?.toLocaleString()} km</div>
+                </div>
+                <div className="p-3 bg-secondary/10 rounded-lg">
+                  <div className="text-sm text-muted-foreground">Location</div>
+                  <div className="font-medium">{trainsetDetails.location || 'Depot'}</div>
+                </div>
+                <div className="p-3 bg-secondary/10 rounded-lg">
+                  <div className="text-sm text-muted-foreground">Commissioned</div>
+                  <div className="font-medium">{new Date(trainsetDetails.commission_date).toLocaleDateString()}</div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium">Fitness Certificates</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {Object.entries(trainsetDetails.fitness_certificates || {}).map(([key, cert]: [string, any]) => (
+                    <div key={key} className="flex items-center justify-between p-2 border border-border rounded text-sm">
+                      <span className="capitalize">{key.replace('_', ' ')}</span>
+                      <Badge variant={cert.status === 'VALID' ? 'success' : 'destructive'}>
+                        {cert.status}
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <h4 className="font-medium">Recent Job Cards</h4>
+                {trainsetDetails.job_cards?.open_cards > 0 ? (
+                  <div className="text-sm p-3 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 rounded border border-yellow-200 dark:border-yellow-800">
+                    {trainsetDetails.job_cards.open_cards} open cards ({trainsetDetails.job_cards.critical_cards} critical)
+                  </div>
+                ) : (
+                  <div className="text-sm p-3 bg-green-50 dark:bg-green-900/20 text-green-800 dark:text-green-200 rounded border border-green-200 dark:border-green-800">
+                    No open job cards
+                  </div>
+                )}
+              </div>
+
+              {trainsetDetails.branding && (
+                <div className="space-y-3">
+                  <h4 className="font-medium">Branding</h4>
+                  <div className="p-3 border border-border rounded text-sm">
+                    <div className="grid grid-cols-2 gap-2">
+                      <div><span className="text-muted-foreground">Advertiser:</span> {trainsetDetails.branding.current_advertiser || 'None'}</div>
+                      <div><span className="text-muted-foreground">Priority:</span> {trainsetDetails.branding.priority || 'N/A'}</div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-border flex justify-end">
+              <Button onClick={() => setShowTrainsetDetails(false)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -21,7 +21,8 @@ import {
   Upload,
   RefreshCw,
   Train,
-  Eye
+  Eye,
+  X
 } from "lucide-react";
 import { useState } from "react";
 
@@ -116,48 +117,6 @@ const Optimization = () => {
           </Button>
         </div>
       </div>
-
-      {/* Constraint Status */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <AlertTriangle className="h-5 w-5" />
-            Constraint Status
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {constraintsLoading ? (
-            <div className="text-center py-4">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary mx-auto"></div>
-            </div>
-          ) : constraints ? (
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-foreground">{constraints.total_trainsets}</div>
-                <div className="text-sm text-muted-foreground">Total Trainsets</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-success">{constraints.valid_trainsets}</div>
-                <div className="text-sm text-muted-foreground">Valid</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-destructive">{constraints.trainsets_with_violations}</div>
-                <div className="text-sm text-muted-foreground">With Violations</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-primary">
-                  {Math.round((constraints.valid_trainsets / constraints.total_trainsets) * 100)}%
-                </div>
-                <div className="text-sm text-muted-foreground">Compliance Rate</div>
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-4">
-              <p className="text-muted-foreground">Unable to load constraint status</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Main Optimization Tabs */}
       <Tabs defaultValue="optimization" className="w-full">
@@ -298,67 +257,67 @@ const Optimization = () => {
                 <h4 className="font-medium">Optimization Weights</h4>
                 <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                   <div>
-                    <Label htmlFor="readiness">Readiness</Label>
+                    <Label htmlFor="w-readiness">Readiness</Label>
                     <Input
-                      id="readiness"
+                      id="w-readiness"
                       type="number"
-                      step="0.01"
+                      step="0.05"
                       value={simulationParams.w_readiness}
                       onChange={(e) => setSimulationParams(prev => ({
                         ...prev,
-                        w_readiness: parseFloat(e.target.value) || 0.35
+                        w_readiness: parseFloat(e.target.value)
                       }))}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="reliability">Reliability</Label>
+                    <Label htmlFor="w-reliability">Reliability</Label>
                     <Input
-                      id="reliability"
+                      id="w-reliability"
                       type="number"
-                      step="0.01"
+                      step="0.05"
                       value={simulationParams.w_reliability}
                       onChange={(e) => setSimulationParams(prev => ({
                         ...prev,
-                        w_reliability: parseFloat(e.target.value) || 0.30
+                        w_reliability: parseFloat(e.target.value)
                       }))}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="branding">Branding</Label>
+                    <Label htmlFor="w-branding">Branding</Label>
                     <Input
-                      id="branding"
+                      id="w-branding"
                       type="number"
-                      step="0.01"
+                      step="0.05"
                       value={simulationParams.w_branding}
                       onChange={(e) => setSimulationParams(prev => ({
                         ...prev,
-                        w_branding: parseFloat(e.target.value) || 0.20
+                        w_branding: parseFloat(e.target.value)
                       }))}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="shunt">Shunt</Label>
+                    <Label htmlFor="w-shunt">Shunting</Label>
                     <Input
-                      id="shunt"
+                      id="w-shunt"
                       type="number"
-                      step="0.01"
+                      step="0.05"
                       value={simulationParams.w_shunt}
                       onChange={(e) => setSimulationParams(prev => ({
                         ...prev,
-                        w_shunt: parseFloat(e.target.value) || 0.10
+                        w_shunt: parseFloat(e.target.value)
                       }))}
                     />
                   </div>
                   <div>
-                    <Label htmlFor="mileage">Mileage Balance</Label>
+                    <Label htmlFor="w-mileage">Mileage</Label>
                     <Input
-                      id="mileage"
+                      id="w-mileage"
                       type="number"
-                      step="0.01"
+                      step="0.05"
                       value={simulationParams.w_mileage_balance}
                       onChange={(e) => setSimulationParams(prev => ({
                         ...prev,
-                        w_mileage_balance: parseFloat(e.target.value) || 0.05
+                        w_mileage_balance: parseFloat(e.target.value)
                       }))}
                     />
                   </div>
@@ -369,7 +328,6 @@ const Optimization = () => {
                 onClick={() => runSimulationMutation.mutate(simulationParams)}
                 disabled={runSimulationMutation.isPending}
                 className="w-full"
-                size="lg"
               >
                 {runSimulationMutation.isPending ? (
                   <>
@@ -379,7 +337,7 @@ const Optimization = () => {
                 ) : (
                   <>
                     <Zap className="h-4 w-4 mr-2" />
-                    Run What-If Simulation
+                    Run Simulation
                   </>
                 )}
               </Button>
@@ -387,38 +345,41 @@ const Optimization = () => {
           </Card>
 
           {/* Simulation Results */}
-          {runSimulationMutation.data && (
+          {showSimulationResults && simulationResults && (
             <Card>
               <CardHeader>
                 <CardTitle>Simulation Results</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-foreground">
-                        {runSimulationMutation.data.results?.total_score || 0}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Total Score</div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 bg-secondary/10 rounded-lg">
+                      <div className="text-sm text-muted-foreground">Total Inducted</div>
+                      <div className="text-2xl font-bold">{simulationResults.filter((r: any) => r.decision === "INDUCT").length}</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-success">
-                        {runSimulationMutation.data.results?.inducted_count || 0}
+                    <div className="p-4 bg-secondary/10 rounded-lg">
+                      <div className="text-sm text-muted-foreground">Average Confidence</div>
+                      <div className="text-2xl font-bold">
+                        {Math.round(simulationResults.reduce((acc: number, curr: any) => acc + curr.confidence_score, 0) / simulationResults.length * 100)}%
                       </div>
-                      <div className="text-sm text-muted-foreground">Inducted</div>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-warning">
-                        {runSimulationMutation.data.results?.standby_count || 0}
+                  </div>
+
+                  <div className="space-y-2">
+                    {simulationResults.map((result: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Train className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{result.trainset_id}</span>
+                          <Badge variant={result.decision === "INDUCT" ? "success" : "secondary"}>
+                            {result.decision}
+                          </Badge>
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          Score: {result.score.toFixed(2)}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Standby</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-destructive">
-                        {runSimulationMutation.data.results?.maintenance_count || 0}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Maintenance</div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               </CardContent>
@@ -431,38 +392,35 @@ const Optimization = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Settings className="h-5 w-5" />
-                Stabling Geometry Optimization
+                <Target className="h-5 w-5" />
+                Stabling Optimization
               </CardTitle>
             </CardHeader>
             <CardContent>
               {stablingGeometry ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-foreground">
-                        {stablingGeometry.optimized_layout?.length || 0}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {stablingGeometry.bays.map((bay: any, index: number) => (
+                      <div key={index} className="p-4 border border-border rounded-lg">
+                        <div className="font-medium mb-2">Bay {bay.id}</div>
+                        <div className="flex gap-2">
+                          {bay.slots.map((slot: any, sIndex: number) => (
+                            <div
+                              key={sIndex}
+                              className={`h-12 w-full rounded flex items-center justify-center text-xs font-medium ${slot.occupied ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                                }`}
+                            >
+                              {slot.trainset_id || "Empty"}
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Optimized Positions</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-success">
-                        {stablingGeometry.total_shunting_time || 0} min
-                      </div>
-                      <div className="text-sm text-muted-foreground">Total Shunting Time</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">
-                        {stablingGeometry.efficiency_improvement || 0}%
-                      </div>
-                      <div className="text-sm text-muted-foreground">Efficiency Improvement</div>
-                    </div>
+                    ))}
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No stabling geometry data available</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  No stabling data available
                 </div>
               )}
             </CardContent>
@@ -481,37 +439,22 @@ const Optimization = () => {
             <CardContent>
               {shuntingSchedule ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-foreground">
-                        {shuntingSchedule.total_operations || 0}
+                  {shuntingSchedule.moves.map((move: any, index: number) => (
+                    <div key={index} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                      <div className="flex items-center gap-4">
+                        <div className="font-mono text-sm">{move.time}</div>
+                        <div className="font-medium">{move.trainset_id}</div>
+                        <div className="text-sm text-muted-foreground">
+                          {move.from_track} → {move.to_track}
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Total Operations</div>
+                      <Badge variant="outline">{move.status}</Badge>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">
-                        {shuntingSchedule.estimated_total_time || 0} min
-                      </div>
-                      <div className="text-sm text-muted-foreground">Estimated Time</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-destructive">
-                        {shuntingSchedule.crew_requirements?.high_complexity || 0}
-                      </div>
-                      <div className="text-sm text-muted-foreground">High Complexity</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-warning">
-                        {shuntingSchedule.crew_requirements?.medium_complexity || 0}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Medium Complexity</div>
-                    </div>
-                  </div>
+                  ))}
                 </div>
               ) : (
-                <div className="text-center py-8">
-                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No shunting schedule available</p>
+                <div className="text-center py-8 text-muted-foreground">
+                  No shunting schedule available
                 </div>
               )}
             </CardContent>
@@ -519,212 +462,104 @@ const Optimization = () => {
         </TabsContent>
       </Tabs>
 
-      {/* Simulation Results Modal */}
-      {showSimulationResults && simulationResults && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">What-If Simulation Results</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSimulationResults(false)}
-                >
-                  ×
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Simulation Parameters</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Excluded Trainsets:</span>
-                      <span>{simulationResults.scenario?.excluded_trainsets?.join(', ') || 'None'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Forced Inductions:</span>
-                      <span>{simulationResults.scenario?.forced_inductions?.join(', ') || 'None'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Required Service Count:</span>
-                      <span>{simulationResults.scenario?.required_service_count}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Weights:</span>
-                      <span className="text-xs">
-                        R:{simulationResults.scenario?.weights?.readiness}
-                        R:{simulationResults.scenario?.weights?.reliability}
-                        B:{simulationResults.scenario?.weights?.branding}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Simulation Summary</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Decisions:</span>
-                      <span>{simulationResults.results?.length || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Inducted:</span>
-                      <span className="text-green-600">
-                        {simulationResults.results?.filter((r: any) => r.decision === 'INDUCT').length || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Standby:</span>
-                      <span className="text-yellow-600">
-                        {simulationResults.results?.filter((r: any) => r.decision === 'STANDBY').length || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Maintenance:</span>
-                      <span className="text-red-600">
-                        {simulationResults.results?.filter((r: any) => r.decision === 'MAINTENANCE').length || 0}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h3 className="font-semibold text-lg mb-3">Detailed Results</h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {simulationResults.results?.map((result: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
-                          {index + 1}
-                        </div>
-                        <span className="font-medium">{result.trainset_id}</span>
-                        <Badge variant={result.decision === 'INDUCT' ? 'success' : 'secondary'}>
-                          {result.decision}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span>Score: {Math.round((result.score || 0) * 100)}%</span>
-                        <span>Confidence: {Math.round((result.confidence_score || 0) * 100)}%</span>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => explainMutation.mutate({
-                            trainsetId: result.trainset_id,
-                            decision: result.decision
-                          })}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          Explain
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowSimulationResults(false)}>
-                  Close
-                </Button>
-                <Button onClick={() => window.print()}>
-                  Print Results
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       {/* Explanation Modal */}
-      {showExplanation && explanationData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">
-                  AI Decision Explanation - {explanationData.trainset_id}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowExplanation(false)}
-                >
-                  ×
+      {
+        showExplanation && explanationData && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+            <div className="bg-background border border-border rounded-lg shadow-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between p-4 border-b border-border">
+                <h3 className="text-lg font-semibold">Induction Decision Explanation</h3>
+                <Button variant="ghost" size="sm" onClick={() => setShowExplanation(false)}>
+                  <X className="h-4 w-4" />
                 </Button>
               </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-green-600">Top Reasons</h3>
-                  <ul className="space-y-2">
-                    {explanationData.top_reasons?.map((reason: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{reason}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-red-600">Risks & Violations</h3>
-                  <ul className="space-y-2">
-                    {explanationData.top_risks?.map((risk: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{risk}</span>
-                      </li>
-                    ))}
-                    {explanationData.violations?.map((violation: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-red-600">{violation}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {explanationData.shap_values && explanationData.shap_values.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Feature Impact Analysis</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {explanationData.shap_values.map((feature: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm font-medium">{feature.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{feature.value}</span>
-                          <span className={`text-xs px-2 py-1 rounded ${feature.impact === 'positive'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                            }`}>
-                            {feature.impact === 'positive' ? '↑' : '↓'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-sm font-medium text-muted-foreground">Trainset</h4>
+                    <p className="text-2xl font-bold">{explanationData.trainset_details?.trainset_id || 'Unknown'}</p>
+                  </div>
+                  <div className="text-right">
+                    <h4 className="text-sm font-medium text-muted-foreground">Composite Score</h4>
+                    <p className="text-2xl font-bold text-primary">
+                      {Math.round(explanationData.score * 100)}%
+                    </p>
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowExplanation(false)}>
-                  Close
-                </Button>
-                <Button onClick={() => window.print()}>
-                  Print Explanation
-                </Button>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h4 className="font-medium flex items-center gap-2 text-green-600">
+                      <CheckCircle className="h-4 w-4" />
+                      Top Reasons
+                    </h4>
+                    <ul className="space-y-2">
+                      {explanationData.top_reasons?.map((reason: string, i: number) => (
+                        <li key={i} className="text-sm p-2 bg-green-50 dark:bg-green-900/20 rounded border border-green-100 dark:border-green-900">
+                          {reason}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="space-y-3">
+                    <h4 className="font-medium flex items-center gap-2 text-red-600">
+                      <AlertTriangle className="h-4 w-4" />
+                      Risks & Violations
+                    </h4>
+                    <ul className="space-y-2">
+                      {explanationData.top_risks?.map((risk: string, i: number) => (
+                        <li key={i} className="text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-100 dark:border-red-900">
+                          {risk}
+                        </li>
+                      ))}
+                      {explanationData.violations?.map((violation: string, i: number) => (
+                        <li key={i} className="text-sm p-2 bg-red-50 dark:bg-red-900/20 rounded border border-red-100 dark:border-red-900 font-medium">
+                          {violation}
+                        </li>
+                      ))}
+                      {(!explanationData.top_risks?.length && !explanationData.violations?.length) && (
+                        <li className="text-sm text-muted-foreground italic">No significant risks detected</li>
+                      )}
+                    </ul>
+                  </div>
+                </div>
+
+                {explanationData.shap_values && explanationData.shap_values.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-medium flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4" />
+                      Key Contributing Factors
+                    </h4>
+                    <div className="space-y-2">
+                      {explanationData.shap_values.map((feature: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between text-sm p-2 border border-border rounded">
+                          <span>{feature.name}</span>
+                          <div className="flex items-center gap-2">
+                            <div className={`h-2 w-24 rounded-full bg-secondary overflow-hidden`}>
+                              <div
+                                className={`h-full ${feature.impact === 'positive' ? 'bg-green-500' : feature.impact === 'negative' ? 'bg-red-500' : 'bg-gray-500'}`}
+                                style={{ width: `${Math.abs(feature.value) * 100}%` }}
+                              />
+                            </div>
+                            <span className={`font-mono text-xs ${feature.impact === 'positive' ? 'text-green-600' : feature.impact === 'negative' ? 'text-red-600' : 'text-muted-foreground'}`}>
+                              {feature.impact === 'positive' ? '+' : ''}{feature.value.toFixed(2)}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
+              <div className="p-4 border-t border-border flex justify-end">
+                <Button onClick={() => setShowExplanation(false)}>Close</Button>
+              </div>
+            </div>
+          </div>
+        )
+      }
+    </div >
   );
 };
 

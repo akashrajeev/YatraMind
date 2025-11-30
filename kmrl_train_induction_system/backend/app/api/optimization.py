@@ -264,3 +264,34 @@ async def write_optimization_metrics(results: List[InductionDecision]):
     """Background task to write metrics to InfluxDB (Mock)"""
     # In a real app, this would write to InfluxDB
     pass
+
+@router.get("/explain/{trainset_id}")
+async def explain_decision(
+    trainset_id: str, 
+    decision: str, 
+    format: str = "json", 
+    _auth=Depends(require_api_key)
+):
+    """Explain why a specific decision was made for a trainset"""
+    try:
+        collection = await cloud_db_manager.get_collection("trainsets")
+        trainset = await collection.find_one({"trainset_id": trainset_id})
+        
+        if not trainset:
+            raise HTTPException(status_code=404, detail="Trainset not found")
+            
+        trainset.pop('_id', None)
+        
+        explanation = generate_comprehensive_explanation(trainset, decision)
+        
+        # Include full trainset details for "View Details"
+        explanation["trainset_details"] = trainset
+        
+        if format == "html":
+            # Not implemented fully, but structure is there
+            return render_explanation_html(explanation)
+        
+        return explanation
+    except Exception as e:
+        logger.error(f"Explanation failed: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
