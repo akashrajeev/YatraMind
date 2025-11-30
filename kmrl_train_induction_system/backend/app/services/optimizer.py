@@ -20,8 +20,8 @@ WEIGHTS = {
     "CRITICAL_FAILURE": float('-inf'),  # Safety critical/Cert expired -> strict exclusion
 
     # Tier 2: High Priority Soft Objectives (Revenue)
-    "BRANDING_OBLIGATION": 500.0,       # Active wrap adds +500 points (Revenue priority)
-    "MINOR_DEFECT_PENALTY_PER_DEFECT": -20.0,  # -20 points per minor defect
+    "BRANDING_OBLIGATION": 250.0,       # Active wrap adds +250 points (Revenue priority)
+    "MINOR_DEFECT_PENALTY_PER_DEFECT": -50.0,  # -50 points per minor defect
 
     # Tier 3: Optimization Soft Objectives (Health/Ops)
     "MILEAGE_BALANCING": 100.0,         # +100 if below average (helps balance fleet)
