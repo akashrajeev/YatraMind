@@ -25,7 +25,7 @@ import {
 import { useState } from "react";
 
 const DataIngestion = () => {
-  const [selectedFiles, setSelectedFiles] = useState<{ [key: string]: File | null }>({});
+  const [selectedFiles, setSelectedFiles] = useState<{ [key: string]: File | File[] | null }>({});
   const [googleSheetUrl, setGoogleSheetUrl] = useState("");
   const queryClient = useQueryClient();
 
@@ -136,7 +136,7 @@ const DataIngestion = () => {
     },
   });
 
-  const handleFileSelect = (type: string, file: File) => {
+  const handleFileSelect = (type: string, file: File | File[]) => {
     setSelectedFiles(prev => ({
       ...prev,
       [type]: file
@@ -144,27 +144,33 @@ const DataIngestion = () => {
   };
 
   const handleUpload = (type: string) => {
-    const file = selectedFiles[type];
-    if (!file) return;
+    const files = selectedFiles[type];
+    if (!files) return;
 
     switch (type) {
       case 'timeseries':
-        uploadTimeseriesMutation.mutate(file);
+        if (files instanceof File) uploadTimeseriesMutation.mutate(files);
         break;
       case 'fitness':
-        uploadFitnessMutation.mutate(file);
+        if (files instanceof File) uploadFitnessMutation.mutate(files);
         break;
       case 'branding':
-        uploadBrandingMutation.mutate(file);
+        if (files instanceof File) uploadBrandingMutation.mutate(files);
         break;
       case 'depot':
-        uploadDepotMutation.mutate(file);
+        if (files instanceof File) uploadDepotMutation.mutate(files);
         break;
       case 'n8n':
-        uploadN8NMutation.mutate(file);
+        // Ensure we handle both single file and array of files
+        const fileArray = Array.isArray(files) ? files : [files];
+        uploadN8NMutation.mutate(fileArray);
         break;
     }
   };
+
+  // ... (existing render logic) ...
+
+
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -632,12 +638,13 @@ const DataIngestion = () => {
             <CardContent>
               <div className="space-y-4">
                 <p className="text-sm text-muted-foreground">
-                  Upload any file type (PDF, Excel, JSON, etc.) to be processed by the universal ingestion pipeline via n8n.
+                  Upload multiple files (PDF, Excel, JSON, etc.) to be processed by the universal ingestion pipeline via n8n.
                 </p>
                 <FileUpload
-                  onFileSelect={(file) => handleFileSelect('n8n', file)}
+                  onFileSelect={(files) => handleFileSelect('n8n', files)}
                   accept="*"
                   maxSize={50}
+                  multiple={true}
                   disabled={uploadN8NMutation.isPending}
                 />
                 <Button

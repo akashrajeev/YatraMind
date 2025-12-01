@@ -141,9 +141,11 @@ export const ingestionApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  uploadN8N: (file: File) => {
+  uploadN8N: (files: File[]) => {
     const formData = new FormData();
-    formData.append('file', file);
+    files.forEach(file => {
+      formData.append('files', file);
+    });
     return api.post('/ingestion/ingest/n8n/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });

@@ -259,12 +259,19 @@ async def ingest_cleaning_from_google(sheet_url: str = Form(...), _auth=Depends(
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/ingest/n8n/upload")
-async def upload_to_n8n(file: UploadFile = File(...), _auth=Depends(require_api_key)):
-    """Upload any file (PDF, Excel, etc.) to be processed by n8n."""
+async def upload_to_n8n(files: List[UploadFile] = File(...)):
+    """
+    Upload multiple files to be forwarded to n8n webhook.
+    """
     try:
         svc = DataIngestionService()
-        content = await file.read()
-        result = await svc.send_file_to_n8n(content, file.filename, file.content_type)
+        
+        file_data_list = []
+        for file in files:
+            content = await file.read()
+            file_data_list.append((file.filename, content, file.content_type))
+            
+        result = await svc.send_files_to_n8n(file_data_list)
         return result
     except ValueError as ve:
         raise HTTPException(status_code=500, detail=str(ve))

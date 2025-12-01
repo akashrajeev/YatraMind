@@ -35,19 +35,26 @@ class TestN8NIngestion(unittest.TestCase):
                     return mock_response
                 mock_client.post.side_effect = async_post
                 
-                files = {'file': ('test.txt', b'test content', 'text/plain')}
+                # Test with multiple files
+                files = [
+                    ('files', ('test1.txt', b'content1', 'text/plain')),
+                    ('files', ('test2.json', b'{"a": 1}', 'application/json'))
+                ]
                 response = self.client.post("/api/ingestion/ingest/n8n/upload", files=files)
                 
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json()["status"], "success")
+                self.assertIn("2 file(s)", response.json()["message"])
                 
                 # Verify post called with correct args
                 mock_client.post.assert_called_once()
                 args, kwargs = mock_client.post.call_args
                 self.assertEqual(args[0], "http://mock-n8n.com/webhook")
                 self.assertIn('files', kwargs)
-                # Verify content type passed
-                self.assertEqual(kwargs['files']['file'][2], 'text/plain')
+                # Verify both files passed
+                self.assertEqual(len(kwargs['files']), 2)
+                self.assertEqual(kwargs['files'][0][1][0], 'test1.txt')
+                self.assertEqual(kwargs['files'][1][1][0], 'test2.json')
 
     def test_n8n_upload_no_url(self):
         # Mock settings to have no URL
