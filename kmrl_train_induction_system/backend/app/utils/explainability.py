@@ -10,13 +10,10 @@ from app.models.trainset import ShapFeature
 from app.utils.normalization import normalize_to_int
 
 # Default weights matching optimizer.py
-WEIGHTS = {
-    "BRANDING_OBLIGATION": 250.0,
-    "MINOR_DEFECT_PENALTY_PER_DEFECT": -50.0,
-    "MILEAGE_BALANCING": 50.0,
-    "CLEANING_DUE_PENALTY": -30.0,
-    "SHUNTING_COMPLEXITY_PENALTY": -20.0
-}
+from app.core.scoring_config import SCORING_WEIGHTS
+
+# Default weights matching optimizer.py
+WEIGHTS = SCORING_WEIGHTS
 
 def _jinja_env() -> Environment:
     base_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "templates")

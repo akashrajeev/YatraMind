@@ -11,17 +11,13 @@ from app.utils.explainability import generate_comprehensive_explanation
 
 logger = logging.getLogger(__name__)
 
+from app.core.scoring_config import SCORING_WEIGHTS
+
 class TrainInductionOptimizer:
     def __init__(self):
         self.rule_engine = DurableRulesEngine()
         # Default weights - can be overridden by request
-        self.weights = {
-            "BRANDING_OBLIGATION": 250.0, # Reduced from 1000.0 to prevent dominance
-            "MINOR_DEFECT_PENALTY_PER_DEFECT": -50.0, # Increased penalty from -10.0
-            "MILEAGE_BALANCING": 50.0,
-            "CLEANING_DUE_PENALTY": -30.0,
-            "SHUNTING_COMPLEXITY_PENALTY": -20.0
-        }
+        self.weights = SCORING_WEIGHTS.copy()
 
     def _parse_cleaning_date(self, date_str: Any) -> Optional[datetime]:
         """Helper to safely parse cleaning due date."""
