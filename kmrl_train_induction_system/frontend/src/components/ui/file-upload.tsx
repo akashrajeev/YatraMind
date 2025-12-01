@@ -5,32 +5,40 @@ import { Upload, X, File } from "lucide-react";
 import { useState } from "react";
 
 interface FileUploadProps {
-  onFileSelect: (file: File) => void;
+  onFileSelect: (file: File | File[]) => void;
   accept?: string;
   maxSize?: number; // in MB
   disabled?: boolean;
   className?: string;
+  multiple?: boolean;
 }
 
-export function FileUpload({ 
-  onFileSelect, 
-  accept = "*/*", 
-  maxSize = 10, 
+export function FileUpload({
+  onFileSelect,
+  accept = "*/*",
+  maxSize = 10,
   disabled = false,
-  className = ""
+  className = "",
+  multiple = false
 }: FileUploadProps) {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [dragActive, setDragActive] = useState(false);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > maxSize * 1024 * 1024) {
-        alert(`File size must be less than ${maxSize}MB`);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      if (files.some(file => file.size > maxSize * 1024 * 1024)) {
+        alert(`Each file must be less than ${maxSize}MB`);
         return;
       }
-      setSelectedFile(file);
-      onFileSelect(file);
+
+      if (multiple) {
+        setSelectedFiles(files);
+        onFileSelect(files);
+      } else {
+        setSelectedFiles([files[0]]);
+        onFileSelect(files[0]);
+      }
     }
   };
 
@@ -48,31 +56,44 @@ export function FileUpload({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
-    
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      if (file.size > maxSize * 1024 * 1024) {
-        alert(`File size must be less than ${maxSize}MB`);
+
+    const files = Array.from(e.dataTransfer.files || []);
+    if (files.length > 0) {
+      if (files.some(file => file.size > maxSize * 1024 * 1024)) {
+        alert(`Each file must be less than ${maxSize}MB`);
         return;
       }
-      setSelectedFile(file);
-      onFileSelect(file);
+
+      if (multiple) {
+        setSelectedFiles(files);
+        onFileSelect(files);
+      } else {
+        setSelectedFiles([files[0]]);
+        onFileSelect(files[0]);
+      }
     }
   };
 
-  const removeFile = () => {
-    setSelectedFile(null);
+  const removeFile = (index: number) => {
+    const newFiles = [...selectedFiles];
+    newFiles.splice(index, 1);
+    setSelectedFiles(newFiles);
+
+    if (multiple) {
+      onFileSelect(newFiles);
+    } else {
+      onFileSelect(newFiles[0] || null);
+    }
   };
 
   return (
     <div className={`space-y-2 ${className}`}>
       <Label>File Upload</Label>
       <div
-        className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${
-          dragActive 
-            ? "border-primary bg-primary/5" 
+        className={`relative border-2 border-dashed rounded-lg p-6 transition-colors ${dragActive
+            ? "border-primary bg-primary/5"
             : "border-muted-foreground/25 hover:border-muted-foreground/50"
-        } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
         onDragOver={handleDrag}
@@ -83,33 +104,41 @@ export function FileUpload({
           accept={accept}
           onChange={handleFileChange}
           disabled={disabled}
+          multiple={multiple}
           className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
         />
-        
-        {selectedFile ? (
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <File className="h-4 w-4 text-muted-foreground" />
-              <span className="text-sm font-medium">{selectedFile.name}</span>
-              <span className="text-xs text-muted-foreground">
-                ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-              </span>
-            </div>
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={removeFile}
-              className="h-6 w-6 p-0"
-            >
-              <X className="h-3 w-3" />
-            </Button>
+
+        {selectedFiles.length > 0 ? (
+          <div className="space-y-2">
+            {selectedFiles.map((file, index) => (
+              <div key={index} className="flex items-center justify-between bg-muted/50 p-2 rounded">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <span className="text-sm font-medium truncate">{file.name}</span>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    removeFile(index);
+                  }}
+                  className="h-6 w-6 p-0"
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            ))}
           </div>
         ) : (
           <div className="text-center">
             <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
-              Drag and drop a file here, or click to select
+              Drag and drop {multiple ? 'files' : 'a file'} here, or click to select
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               Max size: {maxSize}MB

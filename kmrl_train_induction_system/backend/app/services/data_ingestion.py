@@ -453,31 +453,42 @@ class DataIngestionService:
 
     # --------------------------- N8N Integration --------------------------- #
 
-    async def send_file_to_n8n(self, content: bytes, filename: str, content_type: str = None) -> Dict[str, Any]:
-        """Send uploaded file to n8n webhook for processing."""
+    async def send_files_to_n8n(self, file_list: List[tuple]) -> Dict[str, Any]:
+        """
+        Send uploaded files to n8n webhook for processing.
+        file_list: List of tuples (filename, content, content_type)
+        """
         if not settings.n8n_webhook_url:
             raise ValueError("N8N_WEBHOOK_URL is not configured")
             
         import httpx
         
         try:
-            # Prepare the file for upload with explicit content type
-            # httpx format: {'file': (filename, content, content_type)}
-            files = {'file': (filename, content, content_type or 'application/octet-stream')}
+            # Prepare files for upload
+            # httpx format: files=[('field_name', (filename, content, content_type)), ...]
+            # We use 'files' as the field name for all, or 'file' if n8n expects that.
+            # Usually 'files' implies an array. Let's use 'files' to be safe for arrays.
+            # However, n8n webhook might look for specific field names. 
+            # Standard multipart array often uses same key 'files' or 'file[]'.
+            # Let's use 'files' as the key.
             
-            # Send to n8n with extended timeout for LLM processing
+            multipart_files = []
+            for fname, fcontent, ftype in file_list:
+                multipart_files.append(('files', (fname, fcontent, ftype or 'application/octet-stream')))
+            
+            # Send to n8n with extended timeout
             async with httpx.AsyncClient(timeout=60.0) as client:
-                response = await client.post(settings.n8n_webhook_url, files=files)
+                response = await client.post(settings.n8n_webhook_url, files=multipart_files)
                 response.raise_for_status()
                 
                 return {
                     "status": "success",
                     "n8n_response": response.json() if response.content else {},
-                    "message": "File successfully sent to n8n"
+                    "message": f"Successfully sent {len(file_list)} file(s) to n8n"
                 }
             
         except Exception as e:
-            logger.error(f"Failed to send file to n8n: {e}")
+            logger.error(f"Failed to send files to n8n: {e}")
             raise
 
     async def process_n8n_result(self, data: Dict[str, Any]) -> Dict[str, Any]:
