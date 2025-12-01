@@ -4,11 +4,13 @@ from app.models.trainset import OptimizationRequest, InductionDecision, Optimiza
 from ortools.linear_solver import pywraplp
 import logging
 from datetime import datetime
+import math
 from app.utils.explainability import (
     top_reasons_and_risks, 
     generate_comprehensive_explanation,
     calculate_composite_score
 )
+from app.config import settings, get_config
 
 logger = logging.getLogger(__name__)
 
@@ -27,11 +29,128 @@ WEIGHTS = {
     "SHUNTING_COMPLEXITY_PENALTY": -10.0 # Minor penalty if train is blocked by others
 }
 
+def compute_trains_needed(required_hours: float, candidate_trains: List[Dict[str, Any]]) -> int:
+    """
+    Convert required service hours into number of trains needed.
+    
+    Uses per-train 'estimated_service_hours' if present (average), otherwise DEFAULT_HOURS_PER_TRAIN.
+    Always returns ceil(required_hours / avg_hours) but not exceed len(candidate_trains).
+    
+    Args:
+        required_hours: Total service hours required (must be > 0)
+        candidate_trains: List of candidate trainsets (may have 'estimated_service_hours' field)
+        
+    Returns:
+        Number of trains needed (at least 1, at most len(candidate_trains))
+    """
+    if required_hours <= 0:
+        logger.warning(f"Invalid required_hours: {required_hours}, defaulting to 1 train")
+        return 1
+    
+    if not candidate_trains:
+        logger.warning("No candidate trains provided, returning 0")
+        return 0
+    
+    # Calculate average hours per train
+    hours_list = []
+    for train in candidate_trains:
+        # Try to get estimated_service_hours from train data
+        est_hours = train.get("estimated_service_hours")
+        if est_hours is not None:
+            try:
+                hours_list.append(float(est_hours))
+            except (ValueError, TypeError):
+                pass
+    
+    if hours_list:
+        avg_hours = sum(hours_list) / len(hours_list)
+        logger.debug(f"Using average estimated_service_hours: {avg_hours:.2f} hours/train")
+    else:
+        avg_hours = settings.default_hours_per_train
+        logger.debug(f"No estimated_service_hours found, using default: {avg_hours:.2f} hours/train")
+    
+    # Calculate trains needed (always round up)
+    trains_needed = math.ceil(required_hours / avg_hours)
+    
+    # Clamp to available trains
+    trains_needed = min(trains_needed, len(candidate_trains))
+    
+    # Warn if requested hours seems unreasonably large
+    max_reasonable = len(candidate_trains) * settings.max_hours_warning_threshold_multiplier
+    if required_hours > max_reasonable:
+        logger.warning(
+            f"Requested service hours ({required_hours}) exceeds reasonable threshold "
+            f"({max_reasonable} = {len(candidate_trains)} trains × {settings.max_hours_warning_threshold_multiplier}). "
+            f"Clamping to {trains_needed} trains."
+        )
+    
+    logger.info(
+        f"Converted {required_hours} service hours to {trains_needed} trains "
+        f"(avg {avg_hours:.2f} hours/train)"
+    )
+    
+    return max(1, trains_needed)  # Always return at least 1
+
+
 class TrainInductionOptimizer:
-    """AI/ML optimization engine using Tiered Constraint Hierarchy (Lexicographic Optimization)"""
+    """AI/ML optimization engine using Tiered Constraint Hierarchy (Lexicographic Optimization).
+
+    Note on weights:
+    - WEIGHTS holds the internal tiered scores/penalties for branding, mileage, cleaning, shunting, etc.
+    - OptimizationRequest.weights (OptimizationWeights) is a high-level knob used by What‑If simulation
+      to re-weight these internal factors.
+    - For each optimize() call we derive an effective copy of WEIGHTS scaled according to
+      OptimizationWeights so scenarios do not interfere with each other.
+    """
     
     def __init__(self):
-        self.weights = WEIGHTS
+        # Per-instance mutable copy; each optimize() call may further adjust this
+        self.weights = dict(WEIGHTS)
+
+    def _get_effective_weights(self, request: OptimizationRequest) -> Dict[str, float]:
+        """
+        Derive effective internal weights for this optimization call from the
+        high-level OptimizationWeights (readiness, reliability, branding, shunt, mileage_balance).
+
+        Mapping strategy (keeps existing tiered logic but allows relative re-weighting):
+        - branding           → scales BRANDING_OBLIGATION
+        - mileage_balance    → scales MILEAGE_BALANCING
+        - shunt              → scales SHUNTING_COMPLEXITY_PENALTY
+        - readiness          → scales MINOR_DEFECT_PENALTY_PER_DEFECT
+        - reliability        → scales CLEANING_DUE_PENALTY
+        """
+        # Start from the global defaults
+        effective = dict(WEIGHTS)
+
+        if not request.weights:
+            return effective
+
+        base = OptimizationWeights()  # default (0.35, 0.30, 0.20, 0.10, 0.05)
+        w = request.weights
+
+        # Compute safe scale factors (fallback to 1.0 if base is zero or value missing)
+        def _scale(current: float, override: float, base_value: float) -> float:
+            if base_value <= 0:
+                return current
+            return current * max(0.0, override) / base_value
+
+        effective["BRANDING_OBLIGATION"] = _scale(
+            effective["BRANDING_OBLIGATION"], w.branding, base.branding
+        )
+        effective["MILEAGE_BALANCING"] = _scale(
+            effective["MILEAGE_BALANCING"], w.mileage_balance, base.mileage_balance
+        )
+        effective["SHUNTING_COMPLEXITY_PENALTY"] = _scale(
+            effective["SHUNTING_COMPLEXITY_PENALTY"], w.shunt, base.shunt
+        )
+        effective["MINOR_DEFECT_PENALTY_PER_DEFECT"] = _scale(
+            effective["MINOR_DEFECT_PENALTY_PER_DEFECT"], w.readiness, base.readiness
+        )
+        effective["CLEANING_DUE_PENALTY"] = _scale(
+            effective["CLEANING_DUE_PENALTY"], w.reliability, base.reliability
+        )
+
+        return effective
     
     def _apply_final_safety_gate_and_sort(self, decisions: List[InductionDecision]) -> List[InductionDecision]:
         """Post-processing: Final safety gate + strict sorting
@@ -145,6 +264,9 @@ class TrainInductionOptimizer:
         """
         try:
             logger.info(f"Starting tiered optimization for {len(trainsets)} trainsets")
+
+            # Derive per-call effective weights (supports What‑If scenario weight overrides)
+            self.weights = self._get_effective_weights(request)
             
             # CRITICAL: Normalize all trainset data to ensure type safety (safety bug fix)
             normalized_trainsets = [self._normalize_trainset_data(ts) for ts in trainsets]
@@ -152,9 +274,10 @@ class TrainInductionOptimizer:
             logger.info(f"Normalized {len(trainsets)} trainsets for type safety")
             
             # Integrate ML risk prediction for all trainsets
+            # Note: ML predictions are deterministic (seeded) for reproducibility
             try:
                 from app.ml.predictor import batch_predict, predict_maintenance_health
-                logger.info("Calling ML batch_predict for risk assessment")
+                logger.info("Calling ML batch_predict for risk assessment (deterministic mode)")
                 
                 features_for_pred = []
                 for t in trainsets:
@@ -243,8 +366,47 @@ class TrainInductionOptimizer:
                 # Tier 3: Optimization Soft Objectives
                 tier3_scores[idx] = self._calculate_tier3_score(t)
 
-            # Capacity constraint
-            target = max(1, min(request.required_service_hours, len(eligible_trainsets)))
+            # Capacity constraint: Convert service hours to number of trains needed
+            cfg = get_config()
+            avg_hours = cfg.get("AVG_HOURS_PER_TRAIN", 12)
+
+            # Defensive read of requested hours / explicit count
+            import math  # local import to avoid circular issues in some environments
+            req_hours = 0.0
+            try:
+                if getattr(request, "required_service_hours", None) is not None:
+                    req_hours = float(request.required_service_hours)
+            except Exception:
+                req_hours = 0.0
+
+            req_count_ui = None
+            if getattr(request, "required_service_count", None) is not None:
+                try:
+                    req_count_ui = int(request.required_service_count)
+                except Exception:
+                    req_count_ui = None
+
+            if req_count_ui is not None:
+                required_train_count = max(1, req_count_ui)
+            elif req_hours > 0:
+                required_train_count = max(1, math.ceil(req_hours / float(avg_hours)))
+            else:
+                # default fallback: 1 train
+                required_train_count = 1
+
+            eligible_count = len(eligible_trainsets)
+            granted_train_count = min(required_train_count, eligible_count)
+            target = granted_train_count
+
+            logger.info(
+                "Optimization target from hours: req_hours=%s avg=%s "
+                "req_trains=%s eligible=%s granted=%s",
+                req_hours,
+                avg_hours,
+                required_train_count,
+                eligible_count,
+                granted_train_count,
+            )
             solver.Add(solver.Sum([x_vars[i] for i in x_vars]) <= target)
 
             # Lexicographic objective: Tier 2 dominates Tier 3
@@ -472,17 +634,36 @@ class TrainInductionOptimizer:
         """TIER 1: Check if trainset has critical failure (hard constraint exclusion).
         
         Returns True if trainset should be excluded due to:
+        - Missing or empty fitness certificates (CRITICAL: empty dict is failure)
         - Expired fitness certificates
         - Critical job cards
         - Mileage limit exceeded
         - Currently in maintenance
         """
-        # Check fitness certificates - strict validation
-        fitness_certs = trainset.get("fitness_certificates", {})
-        if not isinstance(fitness_certs, dict):
-            fitness_certs = {}
-        
         trainset_id = trainset.get("trainset_id", "UNKNOWN")
+        
+        # Check fitness certificates - strict validation
+        # CRITICAL FIX: Empty or missing certificates is a critical failure
+        fitness_certs = trainset.get("fitness_certificates")
+        if not fitness_certs:
+            logger.warning(f"SAFETY FILTER: {trainset_id} excluded - MISSING fitness certificates")
+            return True  # Critical: no certificates provided
+        
+        if not isinstance(fitness_certs, dict):
+            logger.warning(f"SAFETY FILTER: {trainset_id} excluded - INVALID fitness certificates type: {type(fitness_certs)}")
+            return True  # Critical: invalid certificate structure
+        
+        if len(fitness_certs) == 0:
+            logger.warning(f"SAFETY FILTER: {trainset_id} excluded - EMPTY fitness certificates dict")
+            return True  # Critical: empty certificates dict
+        
+        # Validate required certificates exist (rolling_stock, signalling, telecom)
+        required_certs = ["rolling_stock", "signalling", "telecom"]
+        missing_certs = [cert for cert in required_certs if cert not in fitness_certs]
+        if missing_certs:
+            logger.warning(f"SAFETY FILTER: {trainset_id} excluded - MISSING required certificates: {missing_certs}")
+            return True  # Critical: required certificates missing
+        
         for cert_type, cert_data in fitness_certs.items():
             if not isinstance(cert_data, dict):
                 continue
@@ -644,7 +825,10 @@ class TrainInductionOptimizer:
         # Sort by combined score (Tier 2 dominates)
         scored_trainsets.sort(key=lambda x: x[3], reverse=True)
         
-        target_inductions = min(request.required_service_hours, len(scored_trainsets))
+        # Convert service hours to number of trains needed
+        trains_needed = compute_trains_needed(request.required_service_hours, [t[0] for t in scored_trainsets])
+        target_inductions = min(trains_needed, len(scored_trainsets))
+        logger.info(f"Fallback optimization target: {target_inductions} trains (from {request.required_service_hours} service hours)")
         decisions: List[InductionDecision] = []
         inducted = 0
         
@@ -750,60 +934,25 @@ class TrainInductionOptimizer:
         
         return decisions
 
-    def _readiness_score(self, trainset: Dict[str, Any]) -> float:
-        fitness_valid = all(cert["status"] == "VALID" for cert in trainset["fitness_certificates"].values())
-        no_critical = trainset["job_cards"]["critical_cards"] == 0
-        not_maintenance = trainset["status"] in ["STANDBY", "ACTIVE"]
-        return float(fitness_valid) * 0.5 + float(no_critical) * 0.3 + float(not_maintenance) * 0.2
-
-    def _reliability_score(self, trainset: Dict[str, Any]) -> float:
-        # Use sensor health score if available (0..1)
-        return float(max(0.0, min(1.0, trainset.get("sensor_health_score", 0.8))))
-
-    def _cost_score(self, trainset: Dict[str, Any]) -> float:
-        # Lower mileage and fewer open cards imply lower cost; scale to 0..1
-        mileage_ratio = trainset["current_mileage"] / max(1.0, trainset["max_mileage_before_maintenance"])
-        open_cards = trainset["job_cards"]["open_cards"]
-        return max(0.0, 1.0 - 0.7 * mileage_ratio - 0.3 * min(1.0, open_cards / 10.0))
-
-    def _branding_score(self, trainset: Dict[str, Any]) -> float:
-        # Map branding priority (0..1). Support both int priority and dict.
-        branding = trainset.get("branding", {})
-        if isinstance(branding, dict):
-            pri = branding.get("priority")
-            if isinstance(pri, str):
-                mapping = {"HIGH": 1.0, "MEDIUM": 0.6, "LOW": 0.3}
-                return mapping.get(pri, 0.0)
-        # Fallback to existing numeric field
-        return min(1.0, max(0.0, float(trainset.get("branding_priority", 0) / 3.0)))
-    
-    def _calculate_fitness_score(self, trainset: Dict[str, Any]) -> float:
-        """Calculate overall fitness score from certificates"""
-        fitness_certs = trainset["fitness_certificates"]
-        valid_count = sum(1 for cert in fitness_certs.values() if cert["status"] == "VALID")
-        return valid_count / len(fitness_certs)
-    
-    def _calculate_branding_score(self, trainset: Dict[str, Any]) -> float:
-        """Calculate branding priority score"""
-        branding = trainset.get("branding", {})
-        if not branding or branding.get("current_advertiser") == "None":
-            return 0.0
-        
-        priority_map = {"HIGH": 1.0, "MEDIUM": 0.6, "LOW": 0.3}
-        return priority_map.get(branding.get("priority", "LOW"), 0.0)
-    
-    def _can_induct(self, trainset: Dict[str, Any]) -> bool:
-        """Check if trainset can be inducted"""
-        return (
-            trainset["status"] in ["STANDBY", "ACTIVE"] and
-            trainset["job_cards"]["critical_cards"] == 0
-        )
-    
     def _needs_maintenance(self, trainset: Dict[str, Any]) -> bool:
-        """Check if trainset needs maintenance"""
+        """Check if trainset needs maintenance
+        
+        Uses safe dict access to prevent KeyError on malformed data.
+        """
+        # Safe dict access with defaults
+        job_cards = trainset.get("job_cards", {})
+        if not isinstance(job_cards, dict):
+            job_cards = {}
+        
+        critical_cards = self._normalize_to_int(job_cards.get("critical_cards", 0), 0)
+        
+        # Safe mileage access
+        current_mileage = float(trainset.get("current_mileage", 0.0))
+        max_mileage = float(trainset.get("max_mileage_before_maintenance", float('inf')))
+        
         return (
-            trainset["job_cards"]["critical_cards"] > 0 or
-            trainset["current_mileage"] >= trainset["max_mileage_before_maintenance"] * 0.95
+            critical_cards > 0 or
+            (max_mileage > 0 and current_mileage >= max_mileage * 0.95)
         )
     
     def _get_tiered_induction_reasons(self, trainset: Dict[str, Any], tier2_score: float, tier3_score: float) -> List[str]:
@@ -977,3 +1126,1863 @@ class TrainInductionOptimizer:
         except (ValueError, TypeError):
             logger.warning(f"Invalid cleaning due date type: {type(cleaning_due_date)}")
             return None
+
+        except (ValueError, TypeError):
+
+            logger.warning(f"Failed to convert {type(value)} value '{value}' to int, using default {default}")
+
+            return default
+
+    
+
+    def _has_critical_failure(self, trainset: Dict[str, Any]) -> bool:
+
+        """TIER 1: Check if trainset has critical failure (hard constraint exclusion).
+
+        
+
+        Returns True if trainset should be excluded due to:
+
+        - Expired fitness certificates
+
+        - Critical job cards
+
+        - Mileage limit exceeded
+
+        - Currently in maintenance
+
+        """
+
+        # Check fitness certificates - strict validation
+
+        fitness_certs = trainset.get("fitness_certificates", {})
+
+        if not isinstance(fitness_certs, dict):
+
+            fitness_certs = {}
+
+        
+
+        trainset_id = trainset.get("trainset_id", "UNKNOWN")
+
+        for cert_type, cert_data in fitness_certs.items():
+
+            if not isinstance(cert_data, dict):
+
+                continue
+
+            cert_status = str(cert_data.get("status", "")).upper()
+
+            if cert_status == "EXPIRED":
+
+                logger.warning(f"SAFETY FILTER: {trainset_id} excluded - EXPIRED certificate: {cert_type}")
+
+                return True  # Critical: expired certificate
+
+        
+
+        # Check critical job cards - STRICT INTEGER COMPARISON (safety bug fix)
+
+        job_cards = trainset.get("job_cards", {})
+
+        if not isinstance(job_cards, dict):
+
+            job_cards = {}
+
+        
+
+        critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+        trainset_id = trainset.get("trainset_id", "UNKNOWN")
+
+        
+
+        if critical_cards > 0:
+
+            logger.warning(f"SAFETY FILTER: {trainset_id} excluded - {critical_cards} CRITICAL job cards")
+
+            return True  # Critical: open critical job cards
+
+        
+
+        # Check mileage limits
+
+        current_mileage = trainset.get("current_mileage", 0.0)
+
+        max_mileage = trainset.get("max_mileage_before_maintenance", float('inf'))
+
+        if current_mileage >= max_mileage:
+
+            return True  # Critical: mileage limit exceeded
+
+        
+
+        # Check maintenance status
+
+        if trainset.get("status") == "MAINTENANCE":
+
+            return True  # Critical: currently in maintenance
+
+        
+
+        # Check cleaning slot requirement (if required but not available)
+
+        requires_cleaning = bool(trainset.get("requires_cleaning", False))
+
+        has_cleaning_slot = bool(trainset.get("has_cleaning_slot", False))
+
+        if requires_cleaning and not has_cleaning_slot:
+
+            return True  # Critical: cleaning required but slot not available
+
+        
+
+        return False
+
+    
+
+    def _calculate_tier2_score(self, trainset: Dict[str, Any]) -> float:
+
+        """TIER 2: Calculate high priority soft objectives score.
+
+        
+
+        Components:
+
+        - BRANDING_OBLIGATION: Wrapped trains must enter service (high positive score)
+
+        - MINOR_DEFECT_PENALTY: Prefer keeping trains with minor defects in depot (penalty)
+
+        """
+
+        score = 0.0
+
+        
+
+        # Branding obligation: wrapped trains with active advertiser get high priority
+
+        branding = trainset.get("branding", {})
+
+        if isinstance(branding, dict):
+
+            advertiser = branding.get("current_advertiser")
+
+            priority = branding.get("priority", "LOW")
+
+            
+
+            # If train is wrapped (has active advertiser) and priority is HIGH/MEDIUM, strong obligation
+
+            if advertiser and advertiser != "None" and advertiser != "":
+
+                if priority == "HIGH":
+
+                    score += self.weights["BRANDING_OBLIGATION"]  # Full obligation weight
+
+                elif priority == "MEDIUM":
+
+                    score += self.weights["BRANDING_OBLIGATION"] * 0.6  # Partial obligation
+
+                elif priority == "LOW":
+
+                    score += self.weights["BRANDING_OBLIGATION"] * 0.3  # Weak obligation
+
+        
+
+        # Minor defect penalty: -20 points per minor defect (Tier 2)
+
+        job_cards = trainset.get("job_cards", {})
+
+        open_cards = self._normalize_to_int(job_cards.get("open_cards"), 0)
+
+        critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+        minor_cards = max(0, open_cards - critical_cards)
+
+        
+
+        if minor_cards > 0:
+
+            # Exact weight: -20 per defect
+
+            penalty = self.weights["MINOR_DEFECT_PENALTY_PER_DEFECT"] * minor_cards
+
+            score += penalty
+
+        
+
+        return score
+
+    
+
+    def _calculate_tier3_score(self, trainset: Dict[str, Any]) -> float:
+
+        """TIER 3: Calculate optimization soft objectives score.
+
+        
+
+        Components:
+
+        - MILEAGE_BALANCING: Prefer trains that need mileage to equalize fleet
+
+        - CLEANING_DUE_PENALTY: Penalty if train is due for deep cleaning
+
+        - SHUNTING_COMPLEXITY_PENALTY: Minor penalty if train is blocked by others
+
+        """
+
+        score = 0.0
+
+        
+
+        # Mileage balancing: prefer trains with lower recent mileage (need to equalize fleet)
+
+        current_mileage = trainset.get("current_mileage", 0.0)
+
+        max_mileage = trainset.get("max_mileage_before_maintenance", 50000.0)
+
+        
+
+        # Get 30-day mileage if available, otherwise use current mileage ratio
+
+        km_30d = trainset.get("km_30d", current_mileage * 0.1)  # Approximate if not available
+
+        km_30d_norm = min(1.0, km_30d / 5000.0) if km_30d else 0.5  # Normalize to 0-1
+
+        
+
+        # Mileage balancing: +100 if below average (exact weight from requirements)
+
+        # Lower mileage = higher score (train needs mileage to catch up)
+
+        if km_30d_norm < 0.5:  # Below average mileage
+
+            score += self.weights["MILEAGE_BALANCING"]  # +100 points
+
+        else:
+
+            # Partial credit for moderate mileage
+
+            score += self.weights["MILEAGE_BALANCING"] * (1.0 - km_30d_norm)
+
+        
+
+        # Cleaning due penalty: if train is due for cleaning, apply penalty
+
+        requires_cleaning = bool(trainset.get("requires_cleaning", False))
+
+        cleaning_due_date = trainset.get("cleaning_due_date")
+
+        
+
+        if requires_cleaning and cleaning_due_date:
+
+            try:
+
+                due_date = self._parse_cleaning_date(cleaning_due_date)
+
+                if due_date:
+
+                    days_until_due = (due_date - datetime.utcnow()).days
+
+                    if days_until_due <= 7:  # Due within 7 days
+
+                        penalty_factor = 1.0 - (days_until_due / 7.0)
+
+                        score += self.weights["CLEANING_DUE_PENALTY"] * penalty_factor
+
+                else:
+
+                    # If date parsing fails, apply small penalty if cleaning is required
+
+                    score += self.weights["CLEANING_DUE_PENALTY"] * 0.5
+
+            except Exception as e:
+
+                logger.warning(f"Error processing cleaning due date '{cleaning_due_date}': {e}")
+
+                # If date parsing fails, apply small penalty if cleaning is required
+
+                score += self.weights["CLEANING_DUE_PENALTY"] * 0.5
+
+        elif requires_cleaning:
+
+            # Cleaning required but no date info - apply small penalty
+
+            score += self.weights["CLEANING_DUE_PENALTY"] * 0.3
+
+        
+
+        # Shunting complexity penalty: if train is blocked by others or in complex position
+
+        is_blocked = bool(trainset.get("is_blocked", False))
+
+        shunt_complexity = trainset.get("shunt_complexity", 0.0)  # 0-1 scale
+
+        
+
+        if is_blocked or shunt_complexity > 0.5:
+
+            complexity_factor = 1.0 if is_blocked else shunt_complexity
+
+            score += self.weights["SHUNTING_COMPLEXITY_PENALTY"] * complexity_factor
+
+        
+
+        # ML health contribution: higher health should increase Tier‑3 score so that
+
+        # trains with similar mileage but better ML health rank higher.
+
+        health_score = float(trainset.get("ml_health_score", 0.85) or 0.85)
+
+        score += health_score * 100.0  # explicit +100 * health weight as requested
+
+        
+
+        return score
+
+    
+
+    # Legacy optimization score method removed - replaced by tiered scoring system
+
+    # The _calculate_optimization_score method and OptimizationWeights model usage
+
+    # were never called by the main optimization loop and conflicted with the
+
+    # tiered constraint hierarchy approach.
+
+
+
+    async def _optimize_with_tiered_scoring(self, eligible_trainsets: List[Dict[str, Any]], critical_failures: List[Dict[str, Any]], request: OptimizationRequest) -> List[InductionDecision]:
+
+        """Fallback tiered scoring-based optimization when OR-Tools is unavailable."""
+
+        # Calculate tiered scores for all eligible trainsets
+
+        scored_trainsets = []
+
+        for trainset in eligible_trainsets:
+
+            tier2_score = self._calculate_tier2_score(trainset)
+
+            tier3_score = self._calculate_tier3_score(trainset)
+
+            
+
+            # Lexicographic: Tier 2 dominates Tier 3
+
+            tier2_scale = 10000.0
+
+            combined_score = tier2_scale * tier2_score + tier3_score
+
+            
+
+            scored_trainsets.append((trainset, tier2_score, tier3_score, combined_score))
+
+        
+
+        # Sort by combined score (Tier 2 dominates)
+
+        scored_trainsets.sort(key=lambda x: x[3], reverse=True)
+
+        
+
+        target_inductions = min(request.required_service_hours, len(scored_trainsets))
+
+        decisions: List[InductionDecision] = []
+
+        inducted = 0
+
+        
+
+        # Process inducted trainsets
+
+        for trainset, tier2_score, tier3_score, combined_score in scored_trainsets:
+
+            if inducted < target_inductions:
+
+                confidence = min(1.0, max(0.5, (combined_score + 5000) / 10000))
+
+                explanation = generate_comprehensive_explanation(trainset, "INDUCT")
+
+                reasons = self._get_tiered_induction_reasons(trainset, tier2_score, tier3_score)
+
+                normalized_score = self._calculate_normalized_optimization_score(
+
+                    trainset, tier2_score, tier3_score, "INDUCT"
+
+                )
+
+                
+
+                decisions.append(InductionDecision(
+
+                    trainset_id=trainset["trainset_id"],
+
+                    decision="INDUCT",
+
+                    confidence_score=confidence,
+
+                    reasons=reasons + explanation.get("top_reasons", []),
+
+                    score=normalized_score,  # Use actual optimization score
+
+                    top_reasons=explanation.get("top_reasons", []),
+
+                    top_risks=explanation.get("top_risks", []),
+
+                    violations=explanation.get("violations", []),
+
+                    shap_values=explanation.get("shap_values", [])
+
+                ))
+
+                inducted += 1
+
+            elif self._needs_maintenance(trainset):
+
+                explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+
+                normalized_score = self._calculate_normalized_optimization_score(
+
+                    trainset, tier2_score, tier3_score, "MAINTENANCE"
+
+                )
+
+                decisions.append(InductionDecision(
+
+                    trainset_id=trainset["trainset_id"],
+
+                    decision="MAINTENANCE",
+
+                    confidence_score=0.9,
+
+                    reasons=["Maintenance required - not selected for service"] + explanation.get("top_reasons", []),
+
+                    score=normalized_score,
+
+                    top_reasons=explanation.get("top_reasons", []),
+
+                    top_risks=explanation.get("top_risks", []),
+
+                    violations=explanation.get("violations", []),
+
+                    shap_values=explanation.get("shap_values", [])
+
+                ))
+
+            else:
+
+                explanation = generate_comprehensive_explanation(trainset, "STANDBY")
+
+                normalized_score = self._calculate_normalized_optimization_score(
+
+                    trainset, tier2_score, tier3_score, "STANDBY"
+
+                )
+
+                decisions.append(InductionDecision(
+
+                    trainset_id=trainset["trainset_id"],
+
+                    decision="STANDBY",
+
+                    confidence_score=0.7,
+
+                    reasons=["Standby - lower tiered score than inducted trainsets"] + explanation.get("top_reasons", []),
+
+                    score=normalized_score,
+
+                    top_reasons=explanation.get("top_reasons", []),
+
+                    top_risks=explanation.get("top_risks", []),
+
+                    violations=explanation.get("violations", []),
+
+                    shap_values=explanation.get("shap_values", [])
+
+                ))
+
+        
+
+        # Process critical failures
+
+        # TIER 1: Hard Stop - Score = 0, Status = MAINTENANCE
+
+        for trainset in critical_failures:
+
+            explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+
+            
+
+            # Build detailed reason for critical failure
+
+            failure_reasons = ["Critical failure detected - requires maintenance"]
+
+            job_cards = trainset.get("job_cards", {})
+
+            critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+            if critical_cards > 0:
+
+                failure_reasons.append(f"{critical_cards} critical job cards open")
+
+            
+
+            fitness_certs = trainset.get("fitness_certificates", {})
+
+            expired_certs = [k for k, v in fitness_certs.items() if isinstance(v, dict) and str(v.get("status", "")).upper() == "EXPIRED"]
+
+            if expired_certs:
+
+                failure_reasons.append(f"Expired certificates: {', '.join(expired_certs)}")
+
+            
+
+            decisions.append(InductionDecision(
+
+                trainset_id=trainset["trainset_id"],
+
+                decision="MAINTENANCE",
+
+                confidence_score=1.0,
+
+                reasons=failure_reasons,
+
+                score=0.0,  # TIER 1: Hard stop - Score = 0
+
+                top_reasons=explanation["top_reasons"],
+
+                top_risks=explanation["top_risks"],
+
+                violations=explanation["violations"],
+
+                shap_values=explanation["shap_values"]
+
+            ))
+
+        
+
+        # FINAL SAFETY SANITY CHECK (fallback method)
+
+        for decision in decisions:
+
+            if decision.decision == "INDUCT":
+
+                trainset_id = decision.trainset_id
+
+                original_trainset = next((ts for ts in eligible_trainsets if ts.get("trainset_id") == trainset_id), None)
+
+                if original_trainset:
+
+                    job_cards = original_trainset.get("job_cards", {})
+
+                    critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+                    if critical_cards > 0:
+
+                        error_msg = f"SAFETY VIOLATION (fallback): Train {trainset_id} with {critical_cards} critical job cards made it to final INDUCT list!"
+
+                        logger.error(error_msg)
+
+                        raise ValueError(error_msg)
+
+        
+
+        # POST-PROCESSING: Final Safety Gate + Strict Sorting
+
+        decisions = self._apply_final_safety_gate_and_sort(decisions)
+
+        
+
+        return decisions
+
+
+
+    def _needs_maintenance(self, trainset: Dict[str, Any]) -> bool:
+
+        """Check if trainset needs maintenance"""
+
+        return (
+
+            trainset["job_cards"]["critical_cards"] > 0 or
+
+            trainset["current_mileage"] >= trainset["max_mileage_before_maintenance"] * 0.95
+
+        )
+
+    
+
+    def _get_tiered_induction_reasons(self, trainset: Dict[str, Any], tier2_score: float, tier3_score: float) -> List[str]:
+
+        """Generate human-readable reasons based on tiered scoring"""
+
+        reasons = []
+
+        
+
+        # Tier 2 reasons (high priority)
+
+        branding = trainset.get("branding", {})
+
+        if isinstance(branding, dict):
+
+            advertiser = branding.get("current_advertiser")
+
+            priority = branding.get("priority", "LOW")
+
+            if advertiser and advertiser != "None" and advertiser != "":
+
+                if priority == "HIGH":
+
+                    reasons.append("High branding obligation - wrapped train must enter service")
+
+                elif priority == "MEDIUM":
+
+                    reasons.append("Medium branding obligation - wrapped train")
+
+                elif priority == "LOW":
+
+                    reasons.append("Branding obligation - wrapped train")
+
+        
+
+        job_cards = trainset.get("job_cards", {})
+
+        minor_cards = max(0, job_cards.get("open_cards", 0) - job_cards.get("critical_cards", 0))
+
+        if minor_cards == 0:
+
+            reasons.append("No minor defects - optimal condition")
+
+        
+
+        # Tier 3 reasons (optimization)
+
+        current_mileage = trainset.get("current_mileage", 0.0)
+
+        max_mileage = trainset.get("max_mileage_before_maintenance", 50000.0)
+
+        mileage_ratio = current_mileage / max_mileage if max_mileage > 0 else 0.0
+
+        
+
+        if mileage_ratio < 0.5:
+
+            reasons.append("Low mileage - good for fleet balancing")
+
+        elif mileage_ratio < 0.7:
+
+            reasons.append("Moderate mileage - suitable for service")
+
+        
+
+        if not trainset.get("requires_cleaning", False):
+
+            reasons.append("No cleaning required - ready for service")
+
+        
+
+        if not trainset.get("is_blocked", False):
+
+            reasons.append("No shunting complexity - easy deployment")
+
+        
+
+        # ML health alert (Tier‑3 influence)
+
+        ml_health = trainset.get("ml_health_score")
+
+        if isinstance(ml_health, (int, float)) and ml_health < 0.5:
+
+            reasons.append("ML Alert: Component fatigue detected")
+
+
+
+        return reasons if reasons else ["Selected based on tiered optimization criteria"]
+
+    
+
+    def _calculate_normalized_optimization_score(self, trainset: Dict[str, Any], tier2_score: float, tier3_score: float, decision: str) -> float:
+
+        """Calculate normalized score (0-100%) based on actual optimization priority.
+
+        
+
+        This ensures the API displays scores that match the optimization hierarchy:
+
+        - Branding trains (Tier 2): 90-100%
+
+        - Mileage/Health trains (Tier 3): 50-89%
+
+        - Maintenance/Critical failures: 0-49%
+
+        """
+
+        # Check if this is a critical failure (should be scored 0-49%)
+
+        if self._has_critical_failure(trainset) or decision == "MAINTENANCE":
+
+            # For critical failures, score based on severity
+
+            job_cards = trainset.get("job_cards", {})
+
+            critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+            fitness_certs = trainset.get("fitness_certificates", {})
+
+            has_expired = any(
+
+                isinstance(cert, dict) and str(cert.get("status", "")).upper() == "EXPIRED"
+
+                for cert in fitness_certs.values()
+
+            )
+
+            
+
+            if critical_cards > 0 or has_expired:
+
+                return 0.0  # Absolute minimum for safety violations
+
+            else:
+
+                return min(0.49, max(0.0, tier3_score / 1000.0))  # Scale down maintenance scores
+
+        
+
+        # Check for Tier 2 (Branding) priority
+
+        branding = trainset.get("branding", {})
+
+        has_branding_obligation = False
+
+        branding_priority = "LOW"
+
+        
+
+        if isinstance(branding, dict):
+
+            advertiser = branding.get("current_advertiser")
+
+            branding_priority = branding.get("priority", "LOW")
+
+            has_branding_obligation = advertiser and advertiser not in ("None", "", None)
+
+        
+
+        if has_branding_obligation and tier2_score > 0:
+
+            # Tier 2: Branding trains get 90-100% scores
+
+            base_score = 0.90  # 90% baseline for any branding obligation
+
+            
+
+            if branding_priority == "HIGH":
+
+                priority_boost = 0.10  # Up to 100% for high priority
+
+            elif branding_priority == "MEDIUM":
+
+                priority_boost = 0.07  # Up to 97% for medium priority
+
+            elif branding_priority == "LOW":
+
+                priority_boost = 0.04  # Up to 94% for low priority
+
+            else:
+
+                priority_boost = 0.05  # Default 95% for wrapped trains
+
+            
+
+            # Add defect penalty within Tier 2 range
+
+            job_cards = trainset.get("job_cards", {})
+
+            minor_defects = max(0, job_cards.get("open_cards", 0) - job_cards.get("critical_cards", 0))
+
+            defect_penalty = min(0.05, minor_defects * 0.01)  # Max 5% penalty for defects
+
+            
+
+            final_score = base_score + priority_boost - defect_penalty
+
+            return min(1.0, max(0.90, final_score))  # Keep in 90-100% range
+
+        
+
+        # Tier 3: Mileage/Health optimization (50-89% range)
+
+        if decision == "INDUCT":
+
+            # For inducted trains without branding, use 70-89% range
+
+            base_score = 0.70
+
+            tier3_boost = min(0.19, max(0.0, tier3_score / 1000.0))  # Scale tier3 to 0-19%
+
+            return min(0.89, base_score + tier3_boost)
+
+        elif decision == "STANDBY":
+
+            # For standby trains, use 50-69% range
+
+            base_score = 0.50
+
+            tier3_boost = min(0.19, max(0.0, tier3_score / 1000.0))  # Scale tier3 to 0-19%
+
+            return min(0.69, base_score + tier3_boost)
+
+        else:
+
+            # Default fallback
+
+            return min(0.49, max(0.0, (tier2_score + tier3_score) / 2000.0))
+
+    
+
+    def _parse_cleaning_date(self, cleaning_due_date: Any) -> Optional[datetime]:
+
+        """Safely parse cleaning due date with better error handling.
+
+        
+
+        Handles various date formats and validates input.
+
+        """
+
+        if not cleaning_due_date:
+
+            return None
+
+        
+
+        # If already a datetime object
+
+        if isinstance(cleaning_due_date, datetime):
+
+            return cleaning_due_date
+
+        
+
+        # If string, try multiple parsing approaches
+
+        if isinstance(cleaning_due_date, str):
+
+            date_str = cleaning_due_date.strip()
+
+            if not date_str:
+
+                return None
+
+            
+
+            # Try ISO format with timezone
+
+            try:
+
+                if date_str.endswith('Z'):
+
+                    return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+
+                elif '+' in date_str or date_str.endswith('UTC'):
+
+                    return datetime.fromisoformat(date_str.replace('UTC', '+00:00'))
+
+                else:
+
+                    return datetime.fromisoformat(date_str)
+
+            except ValueError:
+
+                pass
+
+            
+
+            # Try common date formats
+
+            common_formats = [
+
+                "%Y-%m-%d",
+
+                "%Y-%m-%d %H:%M:%S",
+
+                "%Y/%m/%d",
+
+                "%d/%m/%Y",
+
+                "%m/%d/%Y",
+
+                "%Y-%m-%dT%H:%M:%S",
+
+                "%Y-%m-%dT%H:%M:%SZ"
+
+            ]
+
+            
+
+            for fmt in common_formats:
+
+                try:
+
+                    return datetime.strptime(date_str, fmt)
+
+                except ValueError:
+
+                    continue
+
+            
+
+            # If all parsing fails, log warning and return None
+
+            logger.warning(f"Could not parse cleaning due date: '{date_str}'")
+
+            return None
+
+        
+
+        # For other types, try conversion
+
+        try:
+
+            return datetime(cleaning_due_date)
+
+        except (ValueError, TypeError):
+
+            logger.warning(f"Invalid cleaning due date type: {type(cleaning_due_date)}")
+
+            return None
+
+
+
+
+        except (ValueError, TypeError):
+
+            logger.warning(f"Failed to convert {type(value)} value '{value}' to int, using default {default}")
+
+            return default
+
+    
+
+    def _has_critical_failure(self, trainset: Dict[str, Any]) -> bool:
+
+        """TIER 1: Check if trainset has critical failure (hard constraint exclusion).
+
+        
+
+        Returns True if trainset should be excluded due to:
+
+        - Expired fitness certificates
+
+        - Critical job cards
+
+        - Mileage limit exceeded
+
+        - Currently in maintenance
+
+        """
+
+        # Check fitness certificates - strict validation
+
+        fitness_certs = trainset.get("fitness_certificates", {})
+
+        if not isinstance(fitness_certs, dict):
+
+            fitness_certs = {}
+
+        
+
+        trainset_id = trainset.get("trainset_id", "UNKNOWN")
+
+        for cert_type, cert_data in fitness_certs.items():
+
+            if not isinstance(cert_data, dict):
+
+                continue
+
+            cert_status = str(cert_data.get("status", "")).upper()
+
+            if cert_status == "EXPIRED":
+
+                logger.warning(f"SAFETY FILTER: {trainset_id} excluded - EXPIRED certificate: {cert_type}")
+
+                return True  # Critical: expired certificate
+
+        
+
+        # Check critical job cards - STRICT INTEGER COMPARISON (safety bug fix)
+
+        job_cards = trainset.get("job_cards", {})
+
+        if not isinstance(job_cards, dict):
+
+            job_cards = {}
+
+        
+
+        critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+        trainset_id = trainset.get("trainset_id", "UNKNOWN")
+
+        
+
+        if critical_cards > 0:
+
+            logger.warning(f"SAFETY FILTER: {trainset_id} excluded - {critical_cards} CRITICAL job cards")
+
+            return True  # Critical: open critical job cards
+
+        
+
+        # Check mileage limits
+
+        current_mileage = trainset.get("current_mileage", 0.0)
+
+        max_mileage = trainset.get("max_mileage_before_maintenance", float('inf'))
+
+        if current_mileage >= max_mileage:
+
+            return True  # Critical: mileage limit exceeded
+
+        
+
+        # Check maintenance status
+
+        if trainset.get("status") == "MAINTENANCE":
+
+            return True  # Critical: currently in maintenance
+
+        
+
+        # Check cleaning slot requirement (if required but not available)
+
+        requires_cleaning = bool(trainset.get("requires_cleaning", False))
+
+        has_cleaning_slot = bool(trainset.get("has_cleaning_slot", False))
+
+        if requires_cleaning and not has_cleaning_slot:
+
+            return True  # Critical: cleaning required but slot not available
+
+        
+
+        return False
+
+    
+
+    def _calculate_tier2_score(self, trainset: Dict[str, Any]) -> float:
+
+        """TIER 2: Calculate high priority soft objectives score.
+
+        
+
+        Components:
+
+        - BRANDING_OBLIGATION: Wrapped trains must enter service (high positive score)
+
+        - MINOR_DEFECT_PENALTY: Prefer keeping trains with minor defects in depot (penalty)
+
+        """
+
+        score = 0.0
+
+        
+
+        # Branding obligation: wrapped trains with active advertiser get high priority
+
+        branding = trainset.get("branding", {})
+
+        if isinstance(branding, dict):
+
+            advertiser = branding.get("current_advertiser")
+
+            priority = branding.get("priority", "LOW")
+
+            
+
+            # If train is wrapped (has active advertiser) and priority is HIGH/MEDIUM, strong obligation
+
+            if advertiser and advertiser != "None" and advertiser != "":
+
+                if priority == "HIGH":
+
+                    score += self.weights["BRANDING_OBLIGATION"]  # Full obligation weight
+
+                elif priority == "MEDIUM":
+
+                    score += self.weights["BRANDING_OBLIGATION"] * 0.6  # Partial obligation
+
+                elif priority == "LOW":
+
+                    score += self.weights["BRANDING_OBLIGATION"] * 0.3  # Weak obligation
+
+        
+
+        # Minor defect penalty: -20 points per minor defect (Tier 2)
+
+        job_cards = trainset.get("job_cards", {})
+
+        open_cards = self._normalize_to_int(job_cards.get("open_cards"), 0)
+
+        critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+        minor_cards = max(0, open_cards - critical_cards)
+
+        
+
+        if minor_cards > 0:
+
+            # Exact weight: -20 per defect
+
+            penalty = self.weights["MINOR_DEFECT_PENALTY_PER_DEFECT"] * minor_cards
+
+            score += penalty
+
+        
+
+        return score
+
+    
+
+    def _calculate_tier3_score(self, trainset: Dict[str, Any]) -> float:
+
+        """TIER 3: Calculate optimization soft objectives score.
+
+        
+
+        Components:
+
+        - MILEAGE_BALANCING: Prefer trains that need mileage to equalize fleet
+
+        - CLEANING_DUE_PENALTY: Penalty if train is due for deep cleaning
+
+        - SHUNTING_COMPLEXITY_PENALTY: Minor penalty if train is blocked by others
+
+        """
+
+        score = 0.0
+
+        
+
+        # Mileage balancing: prefer trains with lower recent mileage (need to equalize fleet)
+
+        current_mileage = trainset.get("current_mileage", 0.0)
+
+        max_mileage = trainset.get("max_mileage_before_maintenance", 50000.0)
+
+        
+
+        # Get 30-day mileage if available, otherwise use current mileage ratio
+
+        km_30d = trainset.get("km_30d", current_mileage * 0.1)  # Approximate if not available
+
+        km_30d_norm = min(1.0, km_30d / 5000.0) if km_30d else 0.5  # Normalize to 0-1
+
+        
+
+        # Mileage balancing: +100 if below average (exact weight from requirements)
+
+        # Lower mileage = higher score (train needs mileage to catch up)
+
+        if km_30d_norm < 0.5:  # Below average mileage
+
+            score += self.weights["MILEAGE_BALANCING"]  # +100 points
+
+        else:
+
+            # Partial credit for moderate mileage
+
+            score += self.weights["MILEAGE_BALANCING"] * (1.0 - km_30d_norm)
+
+        
+
+        # Cleaning due penalty: if train is due for cleaning, apply penalty
+
+        requires_cleaning = bool(trainset.get("requires_cleaning", False))
+
+        cleaning_due_date = trainset.get("cleaning_due_date")
+
+        
+
+        if requires_cleaning and cleaning_due_date:
+
+            try:
+
+                due_date = self._parse_cleaning_date(cleaning_due_date)
+
+                if due_date:
+
+                    days_until_due = (due_date - datetime.utcnow()).days
+
+                    if days_until_due <= 7:  # Due within 7 days
+
+                        penalty_factor = 1.0 - (days_until_due / 7.0)
+
+                        score += self.weights["CLEANING_DUE_PENALTY"] * penalty_factor
+
+                else:
+
+                    # If date parsing fails, apply small penalty if cleaning is required
+
+                    score += self.weights["CLEANING_DUE_PENALTY"] * 0.5
+
+            except Exception as e:
+
+                logger.warning(f"Error processing cleaning due date '{cleaning_due_date}': {e}")
+
+                # If date parsing fails, apply small penalty if cleaning is required
+
+                score += self.weights["CLEANING_DUE_PENALTY"] * 0.5
+
+        elif requires_cleaning:
+
+            # Cleaning required but no date info - apply small penalty
+
+            score += self.weights["CLEANING_DUE_PENALTY"] * 0.3
+
+        
+
+        # Shunting complexity penalty: if train is blocked by others or in complex position
+
+        is_blocked = bool(trainset.get("is_blocked", False))
+
+        shunt_complexity = trainset.get("shunt_complexity", 0.0)  # 0-1 scale
+
+        
+
+        if is_blocked or shunt_complexity > 0.5:
+
+            complexity_factor = 1.0 if is_blocked else shunt_complexity
+
+            score += self.weights["SHUNTING_COMPLEXITY_PENALTY"] * complexity_factor
+
+        
+
+        # ML health contribution: higher health should increase Tier‑3 score so that
+
+        # trains with similar mileage but better ML health rank higher.
+
+        health_score = float(trainset.get("ml_health_score", 0.85) or 0.85)
+
+        score += health_score * 100.0  # explicit +100 * health weight as requested
+
+        
+
+        return score
+
+    
+
+    # Legacy optimization score method removed - replaced by tiered scoring system
+
+    # The _calculate_optimization_score method and OptimizationWeights model usage
+
+    # were never called by the main optimization loop and conflicted with the
+
+    # tiered constraint hierarchy approach.
+
+
+
+    async def _optimize_with_tiered_scoring(self, eligible_trainsets: List[Dict[str, Any]], critical_failures: List[Dict[str, Any]], request: OptimizationRequest) -> List[InductionDecision]:
+
+        """Fallback tiered scoring-based optimization when OR-Tools is unavailable."""
+
+        # Calculate tiered scores for all eligible trainsets
+
+        scored_trainsets = []
+
+        for trainset in eligible_trainsets:
+
+            tier2_score = self._calculate_tier2_score(trainset)
+
+            tier3_score = self._calculate_tier3_score(trainset)
+
+            
+
+            # Lexicographic: Tier 2 dominates Tier 3
+
+            tier2_scale = 10000.0
+
+            combined_score = tier2_scale * tier2_score + tier3_score
+
+            
+
+            scored_trainsets.append((trainset, tier2_score, tier3_score, combined_score))
+
+        
+
+        # Sort by combined score (Tier 2 dominates)
+
+        scored_trainsets.sort(key=lambda x: x[3], reverse=True)
+
+        
+
+        target_inductions = min(request.required_service_hours, len(scored_trainsets))
+
+        decisions: List[InductionDecision] = []
+
+        inducted = 0
+
+        
+
+        # Process inducted trainsets
+
+        for trainset, tier2_score, tier3_score, combined_score in scored_trainsets:
+
+            if inducted < target_inductions:
+
+                confidence = min(1.0, max(0.5, (combined_score + 5000) / 10000))
+
+                explanation = generate_comprehensive_explanation(trainset, "INDUCT")
+
+                reasons = self._get_tiered_induction_reasons(trainset, tier2_score, tier3_score)
+
+                normalized_score = self._calculate_normalized_optimization_score(
+
+                    trainset, tier2_score, tier3_score, "INDUCT"
+
+                )
+
+                
+
+                decisions.append(InductionDecision(
+
+                    trainset_id=trainset["trainset_id"],
+
+                    decision="INDUCT",
+
+                    confidence_score=confidence,
+
+                    reasons=reasons + explanation.get("top_reasons", []),
+
+                    score=normalized_score,  # Use actual optimization score
+
+                    top_reasons=explanation.get("top_reasons", []),
+
+                    top_risks=explanation.get("top_risks", []),
+
+                    violations=explanation.get("violations", []),
+
+                    shap_values=explanation.get("shap_values", [])
+
+                ))
+
+                inducted += 1
+
+            elif self._needs_maintenance(trainset):
+
+                explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+
+                normalized_score = self._calculate_normalized_optimization_score(
+
+                    trainset, tier2_score, tier3_score, "MAINTENANCE"
+
+                )
+
+                decisions.append(InductionDecision(
+
+                    trainset_id=trainset["trainset_id"],
+
+                    decision="MAINTENANCE",
+
+                    confidence_score=0.9,
+
+                    reasons=["Maintenance required - not selected for service"] + explanation.get("top_reasons", []),
+
+                    score=normalized_score,
+
+                    top_reasons=explanation.get("top_reasons", []),
+
+                    top_risks=explanation.get("top_risks", []),
+
+                    violations=explanation.get("violations", []),
+
+                    shap_values=explanation.get("shap_values", [])
+
+                ))
+
+            else:
+
+                explanation = generate_comprehensive_explanation(trainset, "STANDBY")
+
+                normalized_score = self._calculate_normalized_optimization_score(
+
+                    trainset, tier2_score, tier3_score, "STANDBY"
+
+                )
+
+                decisions.append(InductionDecision(
+
+                    trainset_id=trainset["trainset_id"],
+
+                    decision="STANDBY",
+
+                    confidence_score=0.7,
+
+                    reasons=["Standby - lower tiered score than inducted trainsets"] + explanation.get("top_reasons", []),
+
+                    score=normalized_score,
+
+                    top_reasons=explanation.get("top_reasons", []),
+
+                    top_risks=explanation.get("top_risks", []),
+
+                    violations=explanation.get("violations", []),
+
+                    shap_values=explanation.get("shap_values", [])
+
+                ))
+
+        
+
+        # Process critical failures
+
+        # TIER 1: Hard Stop - Score = 0, Status = MAINTENANCE
+
+        for trainset in critical_failures:
+
+            explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+
+            
+
+            # Build detailed reason for critical failure
+
+            failure_reasons = ["Critical failure detected - requires maintenance"]
+
+            job_cards = trainset.get("job_cards", {})
+
+            critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+            if critical_cards > 0:
+
+                failure_reasons.append(f"{critical_cards} critical job cards open")
+
+            
+
+            fitness_certs = trainset.get("fitness_certificates", {})
+
+            expired_certs = [k for k, v in fitness_certs.items() if isinstance(v, dict) and str(v.get("status", "")).upper() == "EXPIRED"]
+
+            if expired_certs:
+
+                failure_reasons.append(f"Expired certificates: {', '.join(expired_certs)}")
+
+            
+
+            decisions.append(InductionDecision(
+
+                trainset_id=trainset["trainset_id"],
+
+                decision="MAINTENANCE",
+
+                confidence_score=1.0,
+
+                reasons=failure_reasons,
+
+                score=0.0,  # TIER 1: Hard stop - Score = 0
+
+                top_reasons=explanation["top_reasons"],
+
+                top_risks=explanation["top_risks"],
+
+                violations=explanation["violations"],
+
+                shap_values=explanation["shap_values"]
+
+            ))
+
+        
+
+        # FINAL SAFETY SANITY CHECK (fallback method)
+
+        for decision in decisions:
+
+            if decision.decision == "INDUCT":
+
+                trainset_id = decision.trainset_id
+
+                original_trainset = next((ts for ts in eligible_trainsets if ts.get("trainset_id") == trainset_id), None)
+
+                if original_trainset:
+
+                    job_cards = original_trainset.get("job_cards", {})
+
+                    critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+                    if critical_cards > 0:
+
+                        error_msg = f"SAFETY VIOLATION (fallback): Train {trainset_id} with {critical_cards} critical job cards made it to final INDUCT list!"
+
+                        logger.error(error_msg)
+
+                        raise ValueError(error_msg)
+
+        
+
+        # POST-PROCESSING: Final Safety Gate + Strict Sorting
+
+        decisions = self._apply_final_safety_gate_and_sort(decisions)
+
+        
+
+        return decisions
+
+
+
+    def _needs_maintenance(self, trainset: Dict[str, Any]) -> bool:
+
+        """Check if trainset needs maintenance"""
+
+        return (
+
+            trainset["job_cards"]["critical_cards"] > 0 or
+
+            trainset["current_mileage"] >= trainset["max_mileage_before_maintenance"] * 0.95
+
+        )
+
+    
+
+    def _get_tiered_induction_reasons(self, trainset: Dict[str, Any], tier2_score: float, tier3_score: float) -> List[str]:
+
+        """Generate human-readable reasons based on tiered scoring"""
+
+        reasons = []
+
+        
+
+        # Tier 2 reasons (high priority)
+
+        branding = trainset.get("branding", {})
+
+        if isinstance(branding, dict):
+
+            advertiser = branding.get("current_advertiser")
+
+            priority = branding.get("priority", "LOW")
+
+            if advertiser and advertiser != "None" and advertiser != "":
+
+                if priority == "HIGH":
+
+                    reasons.append("High branding obligation - wrapped train must enter service")
+
+                elif priority == "MEDIUM":
+
+                    reasons.append("Medium branding obligation - wrapped train")
+
+                elif priority == "LOW":
+
+                    reasons.append("Branding obligation - wrapped train")
+
+        
+
+        job_cards = trainset.get("job_cards", {})
+
+        minor_cards = max(0, job_cards.get("open_cards", 0) - job_cards.get("critical_cards", 0))
+
+        if minor_cards == 0:
+
+            reasons.append("No minor defects - optimal condition")
+
+        
+
+        # Tier 3 reasons (optimization)
+
+        current_mileage = trainset.get("current_mileage", 0.0)
+
+        max_mileage = trainset.get("max_mileage_before_maintenance", 50000.0)
+
+        mileage_ratio = current_mileage / max_mileage if max_mileage > 0 else 0.0
+
+        
+
+        if mileage_ratio < 0.5:
+
+            reasons.append("Low mileage - good for fleet balancing")
+
+        elif mileage_ratio < 0.7:
+
+            reasons.append("Moderate mileage - suitable for service")
+
+        
+
+        if not trainset.get("requires_cleaning", False):
+
+            reasons.append("No cleaning required - ready for service")
+
+        
+
+        if not trainset.get("is_blocked", False):
+
+            reasons.append("No shunting complexity - easy deployment")
+
+        
+
+        # ML health alert (Tier‑3 influence)
+
+        ml_health = trainset.get("ml_health_score")
+
+        if isinstance(ml_health, (int, float)) and ml_health < 0.5:
+
+            reasons.append("ML Alert: Component fatigue detected")
+
+
+
+        return reasons if reasons else ["Selected based on tiered optimization criteria"]
+
+    
+
+    def _calculate_normalized_optimization_score(self, trainset: Dict[str, Any], tier2_score: float, tier3_score: float, decision: str) -> float:
+
+        """Calculate normalized score (0-100%) based on actual optimization priority.
+
+        
+
+        This ensures the API displays scores that match the optimization hierarchy:
+
+        - Branding trains (Tier 2): 90-100%
+
+        - Mileage/Health trains (Tier 3): 50-89%
+
+        - Maintenance/Critical failures: 0-49%
+
+        """
+
+        # Check if this is a critical failure (should be scored 0-49%)
+
+        if self._has_critical_failure(trainset) or decision == "MAINTENANCE":
+
+            # For critical failures, score based on severity
+
+            job_cards = trainset.get("job_cards", {})
+
+            critical_cards = self._normalize_to_int(job_cards.get("critical_cards"), 0)
+
+            fitness_certs = trainset.get("fitness_certificates", {})
+
+            has_expired = any(
+
+                isinstance(cert, dict) and str(cert.get("status", "")).upper() == "EXPIRED"
+
+                for cert in fitness_certs.values()
+
+            )
+
+            
+
+            if critical_cards > 0 or has_expired:
+
+                return 0.0  # Absolute minimum for safety violations
+
+            else:
+
+                return min(0.49, max(0.0, tier3_score / 1000.0))  # Scale down maintenance scores
+
+        
+
+        # Check for Tier 2 (Branding) priority
+
+        branding = trainset.get("branding", {})
+
+        has_branding_obligation = False
+
+        branding_priority = "LOW"
+
+        
+
+        if isinstance(branding, dict):
+
+            advertiser = branding.get("current_advertiser")
+
+            branding_priority = branding.get("priority", "LOW")
+
+            has_branding_obligation = advertiser and advertiser not in ("None", "", None)
+
+        
+
+        if has_branding_obligation and tier2_score > 0:
+
+            # Tier 2: Branding trains get 90-100% scores
+
+            base_score = 0.90  # 90% baseline for any branding obligation
+
+            
+
+            if branding_priority == "HIGH":
+
+                priority_boost = 0.10  # Up to 100% for high priority
+
+            elif branding_priority == "MEDIUM":
+
+                priority_boost = 0.07  # Up to 97% for medium priority
+
+            elif branding_priority == "LOW":
+
+                priority_boost = 0.04  # Up to 94% for low priority
+
+            else:
+
+                priority_boost = 0.05  # Default 95% for wrapped trains
+
+            
+
+            # Add defect penalty within Tier 2 range
+
+            job_cards = trainset.get("job_cards", {})
+
+            minor_defects = max(0, job_cards.get("open_cards", 0) - job_cards.get("critical_cards", 0))
+
+            defect_penalty = min(0.05, minor_defects * 0.01)  # Max 5% penalty for defects
+
+            
+
+            final_score = base_score + priority_boost - defect_penalty
+
+            return min(1.0, max(0.90, final_score))  # Keep in 90-100% range
+
+        
+
+        # Tier 3: Mileage/Health optimization (50-89% range)
+
+        if decision == "INDUCT":
+
+            # For inducted trains without branding, use 70-89% range
+
+            base_score = 0.70
+
+            tier3_boost = min(0.19, max(0.0, tier3_score / 1000.0))  # Scale tier3 to 0-19%
+
+            return min(0.89, base_score + tier3_boost)
+
+        elif decision == "STANDBY":
+
+            # For standby trains, use 50-69% range
+
+            base_score = 0.50
+
+            tier3_boost = min(0.19, max(0.0, tier3_score / 1000.0))  # Scale tier3 to 0-19%
+
+            return min(0.69, base_score + tier3_boost)
+
+        else:
+
+            # Default fallback
+
+            return min(0.49, max(0.0, (tier2_score + tier3_score) / 2000.0))
+
+    
+
+    def _parse_cleaning_date(self, cleaning_due_date: Any) -> Optional[datetime]:
+
+        """Safely parse cleaning due date with better error handling.
+
+        
+
+        Handles various date formats and validates input.
+
+        """
+
+        if not cleaning_due_date:
+
+            return None
+
+        
+
+        # If already a datetime object
+
+        if isinstance(cleaning_due_date, datetime):
+
+            return cleaning_due_date
+
+        
+
+        # If string, try multiple parsing approaches
+
+        if isinstance(cleaning_due_date, str):
+
+            date_str = cleaning_due_date.strip()
+
+            if not date_str:
+
+                return None
+
+            
+
+            # Try ISO format with timezone
+
+            try:
+
+                if date_str.endswith('Z'):
+
+                    return datetime.fromisoformat(date_str.replace('Z', '+00:00'))
+
+                elif '+' in date_str or date_str.endswith('UTC'):
+
+                    return datetime.fromisoformat(date_str.replace('UTC', '+00:00'))
+
+                else:
+
+                    return datetime.fromisoformat(date_str)
+
+            except ValueError:
+
+                pass
+
+            
+
+            # Try common date formats
+
+            common_formats = [
+
+                "%Y-%m-%d",
+
+                "%Y-%m-%d %H:%M:%S",
+
+                "%Y/%m/%d",
+
+                "%d/%m/%Y",
+
+                "%m/%d/%Y",
+
+                "%Y-%m-%dT%H:%M:%S",
+
+                "%Y-%m-%dT%H:%M:%SZ"
+
+            ]
+
+            
+
+            for fmt in common_formats:
+
+                try:
+
+                    return datetime.strptime(date_str, fmt)
+
+                except ValueError:
+
+                    continue
+
+            
+
+            # If all parsing fails, log warning and return None
+
+            logger.warning(f"Could not parse cleaning due date: '{date_str}'")
+
+            return None
+
+        
+
+        # For other types, try conversion
+
+        try:
+
+            return datetime(cleaning_due_date)
+
+        except (ValueError, TypeError):
+
+            logger.warning(f"Invalid cleaning due date type: {type(cleaning_due_date)}")
+
+            return None
+

@@ -4,6 +4,8 @@ from pydantic import Field
 from dotenv import load_dotenv
 from typing import Optional
 import os
+import yaml
+from pathlib import Path
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables"""
@@ -54,6 +56,14 @@ class Settings(BaseSettings):
     # Optional external Drools service
     drools_service_url: Optional[str] = Field(default=None, env="DROOLS_SERVICE_URL")
     
+    # Optimization defaults
+    default_hours_per_train: float = Field(default=2.0, env="DEFAULT_HOURS_PER_TRAIN")
+    max_hours_warning_threshold_multiplier: int = Field(default=24, env="MAX_HOURS_WARNING_THRESHOLD_MULTIPLIER")
+    dev_mock_seed: int = Field(default=0, env="DEV_MOCK_SEED")
+    ml_deterministic_seed: int = Field(default=42, env="ML_DETERMINISTIC_SEED")
+    warn_on_unknown_depot: bool = Field(default=True, env="WARN_ON_UNKNOWN_DEPOT")
+    warn_on_capacity_exceeded: bool = Field(default=True, env="WARN_ON_CAPACITY_EXCEEDED")
+    
     # pydantic-settings v2 style configuration
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -69,5 +79,51 @@ load_dotenv(".env")
 if os.path.exists("use"):
     load_dotenv("use", override=True)
 
+# Load defaults from YAML if available
+_defaults_path = Path(__file__).parent / "config" / "defaults.yaml"
+_defaults = {}
+if _defaults_path.exists():
+    try:
+        with open(_defaults_path, "r") as f:
+            _defaults = yaml.safe_load(f) or {}
+    except Exception as e:
+        import logging
+        logging.warning(f"Could not load defaults.yaml: {e}")
+
 # Create settings instance
 settings = Settings()
+
+# Override settings with defaults.yaml values if not set in environment
+if _defaults:
+    if "DEFAULT_HOURS_PER_TRAIN" in _defaults and not os.getenv("DEFAULT_HOURS_PER_TRAIN"):
+        settings.default_hours_per_train = float(_defaults["DEFAULT_HOURS_PER_TRAIN"])
+    if "MAX_HOURS_WARNING_THRESHOLD_MULTIPLIER" in _defaults and not os.getenv("MAX_HOURS_WARNING_THRESHOLD_MULTIPLIER"):
+        settings.max_hours_warning_threshold_multiplier = int(_defaults["MAX_HOURS_WARNING_THRESHOLD_MULTIPLIER"])
+    if "DEV_MOCK_SEED" in _defaults and not os.getenv("DEV_MOCK_SEED"):
+        settings.dev_mock_seed = int(_defaults["DEV_MOCK_SEED"])
+    if "ML_DETERMINISTIC_SEED" in _defaults and not os.getenv("ML_DETERMINISTIC_SEED"):
+        settings.ml_deterministic_seed = int(_defaults["ML_DETERMINISTIC_SEED"])
+    if "WARN_ON_UNKNOWN_DEPOT" in _defaults and not os.getenv("WARN_ON_UNKNOWN_DEPOT"):
+        settings.warn_on_unknown_depot = bool(_defaults["WARN_ON_UNKNOWN_DEPOT"])
+    if "WARN_ON_CAPACITY_EXCEEDED" in _defaults and not os.getenv("WARN_ON_CAPACITY_EXCEEDED"):
+        settings.warn_on_capacity_exceeded = bool(_defaults["WARN_ON_CAPACITY_EXCEEDED"])
+
+# Simple configuration dict for hours mode & simulation save dir
+DEFAULTS = {
+    "AVG_HOURS_PER_TRAIN": 12,
+    "SIMULATION_SAVE_DIR": "backend/simulation_runs",
+    "ALLOW_HOURS_MODE": True,
+}
+
+
+def get_config() -> dict:
+    """
+    Lightweight config accessor for optimization-related defaults.
+    """
+    cfg = DEFAULTS.copy()
+
+    avg = getattr(settings, "default_hours_per_train", None)
+    if isinstance(avg, (int, float)) and avg > 0:
+        cfg["AVG_HOURS_PER_TRAIN"] = float(avg)
+
+    return cfg

@@ -1,0 +1,23 @@
+# Default configuration values for KMRL Train Induction System
+
+# Service Hours Configuration
+DEFAULT_HOURS_PER_TRAIN: 2.0  # Average service hours per train per day
+MAX_HOURS_WARNING_THRESHOLD_MULTIPLIER: 24  # Warn if requested_hours > fleet_size * multiplier
+
+# Development Configuration
+DEV_MOCK_SEED: 0  # Seed for deterministic mock data generation
+
+# ML Configuration
+ML_DETERMINISTIC_SEED: 42  # Seed for ML model inference determinism
+
+# Stabling Configuration
+WARN_ON_UNKNOWN_DEPOT: true  # Log warning when trainset has unknown depot
+WARN_ON_CAPACITY_EXCEEDED: true  # Log warning when bay capacity exceeded
+
+
+
+
+
+
+
+

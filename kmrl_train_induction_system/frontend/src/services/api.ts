@@ -85,6 +85,9 @@ export const optimizationApi = {
   explainBatch: (assignments: any[], format?: string) => 
     api.post('/optimization/explain/batch', { assignments, format }),
   simulate: (params: any) => api.get('/optimization/simulate', { params }),
+  runSimulation: (scenario: any) => api.post('/simulation/run', scenario),
+  getSimulationResult: (id: string) => api.get(`/simulation/result/${id}`),
+  getSnapshot: () => api.get('/simulation/snapshot'),
   getLatest: () => api.get('/optimization/latest'),
   getStablingGeometry: () => api.get('/optimization/stabling-geometry'),
   getShuntingSchedule: () => api.get('/optimization/shunting-schedule'),
