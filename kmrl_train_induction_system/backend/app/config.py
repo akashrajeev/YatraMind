@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     
     # Optional external Drools service
     drools_service_url: Optional[str] = Field(default=None, env="DROOLS_SERVICE_URL")
+
+    # N8N Configuration
+    n8n_webhook_url: Optional[str] = Field(default=None, env="N8N_WEBHOOK_URL")
     
     # Optimization defaults
     default_hours_per_train: float = Field(default=2.0, env="DEFAULT_HOURS_PER_TRAIN")

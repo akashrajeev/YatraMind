@@ -257,3 +257,28 @@ async def ingest_cleaning_from_google(sheet_url: str = Form(...), _auth=Depends(
     except Exception as e:
         logger.error(f"Cleaning sheet ingestion failed: {e}")
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/ingest/n8n/upload")
+async def upload_to_n8n(file: UploadFile = File(...), _auth=Depends(require_api_key)):
+    """Upload any file (PDF, Excel, etc.) to be processed by n8n."""
+    try:
+        svc = DataIngestionService()
+        content = await file.read()
+        result = await svc.send_file_to_n8n(content, file.filename)
+        return result
+    except ValueError as ve:
+        raise HTTPException(status_code=500, detail=str(ve))
+    except Exception as e:
+        logger.error(f"N8N upload failed: {e}")
+        raise HTTPException(status_code=500, detail=f"N8N upload failed: {str(e)}")
+
+@router.post("/ingest/n8n/result")
+async def receive_n8n_result(data: Dict[str, Any], _auth=Depends(require_api_key)):
+    """Receive processed JSON result from n8n."""
+    try:
+        svc = DataIngestionService()
+        result = await svc.process_n8n_result(data)
+        return result
+    except Exception as e:
+        logger.error(f"N8N result ingestion failed: {e}")
+        raise HTTPException(status_code=500, detail=f"N8N result ingestion failed: {str(e)}")

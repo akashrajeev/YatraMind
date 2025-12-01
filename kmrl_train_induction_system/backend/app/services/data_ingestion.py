@@ -447,10 +447,65 @@ class DataIngestionService:
             # Log the refresh trigger
             logger.info(f"Optimization refresh triggered by {source}")
             
-            # In a production system, you might want to trigger a background task
-            # to regenerate the optimization results immediately
-            # For now, the next call to /api/optimization/latest will regenerate
-            
         except Exception as e:
             logger.error(f"Failed to trigger optimization refresh: {e}")
             # Don't fail the upload if optimization refresh fails
+
+    # --------------------------- N8N Integration --------------------------- #
+
+    async def send_file_to_n8n(self, content: bytes, filename: str) -> Dict[str, Any]:
+        """Send uploaded file to n8n webhook for processing."""
+        if not settings.n8n_webhook_url:
+            raise ValueError("N8N_WEBHOOK_URL is not configured")
+            
+        import requests
+        
+        try:
+            # Prepare the file for upload
+            files = {'file': (filename, content)}
+            
+            # Send to n8n
+            response = requests.post(settings.n8n_webhook_url, files=files, timeout=60)
+            response.raise_for_status()
+            
+            return {
+                "status": "success",
+                "n8n_response": response.json() if response.content else {},
+                "message": "File successfully sent to n8n"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to send file to n8n: {e}")
+            raise
+
+    async def process_n8n_result(self, data: Dict[str, Any]) -> Dict[str, Any]:
+        """Process and store JSON result received from n8n."""
+        try:
+            # Store the raw result in a dedicated collection
+            collection = await cloud_db_manager.get_collection("n8n_ingested_data")
+            
+            doc = {
+                "data": data,
+                "ingested_at": datetime.now().isoformat(),
+                "processed": False
+            }
+            
+            result = await collection.insert_one(doc)
+            
+            # Record event
+            await record_uns_event(
+                source="n8n_webhook",
+                target_collection="n8n_ingested_data",
+                raw_payload={"id": str(result.inserted_id)},
+                normalized_docs=[doc]
+            )
+            
+            return {
+                "status": "stored",
+                "id": str(result.inserted_id),
+                "message": "N8N result stored successfully"
+            }
+            
+        except Exception as e:
+            logger.error(f"Failed to process n8n result: {e}")
+            raise
