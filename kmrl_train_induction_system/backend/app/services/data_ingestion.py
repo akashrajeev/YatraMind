@@ -481,7 +481,7 @@ class DataIngestionService:
     async def process_n8n_result(self, data: Dict[str, Any]) -> Dict[str, Any]:
         """Process and store JSON result received from n8n."""
         try:
-            # Store the raw result in a dedicated collection
+            # 1. Store the raw result in a dedicated collection
             collection = await cloud_db_manager.get_collection("n8n_ingested_data")
             
             doc = {
@@ -492,20 +492,192 @@ class DataIngestionService:
             
             result = await collection.insert_one(doc)
             
+            # 2. Router Logic: Process 'updates' if present
+            updates_processed = 0
+            errors = []
+            
+            if "updates" in data and isinstance(data["updates"], list):
+                logger.info(f"Processing {len(data['updates'])} updates from n8n result")
+                
+                for update_item in data["updates"]:
+                    try:
+                        source_type = update_item.get("source_type")
+                        item_data = update_item.get("data")
+                        
+                        if not source_type or not item_data:
+                            continue
+                            
+                        if source_type == "fitness":
+                            await self._update_fitness_factor(item_data)
+                        elif source_type == "job_card":
+                            await self._update_job_card_factor(item_data)
+                        elif source_type == "branding":
+                            await self._update_branding_factor(item_data)
+                        elif source_type == "cleaning":
+                            await self._update_cleaning_factor(item_data)
+                        elif source_type == "iot_sensor":
+                            await self._update_iot_factor(item_data)
+                        else:
+                            logger.warning(f"Unknown source_type in n8n update: {source_type}")
+                            continue
+                            
+                        updates_processed += 1
+                        
+                    except Exception as e:
+                        logger.error(f"Failed to process update item: {e}")
+                        errors.append(str(e))
+                
+                # Update the raw doc to mark as processed
+                await collection.update_one(
+                    {"_id": result.inserted_id},
+                    {"$set": {
+                        "processed": True, 
+                        "updates_processed": updates_processed,
+                        "errors": errors
+                    }}
+                )
+
             # Record event
             await record_uns_event(
                 source="n8n_webhook",
                 target_collection="n8n_ingested_data",
-                raw_payload={"id": str(result.inserted_id)},
+                raw_payload={"id": str(result.inserted_id), "updates_count": updates_processed},
                 normalized_docs=[doc]
             )
             
             return {
-                "status": "stored",
+                "status": "stored_and_processed",
                 "id": str(result.inserted_id),
-                "message": "N8N result stored successfully"
+                "updates_processed": updates_processed,
+                "errors": errors,
+                "message": f"N8N result stored. {updates_processed} factors updated."
             }
             
         except Exception as e:
             logger.error(f"Failed to process n8n result: {e}")
             raise
+
+    # --------------------------- Factor Update Helpers --------------------------- #
+
+    async def _update_fitness_factor(self, data: Dict[str, Any]):
+        """Update fitness certificate factor."""
+        trainset_id = data.get("trainset_id")
+        certificate = data.get("certificate")
+        if not trainset_id or not certificate:
+            raise ValueError("Missing trainset_id or certificate for fitness update")
+
+        # Update specific certificate collection
+        col = await cloud_db_manager.get_collection("fitness_certificates")
+        data["updated_at"] = datetime.now().isoformat()
+        await col.update_one(
+            {"trainset_id": trainset_id, "certificate": certificate},
+            {"$set": data},
+            upsert=True
+        )
+
+        # Denormalize to trainsets
+        trainsets_col = await cloud_db_manager.get_collection("trainsets")
+        cert_key = str(certificate).strip().lower().replace(" ", "_")
+        update_path = {
+            f"fitness_certificates.{cert_key}": data,
+            "last_updated_sources.fitness": datetime.now().isoformat()
+        }
+        await trainsets_col.update_one(
+            {"trainset_id": trainset_id},
+            {"$set": update_path},
+            upsert=True
+        )
+        await self._trigger_optimization_refresh("fitness_n8n_update")
+
+    async def _update_job_card_factor(self, data: Dict[str, Any]):
+        """Update job card (maintenance) factor."""
+        job_card_id = data.get("job_card_id")
+        trainset_id = data.get("trainset_id")
+        if not job_card_id or not trainset_id:
+            raise ValueError("Missing job_card_id or trainset_id for job card update")
+
+        # Update job cards collection
+        col = await cloud_db_manager.get_collection("job_cards")
+        data["updated_at"] = datetime.now().isoformat()
+        await col.update_one(
+            {"job_card_id": job_card_id},
+            {"$set": data},
+            upsert=True
+        )
+        # Note: Job cards are usually queried dynamically, but we can trigger refresh
+        await self._trigger_optimization_refresh("job_card_n8n_update")
+
+    async def _update_branding_factor(self, data: Dict[str, Any]):
+        """Update branding factor."""
+        trainset_id = data.get("trainset_id")
+        advertiser = data.get("current_advertiser")
+        if not trainset_id:
+            raise ValueError("Missing trainset_id for branding update")
+
+        # Update branding collection
+        col = await cloud_db_manager.get_collection("branding_contracts")
+        data["updated_at"] = datetime.now().isoformat()
+        
+        # If advertiser is provided, we treat it as a specific contract update
+        query = {"trainset_id": trainset_id}
+        if advertiser:
+            query["current_advertiser"] = advertiser
+            
+        await col.update_one(query, {"$set": data}, upsert=True)
+
+        # Denormalize to trainsets
+        trainsets_col = await cloud_db_manager.get_collection("trainsets")
+        await trainsets_col.update_one(
+            {"trainset_id": trainset_id},
+            {"$set": {
+                "branding": data, 
+                "last_updated_sources.branding": datetime.now().isoformat()
+            }},
+            upsert=True
+        )
+        await self._trigger_optimization_refresh("branding_n8n_update")
+
+    async def _update_cleaning_factor(self, data: Dict[str, Any]):
+        """Update cleaning schedule factor."""
+        trainset_id = data.get("trainset_id")
+        date = data.get("date")
+        if not trainset_id or not date:
+            raise ValueError("Missing trainset_id or date for cleaning update")
+
+        col = await cloud_db_manager.get_collection("cleaning_schedule")
+        data["updated_at"] = datetime.now().isoformat()
+        await col.update_one(
+            {"trainset_id": trainset_id, "date": date},
+            {"$set": data},
+            upsert=True
+        )
+        await self._trigger_optimization_refresh("cleaning_n8n_update")
+
+    async def _update_iot_factor(self, data: Dict[str, Any]):
+        """Update IoT sensor factor."""
+        trainset_id = data.get("trainset_id")
+        if not trainset_id:
+            raise ValueError("Missing trainset_id for IoT update")
+
+        # IoT data typically goes to Influx or a time-series store, 
+        # but here we might update the 'current state' in MongoDB for the dashboard
+        data["timestamp"] = data.get("timestamp") or datetime.now().isoformat()
+        
+        # We can reuse the existing helper if it fits, or write directly
+        # For now, let's update the trainset's live status
+        trainsets_col = await cloud_db_manager.get_collection("trainsets")
+        
+        # Construct a dynamic update based on sensor type if available
+        sensor_type = data.get("sensor_type", "generic_sensor")
+        update_path = {
+            f"sensors.{sensor_type}": data,
+            "last_updated_sources.iot": datetime.now().isoformat()
+        }
+        
+        await trainsets_col.update_one(
+            {"trainset_id": trainset_id},
+            {"$set": update_path},
+            upsert=True
+        )
+        # No full optimization refresh for high-frequency IoT to avoid thrashing, 
+        # unless it's a critical alert (which might be handled by UNS)

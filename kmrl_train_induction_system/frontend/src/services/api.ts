@@ -46,9 +46,9 @@ export const assignmentApi = {
 
 // Reports API
 export const reportsApi = {
-  getDailyBriefing: (date?: string) => api.get('/v1/reports/daily-briefing', { 
+  getDailyBriefing: (date?: string) => api.get('/v1/reports/daily-briefing', {
     params: { date },
-    responseType: 'blob' 
+    responseType: 'blob'
   }),
   exportAssignments: (format: string, filters?: any) => api.get('/v1/reports/assignments', {
     params: { format, ...filters },
@@ -78,11 +78,11 @@ export const optimizationApi = {
   getHistory: () => api.get('/optimization/history'),
   getStatus: (id: string) => api.get(`/optimization/status/${id}`),
   checkConstraints: () => api.get('/optimization/constraints/check'),
-  explainAssignment: (trainsetId: string, decision?: string, format?: string) => 
-    api.get(`/optimization/explain/${trainsetId}`, { 
-      params: { decision, format } 
+  explainAssignment: (trainsetId: string, decision?: string, format?: string) =>
+    api.get(`/optimization/explain/${trainsetId}`, {
+      params: { decision, format }
     }),
-  explainBatch: (assignments: any[], format?: string) => 
+  explainBatch: (assignments: any[], format?: string) =>
     api.post('/optimization/explain/batch', { assignments, format }),
   simulate: (params: any) => api.get('/optimization/simulate', { params }),
   runSimulation: (scenario: any) => api.post('/simulation/run', scenario),
@@ -91,7 +91,7 @@ export const optimizationApi = {
   getLatest: () => api.get('/optimization/latest'),
   getStablingGeometry: () => api.get('/optimization/stabling-geometry'),
   getShuntingSchedule: () => api.get('/optimization/shunting-schedule'),
-  reorderRankedList: (data: { trainset_ids: string[]; reason?: string }) => 
+  reorderRankedList: (data: { trainset_ids: string[]; reason?: string }) =>
     api.post('/optimization/latest/reorder', data),
 };
 
@@ -144,6 +144,13 @@ export const ingestionApi = {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
+  uploadN8N: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/ingestion/ingest/n8n/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+  },
   getStatus: () => api.get('/ingestion/status'),
   startMQTT: () => api.post('/ingestion/mqtt/start'),
   stopMQTT: () => api.post('/ingestion/mqtt/stop'),
@@ -159,7 +166,7 @@ export const notificationsApi = {
 
 // Auth API
 export const authApi = {
-  login: (credentials: { username: string; password: string }) => 
+  login: (credentials: { username: string; password: string }) =>
     api.post('/v1/auth/login', credentials),
   logout: () => api.post('/v1/auth/logout'),
   getProfile: () => api.get('/v1/auth/profile'),
@@ -167,9 +174,6 @@ export const authApi = {
   changePassword: (data: { current_password: string; new_password: string }) =>
     api.post('/v1/auth/change-password', data),
 };
-
-
-
 
 // Add auth token to requests
 api.interceptors.request.use((config) => {

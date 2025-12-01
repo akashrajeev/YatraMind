@@ -7,11 +7,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileUpload } from "@/components/ui/file-upload";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ingestionApi } from "@/services/api";
-import { 
-  Upload, 
-  Download, 
-  Database, 
-  Wifi, 
+import {
+  Upload,
+  Download,
+  Database,
+  Wifi,
   WifiOff,
   FileText,
   BarChart3,
@@ -25,7 +25,7 @@ import {
 import { useState } from "react";
 
 const DataIngestion = () => {
-  const [selectedFiles, setSelectedFiles] = useState<{[key: string]: File | null}>({});
+  const [selectedFiles, setSelectedFiles] = useState<{ [key: string]: File | null }>({});
   const [googleSheetUrl, setGoogleSheetUrl] = useState("");
   const queryClient = useQueryClient();
 
@@ -128,6 +128,14 @@ const DataIngestion = () => {
     },
   });
 
+  const uploadN8NMutation = useMutation({
+    mutationFn: ingestionApi.uploadN8N,
+    onSuccess: (data) => {
+      // You might want to show a toast here with data.n8n_response
+      console.log("N8N Response:", data);
+    },
+  });
+
   const handleFileSelect = (type: string, file: File) => {
     setSelectedFiles(prev => ({
       ...prev,
@@ -151,6 +159,9 @@ const DataIngestion = () => {
         break;
       case 'depot':
         uploadDepotMutation.mutate(file);
+        break;
+      case 'n8n':
+        uploadN8NMutation.mutate(file);
         break;
     }
   };
@@ -252,16 +263,16 @@ const DataIngestion = () => {
                 </div>
               )}
               <div className="flex gap-2">
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="outline"
                   onClick={() => startMQTTMutation.mutate()}
                   disabled={startMQTTMutation.isPending || mqttStatus?.status === 'connected'}
                 >
                   Start Streaming
                 </Button>
-                <Button 
-                  size="sm" 
+                <Button
+                  size="sm"
                   variant="destructive"
                   onClick={() => stopMQTTMutation.mutate()}
                   disabled={stopMQTTMutation.isPending || mqttStatus?.status === 'disconnected'}
@@ -276,10 +287,11 @@ const DataIngestion = () => {
 
       {/* Main Ingestion Tabs */}
       <Tabs defaultValue="automated" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="automated">Automated Ingestion</TabsTrigger>
           <TabsTrigger value="uploads">File Uploads</TabsTrigger>
           <TabsTrigger value="google">Google Sheets</TabsTrigger>
+          <TabsTrigger value="universal">Universal Ingestion</TabsTrigger>
           <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
         </TabsList>
 
@@ -297,7 +309,7 @@ const DataIngestion = () => {
                 <p className="text-sm text-muted-foreground mb-4">
                   Ingest data from all configured sources including Maximo, IoT sensors, and manual overrides.
                 </p>
-                <Button 
+                <Button
                   onClick={() => ingestAllMutation.mutate()}
                   disabled={ingestAllMutation.isPending}
                   className="w-full"
@@ -328,7 +340,7 @@ const DataIngestion = () => {
                 <p className="text-sm text-muted-foreground mb-4">
                   Ingest job card data from IBM Maximo system.
                 </p>
-                <Button 
+                <Button
                   onClick={() => ingestMaximoMutation.mutate()}
                   disabled={ingestMaximoMutation.isPending}
                   className="w-full"
@@ -360,7 +372,7 @@ const DataIngestion = () => {
                 <p className="text-sm text-muted-foreground mb-4">
                   Ingest real-time IoT sensor data from trainsets.
                 </p>
-                <Button 
+                <Button
                   onClick={() => ingestIoTMutation.mutate()}
                   disabled={ingestIoTMutation.isPending}
                   className="w-full"
@@ -401,7 +413,7 @@ const DataIngestion = () => {
                     maxSize={50}
                     disabled={uploadTimeseriesMutation.isPending}
                   />
-                  <Button 
+                  <Button
                     onClick={() => handleUpload('timeseries')}
                     disabled={!selectedFiles.timeseries || uploadTimeseriesMutation.isPending}
                     className="w-full"
@@ -437,7 +449,7 @@ const DataIngestion = () => {
                     maxSize={20}
                     disabled={uploadFitnessMutation.isPending}
                   />
-                  <Button 
+                  <Button
                     onClick={() => handleUpload('fitness')}
                     disabled={!selectedFiles.fitness || uploadFitnessMutation.isPending}
                     className="w-full"
@@ -473,7 +485,7 @@ const DataIngestion = () => {
                     maxSize={20}
                     disabled={uploadBrandingMutation.isPending}
                   />
-                  <Button 
+                  <Button
                     onClick={() => handleUpload('branding')}
                     disabled={!selectedFiles.branding || uploadBrandingMutation.isPending}
                     className="w-full"
@@ -509,7 +521,7 @@ const DataIngestion = () => {
                     maxSize={10}
                     disabled={uploadDepotMutation.isPending}
                   />
-                  <Button 
+                  <Button
                     onClick={() => handleUpload('depot')}
                     disabled={!selectedFiles.depot || uploadDepotMutation.isPending}
                     className="w-full"
@@ -555,7 +567,7 @@ const DataIngestion = () => {
                 <div className="text-sm text-muted-foreground">
                   Make sure the Google Sheet is published as CSV/TSV and the URL is publicly accessible.
                 </div>
-                <Button 
+                <Button
                   onClick={() => {
                     if (googleSheetUrl) {
                       ingestCleaningMutation.mutate(googleSheetUrl);
@@ -603,6 +615,48 @@ const DataIngestion = () => {
                     <div className="text-sm text-muted-foreground">Active Topics</div>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Universal Ingestion */}
+        <TabsContent value="universal" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                Universal Ingestion (n8n)
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <p className="text-sm text-muted-foreground">
+                  Upload any file type (PDF, Excel, JSON, etc.) to be processed by the universal ingestion pipeline via n8n.
+                </p>
+                <FileUpload
+                  onFileSelect={(file) => handleFileSelect('n8n', file)}
+                  accept="*"
+                  maxSize={50}
+                  disabled={uploadN8NMutation.isPending}
+                />
+                <Button
+                  onClick={() => handleUpload('n8n')}
+                  disabled={!selectedFiles.n8n || uploadN8NMutation.isPending}
+                  className="w-full"
+                >
+                  {uploadN8NMutation.isPending ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Uploading to n8n...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Upload to n8n
+                    </>
+                  )}
+                </Button>
               </div>
             </CardContent>
           </Card>
