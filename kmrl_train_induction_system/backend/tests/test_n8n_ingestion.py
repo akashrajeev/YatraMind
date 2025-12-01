@@ -20,23 +20,34 @@ class TestN8NIngestion(unittest.TestCase):
         with patch('app.services.data_ingestion.settings') as mock_settings:
             mock_settings.n8n_webhook_url = "http://mock-n8n.com/webhook"
             
-            # Mock requests.post
-            with patch('requests.post') as mock_post:
+            # Mock httpx.AsyncClient
+            with patch('httpx.AsyncClient') as mock_client_cls:
+                mock_client = MagicMock()
+                mock_client_cls.return_value.__aenter__.return_value = mock_client
+                
                 mock_response = MagicMock()
                 mock_response.status_code = 200
                 mock_response.json.return_value = {"success": True}
                 mock_response.content = b'{"success": True}'
-                mock_post.return_value = mock_response
+                
+                # Mock post method
+                async def async_post(*args, **kwargs):
+                    return mock_response
+                mock_client.post.side_effect = async_post
                 
                 files = {'file': ('test.txt', b'test content', 'text/plain')}
                 response = self.client.post("/api/ingestion/ingest/n8n/upload", files=files)
                 
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json()["status"], "success")
-                mock_post.assert_called_once()
-                # Check if url was correct
-                args, kwargs = mock_post.call_args
+                
+                # Verify post called with correct args
+                mock_client.post.assert_called_once()
+                args, kwargs = mock_client.post.call_args
                 self.assertEqual(args[0], "http://mock-n8n.com/webhook")
+                self.assertIn('files', kwargs)
+                # Verify content type passed
+                self.assertEqual(kwargs['files']['file'][2], 'text/plain')
 
     def test_n8n_upload_no_url(self):
         # Mock settings to have no URL

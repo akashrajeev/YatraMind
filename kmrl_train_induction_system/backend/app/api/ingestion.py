@@ -264,7 +264,7 @@ async def upload_to_n8n(file: UploadFile = File(...), _auth=Depends(require_api_
     try:
         svc = DataIngestionService()
         content = await file.read()
-        result = await svc.send_file_to_n8n(content, file.filename)
+        result = await svc.send_file_to_n8n(content, file.filename, file.content_type)
         return result
     except ValueError as ve:
         raise HTTPException(status_code=500, detail=str(ve))

@@ -453,26 +453,28 @@ class DataIngestionService:
 
     # --------------------------- N8N Integration --------------------------- #
 
-    async def send_file_to_n8n(self, content: bytes, filename: str) -> Dict[str, Any]:
+    async def send_file_to_n8n(self, content: bytes, filename: str, content_type: str = None) -> Dict[str, Any]:
         """Send uploaded file to n8n webhook for processing."""
         if not settings.n8n_webhook_url:
             raise ValueError("N8N_WEBHOOK_URL is not configured")
             
-        import requests
+        import httpx
         
         try:
-            # Prepare the file for upload
-            files = {'file': (filename, content)}
+            # Prepare the file for upload with explicit content type
+            # httpx format: {'file': (filename, content, content_type)}
+            files = {'file': (filename, content, content_type or 'application/octet-stream')}
             
-            # Send to n8n
-            response = requests.post(settings.n8n_webhook_url, files=files, timeout=60)
-            response.raise_for_status()
-            
-            return {
-                "status": "success",
-                "n8n_response": response.json() if response.content else {},
-                "message": "File successfully sent to n8n"
-            }
+            # Send to n8n with extended timeout for LLM processing
+            async with httpx.AsyncClient(timeout=60.0) as client:
+                response = await client.post(settings.n8n_webhook_url, files=files)
+                response.raise_for_status()
+                
+                return {
+                    "status": "success",
+                    "n8n_response": response.json() if response.content else {},
+                    "message": "File successfully sent to n8n"
+                }
             
         except Exception as e:
             logger.error(f"Failed to send file to n8n: {e}")
