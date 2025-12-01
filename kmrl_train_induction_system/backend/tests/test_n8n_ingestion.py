@@ -91,5 +91,69 @@ class TestN8NIngestion(unittest.TestCase):
                 # But let's assume standard mock behavior
                 pass
 
+    def test_n8n_router_logic(self):
+        """Test that the router correctly calls update methods based on source_type"""
+        with patch('app.services.data_ingestion.cloud_db_manager') as mock_db:
+            mock_collection = MagicMock()
+            async def async_get_collection(*args, **kwargs):
+                return mock_collection
+            mock_db.get_collection.side_effect = async_get_collection
+            
+            mock_insert_result = MagicMock()
+            mock_insert_result.inserted_id = "mock_id_router"
+            async def async_insert_one(*args, **kwargs):
+                return mock_insert_result
+            mock_collection.insert_one.side_effect = async_insert_one
+            
+            async def async_update_one(*args, **kwargs):
+                return None
+            mock_collection.update_one.side_effect = async_update_one
+
+            with patch('app.services.data_ingestion.record_uns_event') as mock_record:
+                async def async_record(*args, **kwargs):
+                    return None
+                mock_record.side_effect = async_record
+                
+                # Mock the helper methods to verify they are called
+                # We need to patch them on the class itself or the instance created inside the endpoint
+                # Since the endpoint creates a new instance: svc = DataIngestionService()
+                # We should patch 'app.services.data_ingestion.DataIngestionService._update_fitness_factor' etc.
+                
+                with patch('app.services.data_ingestion.DataIngestionService._update_fitness_factor', new_callable=MagicMock) as mock_fitness, \
+                     patch('app.services.data_ingestion.DataIngestionService._update_job_card_factor', new_callable=MagicMock) as mock_job, \
+                     patch('app.services.data_ingestion.DataIngestionService._update_branding_factor', new_callable=MagicMock) as mock_branding:
+                    
+                    # Mock async return for helpers
+                    async def async_helper(*args, **kwargs): return None
+                    mock_fitness.side_effect = async_helper
+                    mock_job.side_effect = async_helper
+                    mock_branding.side_effect = async_helper
+
+                    data = {
+                        "updates": [
+                            {
+                                "source_type": "fitness",
+                                "data": {"trainset_id": "T-001", "certificate": "Test Cert"}
+                            },
+                            {
+                                "source_type": "job_card",
+                                "data": {"job_card_id": "WO-1", "trainset_id": "T-001"}
+                            },
+                            {
+                                "source_type": "branding",
+                                "data": {"trainset_id": "T-001", "current_advertiser": "Ad"}
+                            }
+                        ]
+                    }
+                    
+                    response = self.client.post("/api/ingestion/ingest/n8n/result", json=data)
+                    
+                    self.assertEqual(response.status_code, 200)
+                    self.assertEqual(response.json()["updates_processed"], 3)
+                    
+                    mock_fitness.assert_called_once()
+                    mock_job.assert_called_once()
+                    mock_branding.assert_called_once()
+
 if __name__ == '__main__':
     unittest.main()
