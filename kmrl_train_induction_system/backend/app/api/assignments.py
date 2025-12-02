@@ -1,10 +1,12 @@
 # backend/app/api/assignments.py
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
 from typing import List, Optional, Dict, Any
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import uuid
 import random
+import functools
+import traceback
 
 from app.models.assignment import (
     Assignment, AssignmentCreate, AssignmentUpdate, AssignmentFilter, AssignmentSummary,
@@ -20,6 +22,17 @@ router = APIRouter()
 
 # Initialize notification service
 notification_service = NotificationService()
+
+def safe_background_task(func):
+    """Decorator to safely execute background tasks with error logging"""
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            logger.error(f"Error in background task {func.__name__}: {e}")
+            logger.error(traceback.format_exc())
+    return wrapper
 
 
 def _transform_doc_to_assignment(doc: Dict[str, Any]) -> Assignment:
@@ -65,14 +78,14 @@ def _transform_doc_to_assignment(doc: Dict[str, Any]) -> Assignment:
             else:
                 doc['last_updated'] = doc['updated_at']
         except Exception:
-            doc['last_updated'] = datetime.utcnow()
+            doc['last_updated'] = datetime.now(timezone.utc)
     
     # Ensure created_at is datetime if it's a string
     if 'created_at' in doc and isinstance(doc['created_at'], str):
         try:
             doc['created_at'] = datetime.fromisoformat(doc['created_at'].replace('Z', '+00:00'))
         except Exception:
-            doc['created_at'] = datetime.utcnow()
+            doc['created_at'] = datetime.now(timezone.utc)
     
     # Map scheduled_date to execution_date if needed
     if 'scheduled_date' in doc and 'execution_date' not in doc:
@@ -141,26 +154,6 @@ async def get_assignment_summary(
     try:
         collection = await cloud_db_manager.get_collection("assignments")
         
-        # Reset any existing APPROVED/OVERRIDDEN assignments back to PENDING
-        # This ensures they don't appear in approved/overridden tabs without user action
-        reset_result = await collection.update_many(
-            {"status": {"$in": ["APPROVED", "OVERRIDDEN"]}},
-            {
-                "$set": {
-                    "status": "PENDING",
-                    "approved_by": None,
-                    "approved_at": None,
-                    "override_by": None,
-                    "override_at": None,
-                    "override_reason": None,
-                    "override_decision": None,
-                    "last_updated": datetime.utcnow()
-                }
-            }
-        )
-        if reset_result.modified_count > 0:
-            logger.info(f"Reset {reset_result.modified_count} assignments back to PENDING status")
-        
         # Get total counts
         total_assignments = await collection.count_documents({})
         
@@ -197,7 +190,7 @@ async def get_assignment_summary(
             high_priority_count=high_priority_count,
             critical_risks_count=critical_risks_count,
             avg_confidence_score=avg_confidence_score,
-            last_updated=datetime.utcnow()
+            last_updated=datetime.now(timezone.utc)
         )
         
     except Exception as e:
@@ -212,7 +205,7 @@ async def get_assignment_summary(
             high_priority_count=3,
             critical_risks_count=2,
             avg_confidence_score=0.85,
-            last_updated=datetime.utcnow()
+            last_updated=datetime.now(timezone.utc)
         )
 
 
@@ -331,7 +324,7 @@ async def approve_assignments(
     """Approve multiple assignments"""
     try:
         collection = await cloud_db_manager.get_collection("assignments")
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         
         # Use user_id from request, or default to 'system' if not provided
         user_id = approval_request.user_id or "system"
@@ -400,26 +393,17 @@ async def override_assignment(
     """Override an assignment decision"""
     try:
         collection = await cloud_db_manager.get_collection("assignments")
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         
         # Use user_id from request, or default to 'system' if not provided
         user_id = override_request.user_id or "system"
         
-        # Get original assignment
-        original_assignment = await collection.find_one({"id": override_request.assignment_id})
-        if not original_assignment:
-            raise HTTPException(status_code=404, detail="Assignment not found")
-        
-        # Only allow overriding PENDING assignments (can't override already approved/overridden)
-        if original_assignment.get("status") != AssignmentStatus.PENDING.value:
-            raise HTTPException(
-                status_code=400, 
-                detail=f"Cannot override assignment with status {original_assignment.get('status')}"
-            )
-        
-        # Update assignment
-        result = await collection.update_one(
-            {"id": override_request.assignment_id},
+        # Atomic update ensuring status is PENDING
+        updated_assignment = await collection.find_one_and_update(
+            {
+                "id": override_request.assignment_id,
+                "status": AssignmentStatus.PENDING.value
+            },
             {
                 "$set": {
                     "status": AssignmentStatus.OVERRIDDEN.value,
@@ -429,11 +413,20 @@ async def override_assignment(
                     "override_decision": override_request.override_decision,
                     "last_updated": current_time
                 }
-            }
+            },
+            return_document=True
         )
         
-        if result.modified_count == 0:
-            raise HTTPException(status_code=400, detail="Failed to override assignment")
+        if not updated_assignment:
+            # Check if assignment exists at all to give better error message
+            existing = await collection.find_one({"id": override_request.assignment_id})
+            if not existing:
+                raise HTTPException(status_code=404, detail="Assignment not found")
+            else:
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"Cannot override assignment with status {existing.get('status')}"
+                )
         
         # Log audit event
         audit_log = AuditLogCreate(
@@ -442,10 +435,10 @@ async def override_assignment(
             resource_type="assignment",
             resource_id=override_request.assignment_id,
             details={
-                "original_decision": original_assignment.get("decision", {}).get("decision", "UNKNOWN"),
+                "original_decision": updated_assignment.get("decision", {}).get("decision", "UNKNOWN"),
                 "override_decision": override_request.override_decision,
                 "reason": override_request.reason,
-                "trainset_id": original_assignment.get("trainset_id")
+                "trainset_id": updated_assignment.get("trainset_id")
             },
             risk_level="HIGH"
         )
@@ -476,26 +469,6 @@ async def create_sample_assignments():
     """Create sample assignments with real data - all as PENDING"""
     try:
         collection = await cloud_db_manager.get_collection("assignments")
-        
-        # First, reset any existing APPROVED/OVERRIDDEN assignments back to PENDING
-        # This ensures they don't appear in approved/overridden tabs without user action
-        reset_result = await collection.update_many(
-            {"status": {"$in": ["APPROVED", "OVERRIDDEN"]}},
-            {
-                "$set": {
-                    "status": "PENDING",
-                    "approved_by": None,
-                    "approved_at": None,
-                    "override_by": None,
-                    "override_at": None,
-                    "override_reason": None,
-                    "override_decision": None,
-                    "last_updated": datetime.utcnow()
-                }
-            }
-        )
-        if reset_result.modified_count > 0:
-            logger.info(f"Reset {reset_result.modified_count} assignments back to PENDING status")
         
         # Check if assignments already exist
         existing_count = await collection.count_documents({})
@@ -557,10 +530,10 @@ async def create_sample_assignments():
                     "score": confidence,
                     "shap_values": []
                 },
-                "created_at": (datetime.utcnow() - timedelta(days=random.randint(0, 7))),
-                "last_updated": datetime.utcnow(),
+                "created_at": (datetime.now(timezone.utc) - timedelta(days=random.randint(0, 7))),
+                "last_updated": datetime.now(timezone.utc),
                 "created_by": f"system-{random.randint(1, 5)}",
-                "execution_date": (datetime.utcnow() + timedelta(days=random.randint(1, 3)))
+                "execution_date": (datetime.now(timezone.utc) + timedelta(days=random.randint(1, 3)))
             }
             assignments.append(assignment)
         
@@ -571,18 +544,20 @@ async def create_sample_assignments():
         logger.error(f"Error creating sample assignments: {e}")
 
 
+@safe_background_task
 async def log_audit_event(audit_log: AuditLogCreate):
     """Log audit event to database"""
     try:
         audit_collection = await cloud_db_manager.get_collection("audit_logs")
         audit_doc = audit_log.dict()
         audit_doc["id"] = str(uuid.uuid4())
-        audit_doc["timestamp"] = datetime.utcnow()
+        audit_doc["timestamp"] = datetime.now(timezone.utc)
         await audit_collection.insert_one(audit_doc)
     except Exception as e:
         logger.error(f"Failed to log audit event: {e}")
 
 
+@safe_background_task
 async def send_assignment_notification(assignment_id: str, title: str, message: str):
     """Send notification about assignment update"""
     try:

@@ -54,6 +54,8 @@ async def get_all_trainsets(
 @router.get("/{trainset_id}", response_model=Trainset)
 async def get_trainset(trainset_id: str, _auth=Depends(require_api_key)):
     """Get specific trainset by ID with caching"""
+    if not trainset_id.replace("-", "").isalnum():
+        raise HTTPException(status_code=400, detail="Invalid trainset_id format")
     try:
         # Fetch from MongoDB Atlas
         collection = await cloud_db_manager.get_collection("trainsets")
@@ -76,6 +78,8 @@ async def get_trainset(trainset_id: str, _auth=Depends(require_api_key)):
 @router.put("/{trainset_id}")
 async def update_trainset(trainset_id: str, update_data: TrainsetUpdate, background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
     """Update trainset with ML feedback loop trigger"""
+    if not trainset_id.replace("-", "").isalnum():
+        raise HTTPException(status_code=400, detail="Invalid trainset_id format")
     try:
         collection = await cloud_db_manager.get_collection("trainsets")
         
@@ -115,6 +119,8 @@ async def update_trainset(trainset_id: str, update_data: TrainsetUpdate, backgro
 @router.get("/{trainset_id}/fitness")
 async def get_trainset_fitness(trainset_id: str, _auth=Depends(require_api_key)):
     """Get fitness certificate status with rule-based validation"""
+    if not trainset_id.replace("-", "").isalnum():
+        raise HTTPException(status_code=400, detail="Invalid trainset_id format")
     try:
         collection = await cloud_db_manager.get_collection("trainsets")
         trainset_doc = await collection.find_one(
@@ -191,6 +197,8 @@ async def get_trainset_details(
     _auth=Depends(require_api_key)
 ):
     """Get comprehensive trainset details for the details view"""
+    if not trainset_id.replace("-", "").isalnum():
+        raise HTTPException(status_code=400, detail="Invalid trainset_id format")
     try:
         collection = await cloud_db_manager.get_collection("trainsets")
         trainset = await collection.find_one({"trainset_id": trainset_id})

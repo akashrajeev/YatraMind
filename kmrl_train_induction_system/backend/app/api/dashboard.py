@@ -1,7 +1,7 @@
 # backend/app/api/dashboard.py
 from fastapi import APIRouter, HTTPException
 from app.utils.cloud_database import cloud_db_manager
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Dict, Any
 import json
 import logging
@@ -94,7 +94,7 @@ async def get_dashboard_overview():
             },
             "depot_distribution": depot_distribution,
             "sensor_health": sensor_health,
-            "last_updated": datetime.now().isoformat()
+            "last_updated": datetime.now(timezone.utc).isoformat()
         }
     
     except Exception as e:
@@ -106,51 +106,83 @@ async def get_active_alerts():
     """Real-time alerts from rule engine + ML models"""
     try:
         collection = await cloud_db_manager.get_collection("trainsets")
-        cursor = collection.find({})
+        
+        # Use aggregation pipeline to filter alerts at DB level
+        pipeline = [
+            {
+                "$addFields": {
+                    "certs_array": {"$objectToArray": "$fitness_certificates"}
+                }
+            },
+            {
+                "$match": {
+                    "$or": [
+                        {"certs_array.v.status": {"$in": ["EXPIRED", "EXPIRING_SOON"]}},
+                        {"job_cards.critical_cards": {"$gt": 0}},
+                        {"$expr": {"$gte": ["$current_mileage", {"$multiply": ["$max_mileage_before_maintenance", 0.95]}]}}
+                    ]
+                }
+            },
+            {
+                "$project": {
+                    "trainset_id": 1,
+                    "fitness_certificates": 1,
+                    "job_cards": 1,
+                    "current_mileage": 1,
+                    "max_mileage_before_maintenance": 1
+                }
+            }
+        ]
+        
+        cursor = collection.aggregate(pipeline)
         
         alerts = []
         
         async for trainset_doc in cursor:
-            trainset_id = trainset_doc["trainset_id"]
+            trainset_id = trainset_doc.get("trainset_id")
             
             # Certificate expiry alerts
-            fitness = trainset_doc["fitness_certificates"]
+            fitness = trainset_doc.get("fitness_certificates", {})
             for cert_type, cert_data in fitness.items():
-                if cert_data["status"] == "EXPIRED":
+                status = cert_data.get("status")
+                if status == "EXPIRED":
                     alerts.append({
                         "type": "CRITICAL",
                         "category": "CERTIFICATE",
                         "trainset_id": trainset_id,
                         "message": f"{cert_type} certificate has expired",
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
-                elif cert_data["status"] == "EXPIRING_SOON":
+                elif status == "EXPIRING_SOON":
                     alerts.append({
                         "type": "WARNING",
                         "category": "CERTIFICATE",
                         "trainset_id": trainset_id,
                         "message": f"{cert_type} certificate expires soon",
-                        "timestamp": datetime.now().isoformat()
+                        "timestamp": datetime.now(timezone.utc).isoformat()
                     })
             
             # Critical job cards
-            if trainset_doc["job_cards"]["critical_cards"] > 0:
+            job_cards = trainset_doc.get("job_cards", {})
+            if job_cards.get("critical_cards", 0) > 0:
                 alerts.append({
                     "type": "HIGH",
                     "category": "MAINTENANCE",
                     "trainset_id": trainset_id,
-                    "message": f"{trainset_doc['job_cards']['critical_cards']} critical job cards pending",
-                    "timestamp": datetime.now().isoformat()
+                    "message": f"{job_cards.get('critical_cards')} critical job cards pending",
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
             
             # Mileage alerts
-            if trainset_doc["current_mileage"] >= trainset_doc["max_mileage_before_maintenance"] * 0.95:
+            curr_mileage = trainset_doc.get("current_mileage", 0)
+            max_mileage = trainset_doc.get("max_mileage_before_maintenance", 100000)
+            if curr_mileage >= max_mileage * 0.95:
                 alerts.append({
                     "type": "WARNING",
                     "category": "MILEAGE",
                     "trainset_id": trainset_id,
-                    "message": f"Approaching mileage limit: {trainset_doc['current_mileage']} km",
-                    "timestamp": datetime.now().isoformat()
+                    "message": f"Approaching mileage limit: {curr_mileage} km",
+                    "timestamp": datetime.now(timezone.utc).isoformat()
                 })
         
         # Sort by severity

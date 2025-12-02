@@ -252,6 +252,10 @@ class DataIngestionService:
         if not required.issubset(set(df.columns)):
             raise ValueError("Missing required columns for fitness certificates")
         records = df.to_dict(orient="records")
+        # Validate trainset_id
+        for r in records:
+            if not str(r.get("trainset_id", "")).replace("-", "").isalnum():
+                raise ValueError(f"Invalid trainset_id format: {r.get('trainset_id')}")
         collection = await cloud_db_manager.get_collection("fitness_certificates")
         ops = 0
         for r in records:
@@ -306,6 +310,10 @@ class DataIngestionService:
         if not required.issubset(set(df.columns)):
             raise ValueError("Missing required columns for branding records")
         records = df.to_dict(orient="records")
+        # Validate trainset_id
+        for r in records:
+            if not str(r.get("trainset_id", "")).replace("-", "").isalnum():
+                raise ValueError(f"Invalid trainset_id format: {r.get('trainset_id')}")
         col = await cloud_db_manager.get_collection("branding_contracts")
         ops = 0
         for r in records:
@@ -390,6 +398,10 @@ class DataIngestionService:
         if not required.issubset(set(df.columns)):
             raise ValueError("Missing required columns for cleaning schedule")
         recs = df.to_dict(orient="records")
+        # Validate trainset_id
+        for r in recs:
+            if not str(r.get("trainset_id", "")).replace("-", "").isalnum():
+                raise ValueError(f"Invalid trainset_id format: {r.get('trainset_id')}")
         col = await cloud_db_manager.get_collection("cleaning_schedule")
         ops = 0
         for r in recs:

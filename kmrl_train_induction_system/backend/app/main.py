@@ -139,6 +139,18 @@ async def startup_event():
         # Nightly optimization at 4:30 AM IST (Asia/Kolkata) -> convert to server TZ by cron
         scheduler.add_job(lambda: celery_app.send_task("optimization.nightly_run"), "cron", hour=23, minute=59, id="nightly_opt")
         scheduler.start()
+
+        # Create MongoDB Indexes
+        try:
+            assignments_col = await cloud_db_manager.get_collection("assignments")
+            await assignments_col.create_index("status")
+            await assignments_col.create_index("created_at")
+            
+            trainsets_col = await cloud_db_manager.get_collection("trainsets")
+            await trainsets_col.create_index("trainset_id", unique=True)
+            logger.info("MongoDB indexes created successfully")
+        except Exception as e:
+            logger.error(f"Failed to create MongoDB indexes: {e}")
     except Exception as e:
         logger.error(f"Startup failed: {e}")
 

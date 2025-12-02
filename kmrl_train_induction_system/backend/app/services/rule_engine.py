@@ -67,47 +67,112 @@ class DurableRulesEngine:
 
     def _check_with_durable(self, trainset: Dict[str, Any]) -> List[str]:
         """Evaluate constraints using durable_rules and return violations."""
-        violations: List[str] = []
+        # Ensure rules are defined once
+        _ensure_rules_defined()
+        
+        # Post the fact to the static ruleset
+        # We attach a unique 'sid' (session id) or just use the fact payload
+        # durable_rules raises exception on violation if handled that way, 
+        # but here we are collecting violations in a global or context-local way?
+        # The original code used a closure to capture 'violations' list.
+        # With a static ruleset, we can't easily capture a local variable from the rule action.
+        # WE NEED A WAY TO GET RESULTS BACK.
+        
+        # durable_rules is tricky with return values. 
+        # Standard pattern: The rule modifies the state or posts a new event.
+        # OR, we can attach a mutable list to the fact itself? 
+        # durable_rules usually works on JSON-serializable dicts.
+        
+        # Workaround: 
+        # Since durable_rules in Python runs in-process, we can cheat slightly if the engine allows objects,
+        # but usually it expects dicts.
+        # 
+        # Alternative: The original code was creating a NEW ruleset every time to capture the 'violations' list via closure.
+        # To fix the leak, we must use a static ruleset.
+        # To get results, we can use a module-level dictionary mapping request_id to violations?
+        # Or, since this is 'durable_rules', maybe we can't use it easily for this synchronous check without side effects?
+        
+        # Let's look at how we can pass context.
+        # If we post {'trainset_id': '...', ...}, the rule triggers.
+        # The action function receives 'c'.
+        # We need to map back to the request.
+        
+        # Let's use a simple global registry for the current context if we assume single-threaded or use contextvars?
+        # No, this is async, so multiple requests can be in flight.
+        
+        # Better approach:
+        # The 'fact' can contain a 'result_container_id'.
+        # We keep a global dictionary: _results = { 'id': [] }
+        # The rule appends to _results[c.m.result_container_id].
+        
+        import uuid
+        request_id = str(uuid.uuid4())
+        _rule_results[request_id] = []
+        
+        fact = trainset.copy()
+        fact['result_container_id'] = request_id
+        
+        try:
+            post('kmrl_induction_rules', fact)
+        except Exception as e:
+            # durable_rules might raise error if ruleset not found or other issues
+            logger.error(f"Durable rules error: {e}")
+            
+        violations = _rule_results.pop(request_id, [])
+        return violations
 
-        # Define a minimal ruleset for a single evaluation cycle
-        rs_name = f"constraints_{trainset.get('trainset_id', 'unknown')}"
+# Global storage for rule results (temporary for the request duration)
+_rule_results: Dict[str, List[str]] = {}
+_rules_defined = False
 
+def _ensure_rules_defined():
+    global _rules_defined
+    if _rules_defined:
+        return
+        
+    # Define static ruleset
+    rs_name = 'kmrl_induction_rules'
+    
+    try:
         @when_all(rs_name, m.fitness_certificates.matches(True))
         def certs_ok(c):
-            # no-op action when certs dict present
             pass
 
         @when_all(rs_name, m.job_cards.matches(True))
         def cards_present(c):
             pass
 
-        # Fitness certificate expired/expiring soon
         @when_all(rs_name, m.fitness_certificates.any_item.status == 'EXPIRED')
         def rule_cert_expired(c):
-            violations.append("A certificate expired")
+            _add_violation(c, "A certificate expired")
 
         @when_all(rs_name, m.fitness_certificates.any_item.status == 'EXPIRING_SOON')
         def rule_cert_expiring(c):
-            violations.append("A certificate expiring soon")
+            _add_violation(c, "A certificate expiring soon")
 
-        # Critical job cards present
         @when_all(rs_name, m.job_cards.critical_cards > 0)
         def rule_critical_cards(c):
-            violations.append("Critical job cards pending")
+            _add_violation(c, "Critical job cards pending")
 
-        # Mileage limits
         @when_all(rs_name, (m.current_mileage >= m.max_mileage_before_maintenance))
         def rule_mileage_limit(c):
-            violations.append("Mileage limit exceeded")
+            _add_violation(c, "Mileage limit exceeded")
 
-        # Maintenance status
         @when_all(rs_name, m.status == 'MAINTENANCE')
         def rule_maintenance(c):
-            violations.append("Currently in maintenance")
+            _add_violation(c, "Currently in maintenance")
+            
+        _rules_defined = True
+        logger.info(f"Ruleset '{rs_name}' defined successfully")
+        
+    except Exception as e:
+        logger.error(f"Failed to define ruleset: {e}")
 
-        # Fire rules with one post
-        post(rs_name, trainset)
-        return violations
+def _add_violation(c, msg):
+    # Helper to add violation to the correct result container
+    rid = c.m.result_container_id
+    if rid in _rule_results:
+        _rule_results[rid].append(msg)
 
 
 class DroolsAdapterEngine:

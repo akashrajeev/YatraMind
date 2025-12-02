@@ -9,6 +9,7 @@ import torch
 import shap
 import random
 import logging
+import asyncio
 
 from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
@@ -91,14 +92,13 @@ async def batch_predict(features: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         p = model(torch.from_numpy(X)).squeeze(1).numpy()
 
     # SHAP kernel approximation for top feature attributions (lightweight)
+    # Run in separate thread to avoid blocking event loop
     try:
-        explainer = shap.Explainer(lambda z: model(torch.from_numpy(z.astype(np.float32))).detach().numpy(), feature_names=feature_cols)
-        shap_vals = explainer(X, max_evals=100)
-        contrib = np.abs(shap_vals.values)
-        top_idx = np.argsort(-contrib, axis=1)[:, :3]
-    except Exception:
-        contrib = None
+        top_idx = await asyncio.to_thread(_calculate_shap, model, X, feature_cols)
+    except Exception as e:
+        logger.warning(f"SHAP calculation failed: {e}")
         top_idx = None
+
     out: List[Dict[str, Any]] = []
     for i, row in df.iterrows():
         item = {
@@ -109,6 +109,24 @@ async def batch_predict(features: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
             item["top_features"] = [feature_cols[j] for j in top_idx[i]]
         out.append(item)
     return out
+
+
+def _calculate_shap(model, X, feature_cols):
+    """Run SHAP calculation (CPU intensive)."""
+    try:
+        # Define prediction wrapper for SHAP
+        def predict_fn(z):
+            with torch.no_grad():
+                tensor_z = torch.from_numpy(z.astype(np.float32))
+                return model(tensor_z).detach().numpy()
+                
+        explainer = shap.Explainer(predict_fn, feature_names=feature_cols)
+        shap_vals = explainer(X, max_evals=100)
+        contrib = np.abs(shap_vals.values)
+        return np.argsort(-contrib, axis=1)[:, :3]
+    except Exception as e:
+        logger.warning(f"SHAP internal error: {e}")
+        return None
 
 
 def predict_maintenance_health(trainset: Dict[str, Any]) -> float:

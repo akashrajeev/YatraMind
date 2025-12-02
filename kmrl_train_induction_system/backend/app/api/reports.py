@@ -2,7 +2,7 @@
 from fastapi import APIRouter, HTTPException, Depends, Query, Response
 from fastapi.responses import StreamingResponse
 from typing import Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 import io
 import csv
@@ -16,7 +16,7 @@ import json
 from app.models.assignment import Assignment, AssignmentStatus
 from app.models.audit import AuditLog
 from app.utils.cloud_database import cloud_db_manager
-from app.security import require_api_key, get_current_user
+from app.security import require_api_key
 from app.services.report_generator import ReportGenerator
 
 logger = logging.getLogger(__name__)
@@ -33,7 +33,7 @@ async def generate_daily_briefing(
 ):
     """Generate daily briefing PDF report"""
     try:
-        target_date = datetime.strptime(date, "%Y-%m-%d") if date else datetime.now()
+        target_date = datetime.strptime(date, "%Y-%m-%d") if date else datetime.now(timezone.utc)
         
         # Generate PDF content
         pdf_content = await report_generator.generate_daily_briefing(target_date)
@@ -90,7 +90,7 @@ async def export_assignments(
             return StreamingResponse(
                 io.StringIO(csv_content),
                 media_type="text/csv",
-                headers={"Content-Disposition": f"attachment; filename=assignments-{datetime.now().strftime('%Y-%m-%d')}.csv"}
+                headers={"Content-Disposition": f"attachment; filename=assignments-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.csv"}
             )
         else:
             # Generate PDF
@@ -98,7 +98,7 @@ async def export_assignments(
             return StreamingResponse(
                 io.BytesIO(pdf_content),
                 media_type="application/pdf",
-                headers={"Content-Disposition": f"attachment; filename=assignments-{datetime.now().strftime('%Y-%m-%d')}.pdf"}
+                headers={"Content-Disposition": f"attachment; filename=assignments-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.pdf"}
             )
         
     except ValueError as e:
@@ -147,7 +147,7 @@ async def export_audit_logs(
         return StreamingResponse(
             io.StringIO(csv_content),
             media_type="text/csv",
-            headers={"Content-Disposition": f"attachment; filename=audit-logs-{datetime.now().strftime('%Y-%m-%d')}.csv"}
+            headers={"Content-Disposition": f"attachment; filename=audit-logs-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.csv"}
         )
         
     except ValueError as e:
@@ -169,14 +169,14 @@ async def generate_fleet_status_report(
             return StreamingResponse(
                 io.BytesIO(pdf_content),
                 media_type="application/pdf",
-                headers={"Content-Disposition": f"attachment; filename=fleet-status-{datetime.now().strftime('%Y-%m-%d')}.pdf"}
+                headers={"Content-Disposition": f"attachment; filename=fleet-status-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.pdf"}
             )
         else:
             csv_content = await report_generator.generate_fleet_status_csv()
             return StreamingResponse(
                 io.StringIO(csv_content),
                 media_type="text/csv",
-                headers={"Content-Disposition": f"attachment; filename=fleet-status-{datetime.now().strftime('%Y-%m-%d')}.csv"}
+                headers={"Content-Disposition": f"attachment; filename=fleet-status-{datetime.now(timezone.utc).strftime('%Y-%m-%d')}.csv"}
             )
         
     except Exception as e:
@@ -191,7 +191,7 @@ async def generate_performance_analysis(
 ):
     """Generate performance analysis report"""
     try:
-        end_date = datetime.now()
+        end_date = datetime.now(timezone.utc)
         start_date = end_date - timedelta(days=days)
         
         pdf_content = await report_generator.generate_performance_analysis_pdf(start_date, end_date)
@@ -215,8 +215,8 @@ async def generate_compliance_report(
     """Generate compliance report"""
     try:
         # Parse dates
-        start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.now() - timedelta(days=30)
-        end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else datetime.now()
+        start_dt = datetime.strptime(start_date, "%Y-%m-%d") if start_date else datetime.now(timezone.utc) - timedelta(days=30)
+        end_dt = datetime.strptime(end_date, "%Y-%m-%d") if end_date else datetime.now(timezone.utc)
         
         pdf_content = await report_generator.generate_compliance_report(start_dt, end_dt)
         return StreamingResponse(
