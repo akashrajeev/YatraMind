@@ -20,13 +20,13 @@ WEIGHTS = {
     "CRITICAL_FAILURE": float('-inf'),  # Safety critical/Cert expired -> strict exclusion
 
     # Tier 2: High Priority Soft Objectives (Revenue)
-    "BRANDING_OBLIGATION": 500.0,       # Active wrap adds +500 points (Revenue priority)
-    "MINOR_DEFECT_PENALTY_PER_DEFECT": -20.0,  # -20 points per minor defect
+    "BRANDING_OBLIGATION": 300.0,       # Active wrap adds +300 points (Revenue priority)
+    "MINOR_DEFECT_PENALTY_PER_DEFECT": -50.0,  # -50 points per minor defect
 
     # Tier 3: Optimization Soft Objectives (Health/Ops)
-    "MILEAGE_BALANCING": 100.0,         # +100 if below average (helps balance fleet)
-    "CLEANING_DUE_PENALTY": -50.0,      # -50 penalty if cleaning due
-    "SHUNTING_COMPLEXITY_PENALTY": -10.0 # Minor penalty if train is blocked by others
+    "MILEAGE_BALANCING": 50.0,         # +50 if below average (helps balance fleet)
+    "CLEANING_DUE_PENALTY": -30.0,      # -30 penalty if cleaning due
+    "SHUNTING_COMPLEXITY_PENALTY": -20.0 # Minor penalty if train is blocked by others
 }
 
 def compute_trains_needed(required_hours: float, candidate_trains: List[Dict[str, Any]]) -> int:

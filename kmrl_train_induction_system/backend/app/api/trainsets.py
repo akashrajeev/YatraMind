@@ -3,12 +3,12 @@ from fastapi import APIRouter, HTTPException, Query, BackgroundTasks, Depends
 from app.security import require_api_key
 from typing import List, Optional
 from datetime import datetime, timedelta
-from app.models.trainset import Trainset, TrainsetUpdate, TrainsetStatus
+from app.models.trainset import Trainset, TrainsetUpdate, TrainsetStatus, OptimizationRequest
 from app.utils.cloud_database import cloud_db_manager
+from app.services.optimizer import TrainInductionOptimizer
 import pandas as pd
 import logging
 import json
-import random
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -224,15 +224,56 @@ async def get_trainset_details(
         successful_assignments = len([a for a in assignments if a.get("status") == "APPROVED"])
         success_rate = (successful_assignments / total_assignments * 100) if total_assignments > 0 else 0
         
-        # Get recent performance
-        recent_performance = {
-            "avg_sensor_health": sum([s.get("health_score", 0.8) for s in sensor_data[-10:]]) / min(len(sensor_data), 10) if sensor_data else 0.8,
-            "last_maintenance": maintenance_logs[0].get("date") if maintenance_logs else None,
-            "next_scheduled_maintenance": (datetime.utcnow() + timedelta(days=30)).isoformat(),
-            "operational_hours": random.randint(2000, 5000),
-            "mileage": trainset.get("mileage", {}).get("total_km", random.randint(50000, 200000))
-        }
+        # --- REAL RANKING LOGIC ---
+        # Instantiate the optimizer to calculate the real score for this trainset
+        optimizer = TrainInductionOptimizer()
+        # Create a default optimization request
+        opt_request = OptimizationRequest()
         
+        # Run optimization for this single trainset to get its score and decision details
+        # The optimizer expects a list of trainsets
+        decisions = await optimizer.optimize([trainset], opt_request)
+        decision = decisions[0] if decisions else None
+        
+        optimization_score = decision.score if decision else 0.0
+        # Normalize score to 0-1 range if it's not already (optimizer might return large numbers)
+        # But looking at optimizer.py, it seems to return normalized scores or at least consistent ones.
+        # Let's trust the optimizer's output for now, or clamp it if needed for UI.
+        # UI expects 0.0 to 1.0 usually for progress bars, or 0-100.
+        # If score is > 1, we might need to adjust.
+        # Optimizer logic: combined_score = tier2_scale * tier2_val + tier3_val
+        # This can be very large.
+        # But wait, InductionDecision also has `score` field.
+        # In optimizer.py: score=normalized_score
+        # _calculate_normalized_optimization_score likely handles this.
+        
+        # Extract real data from DB (no more random values)
+        current_mileage = trainset.get("current_mileage", 0.0)
+        max_mileage = trainset.get("max_mileage_before_maintenance", 20000.0)
+        
+        # Get recent performance
+        avg_sensor_health = 0.85
+        if sensor_data:
+             avg_sensor_health = sum([s.get("health_score", 0.8) for s in sensor_data[-10:]]) / min(len(sensor_data), 10)
+        
+        recent_performance = {
+            "avg_sensor_health": avg_sensor_health,
+            "last_maintenance": maintenance_logs[0].get("date") if maintenance_logs else None,
+            "current_mileage": current_mileage,
+            "max_mileage": max_mileage
+        }
+
+        # Real Job Cards from DB
+        job_cards = trainset.get("job_cards", {})
+        open_job_cards = job_cards.get("open_cards", 0)
+        critical_job_cards = job_cards.get("critical_cards", 0)
+
+        # Real Branding from DB
+        branding_status = trainset.get("branding", {})
+        
+        # Real Certificates from DB
+        certificates = trainset.get("fitness_certificates", {})
+
         return {
             "trainset_id": trainset_id,
             "basic_info": {
@@ -240,23 +281,32 @@ async def get_trainset_details(
                 "model": trainset.get("model", "KMRL-2024"),
                 "manufacturer": trainset.get("manufacturer", "KMRL"),
                 "commission_date": trainset.get("commission_date", "2020-01-01"),
-                "last_inspection": trainset.get("last_inspection", (datetime.utcnow() - timedelta(days=30)).isoformat())
+                "last_inspection": trainset.get("last_inspection", (datetime.utcnow() - timedelta(days=30)).isoformat()),
+                "year_of_manufacture": trainset.get("year_of_manufacture", "2019")
             },
             "operational_metrics": {
                 "total_assignments": total_assignments,
                 "successful_assignments": successful_assignments,
                 "success_rate": round(success_rate, 2),
                 "current_fitness_score": trainset.get("sensor_health_score", 0.85),
-                "predicted_failure_risk": trainset.get("predicted_failure_risk", 0.15)
+                "predicted_failure_risk": trainset.get("predicted_failure_risk", 0.15),
+                "optimization_score": round(optimization_score, 2)
             },
             "performance_data": recent_performance,
-            "assignments": assignments[-10:],  # Last 10 assignments
+            "assignments": assignments[-10:],
             "maintenance_logs": maintenance_logs,
-            "sensor_data": sensor_data[-20:],  # Last 20 sensor readings
-            "certificates": trainset.get("certificates", {}),
-            "branding": trainset.get("branding", {}),
+            "sensor_data": sensor_data[-20:],
+            "certificates": certificates,
+            "branding": branding_status,
+            "job_cards": {
+                "open": open_job_cards,
+                "critical": critical_job_cards
+            },
             "cleaning_schedule": trainset.get("cleaning_schedule", {}),
-            "mileage": trainset.get("mileage", {}),
+            "mileage": {
+                "current": current_mileage,
+                "max": max_mileage
+            },
             "recommendations": [
                 "Schedule maintenance in 30 days" if recent_performance["last_maintenance"] and 
                 (datetime.utcnow() - datetime.fromisoformat(recent_performance["last_maintenance"].replace('Z', '+00:00'))).days > 60 else None,
@@ -264,7 +314,6 @@ async def get_trainset_details(
                 "Monitor failure risk closely" if trainset.get("predicted_failure_risk", 0.2) > 0.3 else None
             ]
         }
-        
     except Exception as e:
         logger.error(f"Error fetching trainset details: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch trainset details: {str(e)}")

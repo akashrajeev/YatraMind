@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { assignmentApi, optimizationApi, trainsetsApi } from "@/services/api";
 import { Assignment, AssignmentSummary } from "@/types/api";
-import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info, Edit2, Save, X, ArrowUp, ArrowDown, GripVertical } from "lucide-react";
+import { RefreshCw, Download, Plus, CheckCircle, AlertTriangle, Clock, Brain, Target, BarChart3, TrendingUp, Eye, Info, Edit2, Save, X, ArrowUp, ArrowDown, GripVertical, Activity } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
@@ -67,7 +67,7 @@ const Assignments = () => {
 
   // Reorder mutation
   const reorderMutation = useMutation({
-    mutationFn: (data: { trainset_ids: string[]; reason?: string }) => 
+    mutationFn: (data: { trainset_ids: string[]; reason?: string }) =>
       optimizationApi.reorderRankedList(data),
     onSuccess: () => {
       toast.success("Ranked list updated", {
@@ -185,7 +185,7 @@ const Assignments = () => {
 
   // Explanation mutation
   const explanationMutation = useMutation({
-    mutationFn: ({ trainsetId, decision }: { trainsetId: string; decision: string }) => 
+    mutationFn: ({ trainsetId, decision }: { trainsetId: string; decision: string }) =>
       optimizationApi.explainAssignment(trainsetId, decision),
     onSuccess: (data) => {
       setExplanationData(data.data);
@@ -274,8 +274,8 @@ const Assignments = () => {
         </div>
       </div>
 
-          {/* Assignments Tabs */}
-          <Tabs defaultValue={defaultTab} className="w-full">
+      {/* Assignments Tabs */}
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="ranked">
             <Target className="h-4 w-4 mr-2" />
@@ -395,9 +395,8 @@ const Assignments = () => {
                             <Card
                               ref={provided.innerRef}
                               {...provided.draggableProps}
-                              className={`hover:shadow-md transition-shadow ${
-                                snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
-                              } ${isEditMode ? 'cursor-move' : ''}`}
+                              className={`hover:shadow-md transition-shadow ${snapshot.isDragging ? 'shadow-lg ring-2 ring-primary' : ''
+                                } ${isEditMode ? 'cursor-move' : ''}`}
                             >
                               <CardHeader>
                                 <div className="flex items-center justify-between">
@@ -468,8 +467,8 @@ const Assignments = () => {
                                     </div>
                                   )}
                                   <div className="flex gap-2">
-                                    <Button 
-                                      size="sm" 
+                                    <Button
+                                      size="sm"
                                       variant="outline"
                                       onClick={() => handleExplainDecision(decision.trainset_id, decision.decision)}
                                       disabled={explanationMutation.isPending}
@@ -477,8 +476,8 @@ const Assignments = () => {
                                       <Eye className="h-4 w-4 mr-2" />
                                       Explain Decision
                                     </Button>
-                                    <Button 
-                                      size="sm" 
+                                    <Button
+                                      size="sm"
                                       variant="secondary"
                                       onClick={() => handleViewDetails(decision.trainset_id)}
                                     >
@@ -611,16 +610,16 @@ const Assignments = () => {
                   </div>
                   <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasoning}</p>
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => handleViewDetails(assignment.trainset_id)}
                     >
                       <Info className="h-4 w-4 mr-2" />
                       View Details
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="secondary"
                       onClick={(e) => {
                         e.preventDefault();
@@ -630,8 +629,8 @@ const Assignments = () => {
                           return;
                         }
                         console.log("Override clicked - Assignment:", assignment);
-                        const newDecision = assignment.decision.decision === "INDUCT" ? "STANDBY" : 
-                                            assignment.decision.decision === "STANDBY" ? "MAINTENANCE" : "INDUCT";
+                        const newDecision = assignment.decision.decision === "INDUCT" ? "STANDBY" :
+                          assignment.decision.decision === "STANDBY" ? "MAINTENANCE" : "INDUCT";
                         overrideMutation.mutate({
                           assignment_id: assignment.id,
                           user_id: "system",
@@ -643,8 +642,8 @@ const Assignments = () => {
                     >
                       {overrideMutation.isPending ? "Overriding..." : "Override"}
                     </Button>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="industrial"
                       onClick={(e) => {
                         e.preventDefault();
@@ -719,8 +718,8 @@ const Assignments = () => {
                     <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasons[0]}</p>
                   )}
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => handleViewDetails(assignment.trainset_id)}
                     >
@@ -785,8 +784,8 @@ const Assignments = () => {
                     </div>
                   )}
                   <div className="flex gap-2 mt-4">
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       variant="outline"
                       onClick={() => handleViewDetails(assignment.trainset_id)}
                     >
@@ -810,8 +809,8 @@ const Assignments = () => {
                 <CardTitle className="text-xl text-foreground dark:text-white">
                   AI Decision Explanation - {selectedTrainset}
                 </CardTitle>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => setShowExplanation(false)}
                 >
@@ -832,7 +831,7 @@ const Assignments = () => {
                     ))}
                   </ul>
                 </div>
-                
+
                 <div>
                   <h3 className="font-semibold text-lg mb-3 text-red-600 dark:text-red-400">Risks & Violations</h3>
                   <ul className="space-y-2">
@@ -864,11 +863,10 @@ const Assignments = () => {
                         <span className="text-sm font-medium text-foreground dark:text-slate-100">{feature.name}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm text-foreground dark:text-slate-200">{feature.value}</span>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            feature.impact === 'positive' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200' 
-                              : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
-                          }`}>
+                          <span className={`text-xs px-2 py-1 rounded ${feature.impact === 'positive'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-200'
+                            : 'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-200'
+                            }`}>
                             {feature.impact === 'positive' ? '↑' : '↓'}
                           </span>
                         </div>
@@ -888,130 +886,228 @@ const Assignments = () => {
               </div>
             </CardContent>
           </Card>
-        </div>
-          )}
+        </div >
+      )
+      }
 
-          {/* Trainset Details Modal */}
-          {showTrainsetDetails && trainsetDetails && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-              <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl">
+      {/* Trainset Details Modal */}
+      {
+        showTrainsetDetails && trainsetDetails && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 shadow-2xl">
+              <CardHeader className="border-b">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-2xl font-bold">
                       Trainset Details - {trainsetDetails.trainset_id}
                     </CardTitle>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => setShowTrainsetDetails(false)}
-                    >
-                      ×
-                    </Button>
+                    <p className="text-muted-foreground text-sm mt-1">Comprehensive fleet status and health metrics</p>
                   </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <h3 className="font-semibold text-lg mb-3">Basic Information</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Status:</span>
-                          <Badge variant={trainsetDetails.basic_info.status === 'ACTIVE' ? 'success' : 'secondary'}>
-                            {trainsetDetails.basic_info.status}
-                          </Badge>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Model:</span>
-                          <span>{trainsetDetails.basic_info.model}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Manufacturer:</span>
-                          <span>{trainsetDetails.basic_info.manufacturer}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Commission Date:</span>
-                          <span>{trainsetDetails.basic_info.commission_date}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Last Inspection:</span>
-                          <span>{trainsetDetails.basic_info.last_inspection}</span>
-                        </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setShowTrainsetDetails(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 space-y-8">
+
+                {/* Top Row: Basic Info & Score */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="md:col-span-2 space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Info className="h-5 w-5 text-primary" />
+                      Basic Information
+                    </h3>
+                    <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                      <div className="flex justify-between border-b pb-2">
+                        <span className="text-muted-foreground">Trainset ID:</span>
+                        <span className="font-medium">{trainsetDetails.trainset_id}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-2">
+                        <span className="text-muted-foreground">Manufacturer:</span>
+                        <span className="font-medium">{trainsetDetails.basic_info.manufacturer}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-2">
+                        <span className="text-muted-foreground">Model:</span>
+                        <span className="font-medium">{trainsetDetails.basic_info.model}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-2">
+                        <span className="text-muted-foreground">Year of Manufacture:</span>
+                        <span className="font-medium">{trainsetDetails.basic_info.year_of_manufacture}</span>
+                      </div>
+                      <div className="flex justify-between border-b pb-2">
+                        <span className="text-muted-foreground">Status:</span>
+                        <Badge variant={trainsetDetails.basic_info.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                          {trainsetDetails.basic_info.status}
+                        </Badge>
                       </div>
                     </div>
-                    
-                    <div>
-                      <h3 className="font-semibold text-lg mb-3">Operational Metrics</h3>
-                      <div className="space-y-2 text-sm">
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Total Assignments:</span>
-                          <span>{trainsetDetails.operational_metrics.total_assignments}</span>
+                  </div>
+
+                  {/* Score Card */}
+                  <Card className="bg-slate-50 dark:bg-slate-800 border-none shadow-inner flex flex-col items-center justify-center p-6">
+                    <div className="relative flex items-center justify-center">
+                      <svg className="w-32 h-32 transform -rotate-90">
+                        <circle
+                          className="text-gray-200"
+                          strokeWidth="8"
+                          stroke="currentColor"
+                          fill="transparent"
+                          r="58"
+                          cx="64"
+                          cy="64"
+                        />
+                        <circle
+                          className="text-primary"
+                          strokeWidth="8"
+                          strokeDasharray={365}
+                          strokeDashoffset={365 - (365 * (trainsetDetails.operational_metrics.optimization_score || 0.85))}
+                          strokeLinecap="round"
+                          stroke="currentColor"
+                          fill="transparent"
+                          r="58"
+                          cx="64"
+                          cy="64"
+                        />
+                      </svg>
+                      <div className="absolute flex flex-col items-center">
+                        <span className="text-3xl font-bold text-primary">
+                          {Math.round((trainsetDetails.operational_metrics.optimization_score || 0.85) * 100)}%
+                        </span>
+                        <span className="text-xs text-muted-foreground uppercase">Score</span>
+                      </div>
+                    </div>
+                    <div className="mt-4 text-center">
+                      <p className="text-sm font-medium">Optimization Score</p>
+                      <p className="text-xs text-muted-foreground">Based on health & priority</p>
+                    </div>
+                  </Card>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Mileage */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-500" />
+                      Mileage Statistics
+                    </h3>
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Current Mileage</span>
+                        <span className="text-lg font-bold">{trainsetDetails.performance_data.current_mileage?.toLocaleString()} km</span>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Maintenance Limit</span>
+                          <span>{trainsetDetails.performance_data.max_mileage?.toLocaleString()} km</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Success Rate:</span>
-                          <span className="text-green-600">{trainsetDetails.operational_metrics.success_rate}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Fitness Score:</span>
-                          <span className="text-blue-600">{Math.round(trainsetDetails.operational_metrics.current_fitness_score * 100)}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Failure Risk:</span>
-                          <span className="text-red-600">{Math.round(trainsetDetails.operational_metrics.predicted_failure_risk * 100)}%</span>
+                        <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-blue-500 rounded-full"
+                            style={{ width: `${Math.min(((trainsetDetails.performance_data.current_mileage || 0) / (trainsetDetails.performance_data.max_mileage || 1)) * 100, 100)}%` }}
+                          />
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  <div>
-                    <h3 className="font-semibold text-lg mb-3">Performance Data</h3>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm text-muted-foreground">Operational Hours</div>
-                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.operational_hours.toLocaleString()}</div>
+                  {/* Certificates */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                      Certificates
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3">
+                      {['Rolling Stock', 'Signalling', 'Telecom'].map((cert) => {
+                        const key = cert.toLowerCase().replace(' ', '_');
+                        const certData = trainsetDetails.certificates?.[key];
+                        // Handle both string (legacy) and object (real data) formats
+                        const status = typeof certData === 'object' ? certData?.status : certData || 'VALID';
+
+                        return (
+                          <div key={cert} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border rounded-lg shadow-sm">
+                            <span className="text-sm font-medium">{cert} Certificate</span>
+                            <Badge variant={status === 'VALID' ? 'success' : 'destructive'}>
+                              {status || 'VALID'}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  {/* Job Cards */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <AlertTriangle className="h-5 w-5 text-orange-500" />
+                      Job Cards
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 rounded-lg text-center">
+                        <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                          {trainsetDetails.job_cards?.open || 0}
+                        </div>
+                        <div className="text-sm text-orange-800 dark:text-orange-300">Open Job Cards</div>
                       </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm text-muted-foreground">Total Mileage</div>
-                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.mileage.toLocaleString()} km</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm text-muted-foreground">Avg Sensor Health</div>
-                        <div className="text-lg font-semibold">{Math.round(trainsetDetails.performance_data.avg_sensor_health * 100)}%</div>
-                      </div>
-                      <div className="p-3 bg-gray-50 rounded-lg">
-                        <div className="text-sm text-muted-foreground">Next Maintenance</div>
-                        <div className="text-lg font-semibold">{trainsetDetails.performance_data.next_scheduled_maintenance?.split('T')[0] || 'N/A'}</div>
+                      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg text-center">
+                        <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                          {trainsetDetails.job_cards?.critical || 0}
+                        </div>
+                        <div className="text-sm text-red-800 dark:text-red-300">Critical Issues</div>
                       </div>
                     </div>
                   </div>
 
-                  {trainsetDetails.recommendations && trainsetDetails.recommendations.filter(r => r).length > 0 && (
-                    <div>
-                      <h3 className="font-semibold text-lg mb-3">Recommendations</h3>
-                      <ul className="space-y-2">
-                        {trainsetDetails.recommendations.filter(r => r).map((rec: string, i: number) => (
-                          <li key={i} className="flex items-start gap-2">
-                            <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                            <span className="text-sm">{rec}</span>
-                          </li>
-                        ))}
-                      </ul>
+                  {/* Branding */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold flex items-center gap-2">
+                      <Target className="h-5 w-5 text-purple-500" />
+                      Branding Status
+                    </h3>
+                    <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800 rounded-lg p-4 space-y-3">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Advertiser</span>
+                        <span className="font-semibold text-purple-900 dark:text-purple-100">
+                          {trainsetDetails.branding?.advertiser || 'None'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Priority</span>
+                        <Badge variant="outline" className="border-purple-200 text-purple-700">
+                          {trainsetDetails.branding?.priority || 'LOW'}
+                        </Badge>
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-muted-foreground">Status</span>
+                        <span className="text-sm font-medium">
+                          {trainsetDetails.branding?.status || 'N/A'}
+                        </span>
+                      </div>
                     </div>
-                  )}
-
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" onClick={() => setShowTrainsetDetails(false)}>
-                      Close
-                    </Button>
-                    <Button onClick={() => window.print()}>
-                      Print Details
-                    </Button>
                   </div>
-                </CardContent>
-              </Card>
-            </div>
-          )}
-        </div>
-      );
-    };
+                </div>
 
-    export default Assignments;
+                <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button variant="outline" onClick={() => setShowTrainsetDetails(false)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => window.print()}>
+                    <Download className="h-4 w-4 mr-2" />
+                    Export Details
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+      }
+    </div >
+  );
+};
+
+export default Assignments;
