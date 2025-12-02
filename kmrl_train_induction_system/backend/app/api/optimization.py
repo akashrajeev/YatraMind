@@ -1,32 +1,36 @@
 # backend/app/api/optimization.py
-from fastapi import APIRouter, HTTPException, BackgroundTasks
-from fastapi import Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 import random
+import asyncio
+import json
+import logging
+import uuid
+from pathlib import Path
+from math import ceil
+
 from app.models.trainset import OptimizationRequest, InductionDecision
 from app.services.optimizer import TrainInductionOptimizer
 from app.services.solver import RoleAssignmentSolver, SolverWeights
 from app.services.rule_engine import DurableRulesEngine
 from app.services.stabling_optimizer import StablingGeometryOptimizer
+from app.services.optimization_store import get_latest_decisions, get_decisions_from_history
 from app.utils.cloud_database import cloud_db_manager
 from app.utils.explainability import (
     generate_comprehensive_explanation,
     render_explanation_html,
     render_explanation_text
 )
-from app.config import settings
+from app.config import settings, get_config
 from app.security import require_api_key, require_role
 from app.models.user import UserRole, User
 from pydantic import BaseModel, Field
-import asyncio
-import json
-import logging
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-@router.post("/run", response_model=List[InductionDecision])
+@router.post("/run")
 async def run_optimization(
     background_tasks: BackgroundTasks,
     request: OptimizationRequest,
@@ -34,54 +38,162 @@ async def run_optimization(
 ):
     """Run AI/ML optimization with rule-based constraints (OR-Tools + Drools)"""
     try:
-        # Get all trainsets from MongoDB Atlas
         collection = await cloud_db_manager.get_collection("trainsets")
         cursor = collection.find({})
-        trainsets_data = []
-        
+        trainsets_data: List[Dict[str, Any]] = []
+
         async for trainset_doc in cursor:
-            trainset_doc.pop('_id', None)
+            trainset_doc.pop("_id", None)
             trainsets_data.append(trainset_doc)
-        
+
         if not trainsets_data:
             raise HTTPException(status_code=404, detail="No trainsets found")
-        
-        # Rule-based constraint engine (Durable Rules) with safe fallback
-        try:
-            rule_engine = DurableRulesEngine()
-            validated_trainsets = await rule_engine.apply_constraints(trainsets_data)
-        except Exception as re_err:
-            logger.warning(f"Rule engine unavailable, falling back to basic filter: {re_err}")
-            # Basic filter fallback: require all certs VALID and no critical cards
-            validated_trainsets = [
-                t for t in trainsets_data
-                if all(c.get("status") == "VALID" for c in t.get("fitness_certificates", {}).values())
-                and t.get("job_cards", {}).get("critical_cards", 0) == 0
-            ]
-        
-        # AI/ML Optimization (Google OR-Tools + PyTorch)
+
+        cfg = get_config()
+        avg_hours = float(cfg.get("AVG_HOURS_PER_TRAIN", 12))
+        allow_hours_mode = bool(cfg.get("ALLOW_HOURS_MODE", True))
+
+        raw_hours = request.required_service_hours
+        raw_count = request.required_service_count
+
+        req_hours: float = 0.0
+        requested_train_count: int = 0
+
+        if raw_hours is not None:
+            try:
+                req_hours = float(raw_hours)
+            except (TypeError, ValueError):
+                req_hours = 0.0
+
+        if req_hours <= 0 and raw_count is not None:
+            try:
+                requested_train_count = max(0, int(raw_count))
+            except (TypeError, ValueError):
+                requested_train_count = 0
+            if allow_hours_mode and avg_hours > 0 and requested_train_count > 0:
+                req_hours = requested_train_count * avg_hours
+
+        if req_hours < 0:
+            req_hours = 0.0
+
+        fleet_size = len(trainsets_data)
+        if req_hours > 0 and fleet_size > 0:
+            max_reasonable = fleet_size * settings.max_hours_warning_threshold_multiplier
+            if req_hours > max_reasonable:
+                logger.warning(
+                    "Requested service hours %.1f exceeds reasonable threshold %.1f "
+                    "(fleet_size=%d, multiplier=%d)",
+                    req_hours,
+                    max_reasonable,
+                    fleet_size,
+                    settings.max_hours_warning_threshold_multiplier,
+                )
+
+        if allow_hours_mode and req_hours > 0 and avg_hours > 0:
+            requested_train_count = int(ceil(req_hours / avg_hours))
+        elif requested_train_count == 0 and req_hours > 0:
+            requested_train_count = max(0, int(req_hours))
+
+        request.required_service_hours = req_hours
+
         optimizer = TrainInductionOptimizer()
-        optimization_result = await optimizer.optimize(validated_trainsets, request)
-        
-        # Stabling Geometry Optimization (minimize shunting & turn-out time)
+        optimization_result = await optimizer.optimize(trainsets_data, request)
+
+        granted_train_count = sum(1 for d in optimization_result if d.decision == "INDUCT")
+        eligible_train_count = len(optimization_result)
+
         stabling_optimizer = StablingGeometryOptimizer()
         stabling_geometry = await stabling_optimizer.optimize_stabling_geometry(
-            validated_trainsets, [decision.dict() for decision in optimization_result]
+            trainsets_data, [decision.dict() for decision in optimization_result]
         )
-        
-        # Skip Redis caching for now
-        
-        # Store optimization history in MongoDB
-        background_tasks.add_task(store_optimization_history, request, optimization_result)
-        
-        # Write metrics to InfluxDB
+
+        efficiency_metrics = stabling_geometry.get("efficiency_metrics", {})
+        overall_efficiency = efficiency_metrics.get("overall_efficiency")
+        if overall_efficiency is not None:
+            stabling_geometry["efficiency_improvement"] = round(float(overall_efficiency) * 100, 2)
+        else:
+            stabling_geometry["efficiency_improvement"] = 0.0
+
+        optimized_layout = stabling_geometry.get("optimized_layout", {})
+        total_positions = sum(
+            len(depot_data.get("bay_assignments", {})) for depot_data in optimized_layout.values()
+        )
+        stabling_geometry["total_optimized_positions"] = total_positions
+
+        # Persist decisions immediately so downstream stabling/shunting calls have fresh data
+        await store_optimization_history(request, optimization_result)
         background_tasks.add_task(write_optimization_metrics, optimization_result)
-        
-        logger.info(f"Optimization completed: {len(optimization_result)} decisions")
-        return optimization_result
-    
+
+        # Diagnostics block exposed to both API response and snapshot
+        diagnostics: Dict[str, Any] = {
+            "requested_service_hours": req_hours,
+            "avg_hours_per_train": avg_hours,
+            "requested_train_count": requested_train_count,
+            "eligible_train_count": eligible_train_count,
+            "granted_train_count": granted_train_count,
+        }
+
+        try:
+            sim_dir = Path(cfg.get("SIMULATION_SAVE_DIR", "backend/simulation_runs"))
+            sim_dir.mkdir(parents=True, exist_ok=True)
+            snapshot_payload = {
+                "optimization_id": str(uuid.uuid4()),
+                "timestamp": datetime.utcnow().isoformat(),
+                "diagnostics": diagnostics,
+                "decisions": [d.dict() for d in optimization_result],
+            }
+            out_path = sim_dir / f"optimization_{snapshot_payload['optimization_id']}.json"
+            with out_path.open("w", encoding="utf-8") as f:
+                json.dump(snapshot_payload, f, indent=2, default=str)
+            logger.info("Saved optimization snapshot to %s", out_path)
+        except Exception as e:
+            logger.warning("Failed to write optimization snapshot: %s", e)
+
+        note_parts: List[str] = []
+        if req_hours > 0 and avg_hours > 0:
+            note_parts.append(
+                f"Requested {req_hours:.1f} service hours \u2192 approximately "
+                f"{requested_train_count} trains (avg {avg_hours:.1f} hrs/train)."
+            )
+
+        if requested_train_count and eligible_train_count and requested_train_count > eligible_train_count:
+            note_parts.append(
+                f"Only {eligible_train_count} eligible trains available; "
+                f"optimization granted {granted_train_count} trains."
+            )
+        elif requested_train_count and granted_train_count < requested_train_count:
+            note_parts.append(
+                f"Optimization granted {granted_train_count} trains, "
+                f"which is fewer than the requested {requested_train_count}."
+            )
+
+        note = " ".join(note_parts) if note_parts else None
+
+        logger.info(
+            "Optimization diagnostics: req_hours=%.2f avg_hours=%.2f "
+            "requested_train_count=%d eligible_train_count=%d granted_train_count=%d",
+            req_hours,
+            avg_hours,
+            requested_train_count,
+            eligible_train_count,
+            granted_train_count,
+        )
+
+        response: Dict[str, Any] = {
+            "requested_service_hours": req_hours,
+            "requested_train_count": requested_train_count,
+            "eligible_train_count": eligible_train_count,
+            "granted_train_count": granted_train_count,
+            "note": note,
+            "diagnostics": diagnostics,
+            "decisions": [d.dict() for d in optimization_result],
+            "stabling_geometry": stabling_geometry,
+        }
+
+        return response
+
     except Exception as e:
-        logger.error(f"Optimization failed: {e}")
+        logger.error(f"Optimization failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
 
 @router.get("/constraints/check")
@@ -674,24 +786,53 @@ async def get_latest_ranked_list():
 async def get_stabling_geometry_optimization():
     """Get optimized stabling geometry to minimize shunting and turn-out time"""
     try:
-        # Directly compute optimization (Redis disabled)
+        # Load current trainsets
         collection = await cloud_db_manager.get_collection("trainsets")
         cursor = collection.find({})
-        trainsets_data = []
+        trainsets_data: List[Dict[str, Any]] = []
         
         async for trainset_doc in cursor:
-            trainset_doc.pop('_id', None)
+            trainset_doc.pop("_id", None)
             trainsets_data.append(trainset_doc)
         
         if not trainsets_data:
             raise HTTPException(status_code=404, detail="No trainsets found")
-        
-        # Run stabling geometry optimization
+
+        # Retrieve latest optimization decisions (DB first, then history)
+        decisions: Optional[List[Dict[str, Any]]] = await get_latest_decisions()
+        if not decisions:
+            decisions = await get_decisions_from_history()
+
+        if not decisions:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "No optimization decisions available. Run optimization first.",
+                    "code": "no_induction_decisions",
+                },
+            )
+
+        # Run stabling geometry optimization using the latest decisions
         stabling_optimizer = StablingGeometryOptimizer()
         stabling_geometry = await stabling_optimizer.optimize_stabling_geometry(
-            trainsets_data, []
+            trainsets_data, decisions
         )
-        
+
+        efficiency_metrics = stabling_geometry.get("efficiency_metrics", {})
+        overall_efficiency = efficiency_metrics.get("overall_efficiency")
+        if overall_efficiency is not None:
+            stabling_geometry["efficiency_improvement"] = round(
+                float(overall_efficiency) * 100, 2
+            )
+        else:
+            stabling_geometry["efficiency_improvement"] = 0.0
+
+        optimized_layout = stabling_geometry.get("optimized_layout", {})
+        total_positions = sum(
+            len(depot_data.get("bay_assignments", {})) for depot_data in optimized_layout.values()
+        )
+        stabling_geometry["total_optimized_positions"] = total_positions
+
         return stabling_geometry
         
     except Exception as e:
@@ -702,32 +843,63 @@ async def get_stabling_geometry_optimization():
 async def get_shunting_schedule():
     """Get detailed shunting schedule for operations team"""
     try:
-        # Compute stabling geometry on the fly (Redis disabled)
+        # Load current trainsets
         collection = await cloud_db_manager.get_collection("trainsets")
         cursor = collection.find({})
-        trainsets_data = []
+        trainsets_data: List[Dict[str, Any]] = []
+
         async for trainset_doc in cursor:
-            trainset_doc.pop('_id', None)
+            trainset_doc.pop("_id", None)
             trainsets_data.append(trainset_doc)
+
         if not trainsets_data:
             raise HTTPException(status_code=404, detail="No trainsets found")
+
+        # Reuse latest optimization decisions (same strategy as stabling-geometry)
+        decisions: Optional[List[Dict[str, Any]]] = await get_latest_decisions()
+        if not decisions:
+            decisions = await get_decisions_from_history()
+
+        if not decisions:
+            raise HTTPException(
+                status_code=400,
+                detail={
+                    "error": "No optimization decisions available. Run optimization first.",
+                    "code": "no_induction_decisions",
+                },
+            )
+
         stabling_optimizer = StablingGeometryOptimizer()
-        stabling_data = await stabling_optimizer.optimize_stabling_geometry(trainsets_data, [])
-        
+        stabling_data = await stabling_optimizer.optimize_stabling_geometry(
+            trainsets_data, decisions
+        )
+
         # Generate shunting schedule
-        shunting_schedule = await stabling_optimizer.get_shunting_schedule(stabling_data["optimized_layout"])
-        
+        shunting_schedule = await stabling_optimizer.get_shunting_schedule(
+            stabling_data.get("optimized_layout", {})
+        )
+
+        total_time = sum(
+            op.get("estimated_time", 0)
+            for op in shunting_schedule
+            if isinstance(op.get("estimated_time"), (int, float))
+        )
+
         return {
             "shunting_schedule": shunting_schedule,
             "total_operations": len(shunting_schedule),
-            "estimated_total_time": sum(
-                int(op["estimated_duration"].split()[0]) for op in shunting_schedule
-            ),
+            "estimated_total_time": int(total_time),
             "crew_requirements": {
-                "high_complexity": len([op for op in shunting_schedule if op["complexity"] == "HIGH"]),
-                "medium_complexity": len([op for op in shunting_schedule if op["complexity"] == "MEDIUM"]),
-                "low_complexity": len([op for op in shunting_schedule if op["complexity"] == "LOW"])
-            }
+                "high_complexity": len(
+                    [op for op in shunting_schedule if op.get("complexity") == "HIGH"]
+                ),
+                "medium_complexity": len(
+                    [op for op in shunting_schedule if op.get("complexity") == "MEDIUM"]
+                ),
+                "low_complexity": len(
+                    [op for op in shunting_schedule if op.get("complexity") == "LOW"]
+                ),
+            },
         }
         
     except Exception as e:

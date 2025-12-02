@@ -56,7 +56,14 @@ class OptimizationWeights(BaseModel):
 
 class OptimizationRequest(BaseModel):
     target_date: datetime = Field(default_factory=datetime.utcnow)
-    required_service_hours: int = 14
+    required_service_hours: Optional[float] = Field(
+        14,
+        description="Preferred request format (hours). Converted to train count using avg_hours_per_train.",
+    )
+    required_service_count: Optional[int] = Field(
+        default=None,
+        description="Backward compatibility: explicit train count request. Overrides hours if provided.",
+    )
     override_constraints: Optional[Dict[str, Any]] = None
     weights: Optional[OptimizationWeights] = Field(
         default=None,

@@ -116,10 +116,10 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       className={`${getNavClass(item.url)} transition-all duration-200 ${
-                        isCollapsed ? "h-10 w-10 px-0 justify-center" : ""
+                        isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
                       }`}
                     >
-                      <item.icon className={isCollapsed ? "h-5 w-5" : "h-4 w-4"} />
+                      <item.icon className={isCollapsed ? "!h-4 !w-4 flex-shrink-0" : "h-4 w-4 flex-shrink-0"} />
                       {!isCollapsed && (
                         <>
                           <span>{item.title}</span>
@@ -151,10 +151,10 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       className={`${getNavClass(item.url)} transition-all duration-200 ${
-                        isCollapsed ? "h-10 w-10 px-0 justify-center" : ""
+                        isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
                       }`}
                     >
-                      <item.icon className={isCollapsed ? "h-5 w-5" : "h-4 w-4"} />
+                      <item.icon className={isCollapsed ? "!h-4 !w-4 flex-shrink-0" : "h-4 w-4 flex-shrink-0"} />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -177,10 +177,10 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       className={`${getNavClass(item.url)} transition-all duration-200 ${
-                        isCollapsed ? "h-10 w-10 px-0 justify-center" : ""
+                        isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
                       }`}
                     >
-                      <item.icon className={isCollapsed ? "h-5 w-5" : "h-4 w-4"} />
+                      <item.icon className={isCollapsed ? "!h-4 !w-4 flex-shrink-0" : "h-4 w-4 flex-shrink-0"} />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>

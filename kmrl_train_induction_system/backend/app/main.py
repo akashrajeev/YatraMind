@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.api import trainsets, optimization, dashboard, ingestion, assignments, reports, auth
+from app.api import trainsets, optimization, dashboard, ingestion, assignments, reports, auth, simulation
 from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -38,9 +38,12 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Initialize Socket.IO (temporarily disabled for compatibility)
+# Socket.IO for real-time updates (OPTIONAL - currently disabled)
+# To enable: Set sio = socketio.AsyncServer() and configure SocketManager
+# Note: Frontend may use polling as fallback if Socket.IO is unavailable
 sio = None
 socket_manager = None
+
 # GZip for responses
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
@@ -70,10 +73,12 @@ app.include_router(ingestion.router, prefix="/api/ingestion", tags=["Data Ingest
 app.include_router(assignments.router, prefix="/api/v1/assignments", tags=["Assignments"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(simulation.router, prefix="/api/simulation", tags=["Simulation"])
 
 scheduler: AsyncIOScheduler | None = None
 
-# Socket.IO event handlers
+# Socket.IO event handlers (OPTIONAL - only active if sio is configured)
+# These handlers are defined but won't execute unless Socket.IO is enabled above
 if _HAS_SOCKETIO and sio:
     @sio.event
     async def connect(sid, environ):
@@ -100,8 +105,9 @@ if _HAS_SOCKETIO and sio:
         sio.leave_room(sid, room)
         await sio.emit("left_room", {"room": room}, room=sid)
 
-# Global socket instance for use in other modules
+# Global socket instance for use in other modules (returns None if Socket.IO disabled)
 def get_socket():
+    """Get Socket.IO instance if available, None otherwise"""
     return sio if _HAS_SOCKETIO else None
 
 @app.on_event("startup")
@@ -109,7 +115,8 @@ async def startup_event():
     """Initialize cloud database connections on startup"""
     try:
         logger.info("Starting KMRL Train Induction System...")
-        # Connect only to MongoDB and InfluxDB for now (skip Redis/MQTT)
+        # Connect to required databases (MongoDB and InfluxDB)
+        # Note: Redis and MQTT are optional components - configure if needed
         await cloud_db_manager.connect_mongodb()
         await cloud_db_manager.connect_influxdb()
         logger.info("MongoDB and InfluxDB connections established")

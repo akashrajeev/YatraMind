@@ -1,4 +1,18 @@
 # backend/app/services/solver.py
+"""
+CP-SAT Solver for What-If Simulation Scenarios
+
+NOTE: This is a separate optimization system used ONLY for the /simulate endpoint.
+The main production optimization uses TrainInductionOptimizer in optimizer.py.
+
+This solver uses CP-SAT (Constraint Programming) which is better suited for
+scenario testing and what-if analysis, while the main optimizer uses linear
+programming which is optimized for production runs.
+
+Keep both systems:
+- TrainInductionOptimizer: Production optimization (tiered constraint hierarchy)
+- RoleAssignmentSolver: Simulation/what-if scenarios (CP-SAT)
+"""
 from __future__ import annotations
 
 from typing import Dict, Any, List, Tuple
@@ -8,6 +22,7 @@ from ortools.sat.python import cp_model
 
 @dataclass
 class SolverWeights:
+    """Weights for simulation solver (different from production optimizer)"""
     readiness: float = 0.35
     reliability: float = 0.30
     branding: float = 0.20
@@ -16,8 +31,13 @@ class SolverWeights:
 
 
 class RoleAssignmentSolver:
-    """Builds and solves a CP-SAT model for rake role assignment.
-
+    """CP-SAT solver for what-if simulation scenarios.
+    
+    This is used ONLY for the /api/optimization/simulate endpoint to test
+    different scenarios (exclude trains, force induct, adjust weights).
+    
+    For production optimization, use TrainInductionOptimizer instead.
+    
     Decision variables:
       x[r, role] in {0,1}, role in {service, standby, IBL}
       Optional: y[r, bay] if stabling used (not fully implemented here)

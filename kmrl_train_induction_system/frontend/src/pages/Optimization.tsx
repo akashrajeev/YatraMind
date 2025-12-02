@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { optimizationApi } from "@/services/api";
+import { getBaselineResult, getScenarioResult } from "@/utils/simulation";
+import { DetailedResults } from "@/components/simulation/DetailedResults";
 import { 
   Brain, 
   Play, 
@@ -16,22 +18,56 @@ import {
   AlertTriangle,
   CheckCircle,
   Clock,
-  TrendingUp,
   Download,
-  Upload,
   RefreshCw,
   Train
 } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+
+type OptimizationParamsState = {
+  target_date: string;
+  required_service_hours: number;
+};
+
+type SimulationParamsState = {
+  exclude_trainsets: string;
+  force_induct: string;
+  required_service_count: number;
+  w_readiness: number;
+  w_reliability: number;
+  w_branding: number;
+  w_shunt: number;
+  w_mileage_balance: number;
+};
+
+type OptimizationDiagnostics = {
+  requested_service_hours?: number;
+  requested_train_count?: number;
+  eligible_train_count?: number;
+  granted_train_count?: number;
+  avg_hours_per_train?: number;
+};
+
+const DEFAULT_HOURS_PER_TRAIN = 12;
+
+const parseNumericInput = (value: string, fallback: number) => {
+  const parsed = parseFloat(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const splitCommaList = (value: string) =>
+  value
+    .split(",")
+    .map((token) => token.trim())
+    .filter(Boolean);
 
 const Optimization = () => {
-  const [optimizationParams, setOptimizationParams] = useState({
+  const [optimizationParams, setOptimizationParams] = useState<OptimizationParamsState>({
     target_date: new Date().toISOString().split('T')[0],
-    required_service_hours: 14,
-    constraints: {}
+    required_service_hours: 14
   });
 
-  const [simulationParams, setSimulationParams] = useState({
+  const [simulationParams, setSimulationParams] = useState<SimulationParamsState>({
     exclude_trainsets: "",
     force_induct: "",
     required_service_count: 14,
@@ -42,7 +78,10 @@ const Optimization = () => {
     w_mileage_balance: 0.05
   });
   const [simulationResults, setSimulationResults] = useState<any>(null);
+  const [simulationParamsUsed, setSimulationParamsUsed] = useState<any>(null);
   const [showSimulationResults, setShowSimulationResults] = useState(false);
+  const [optimizationDiagnostics, setOptimizationDiagnostics] = useState<OptimizationDiagnostics | null>(null);
+  const [optimizationNote, setOptimizationNote] = useState<string | null>(null);
 
   const queryClient = useQueryClient();
 
@@ -58,31 +97,157 @@ const Optimization = () => {
     queryFn: () => optimizationApi.getLatest().then(res => res.data),
   });
 
-  const { data: stablingGeometry } = useQuery({
+  const { data: stablingGeometry, error: stablingError } = useQuery({
     queryKey: ['optimization-stabling'],
     queryFn: () => optimizationApi.getStablingGeometry().then(res => res.data),
+    retry: 0,
   });
 
-  const { data: shuntingSchedule } = useQuery({
+  const { data: shuntingSchedule, error: shuntingError } = useQuery({
     queryKey: ['optimization-shunting'],
     queryFn: () => optimizationApi.getShuntingSchedule().then(res => res.data),
+    retry: 0,
   });
+
+  const safeLatestDecisions = useMemo(() => {
+    if (!latestOptimization) {
+      return [];
+    }
+    if (Array.isArray(latestOptimization)) {
+      return latestOptimization;
+    }
+    if (Array.isArray(latestOptimization?.decisions)) {
+      return latestOptimization.decisions;
+    }
+    return [];
+  }, [latestOptimization]);
+
+  const handleRefresh = useCallback(async () => {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['optimization-constraints'] }),
+      queryClient.invalidateQueries({ queryKey: ['optimization-latest'] }),
+      queryClient.invalidateQueries({ queryKey: ['optimization-stabling'] }),
+      queryClient.invalidateQueries({ queryKey: ['optimization-shunting'] }),
+    ]);
+  }, [queryClient]);
+
+  // Transform frontend parameters to backend scenario format
+  const transformSimulationParams = useCallback((params: SimulationParamsState) => {
+    const scenario: Record<string, any> = {
+      required_service_hours: params.required_service_count,
+    };
+
+    const forced = splitCommaList(params.force_induct);
+    if (forced.length) {
+      scenario.force_decisions = forced.reduce((acc: Record<string, string>, id: string) => {
+        acc[id] = "INDUCT";
+        return acc;
+      }, {});
+    }
+
+    const excluded = splitCommaList(params.exclude_trainsets);
+    if (excluded.length) {
+      scenario.override_train_attributes = excluded.reduce((acc: Record<string, any>, id: string) => {
+        acc[id] = {
+          "fitness_certificates.rolling_stock.status": "EXPIRED"
+        };
+        return acc;
+      }, {});
+    }
+
+    scenario.weights = {
+      readiness: params.w_readiness || 0.35,
+      reliability: params.w_reliability || 0.30,
+      branding: params.w_branding || 0.20,
+      shunt: params.w_shunt || 0.10,
+      mileage_balance: params.w_mileage_balance || 0.05
+    };
+
+    return scenario;
+  }, []);
 
   // Mutations
   const runOptimizationMutation = useMutation({
-    mutationFn: optimizationApi.runOptimization,
-    onSuccess: () => {
-      queryClient.invalidateQueries(['optimization-latest']);
-      queryClient.invalidateQueries(['optimization-stabling']);
-      queryClient.invalidateQueries(['optimization-shunting']);
+    mutationFn: async () => {
+      const hours = Number(optimizationParams.required_service_hours);
+      if (Number.isNaN(hours)) {
+        throw new Error("Required Service Hours must be a valid number.");
+      }
+      if (hours < 0 || hours > 10000) {
+        throw new Error("Required Service Hours must be between 0 and 10\u202f000.");
+      }
+
+      const payload = {
+        target_date: new Date(optimizationParams.target_date).toISOString(),
+        required_service_hours: hours || undefined,
+      };
+
+      const res = await optimizationApi.runOptimization(payload);
+      return res.data;
+    },
+    onSuccess: async (data) => {
+      const normalizedDiagnostics: OptimizationDiagnostics | null = (() => {
+        const diagSource = data?.diagnostics ?? data;
+        if (!diagSource || typeof diagSource !== "object") {
+          return null;
+        }
+        const fallback: OptimizationDiagnostics = {
+          requested_service_hours: diagSource.requested_service_hours,
+          requested_train_count: diagSource.requested_train_count,
+          eligible_train_count: diagSource.eligible_train_count,
+          granted_train_count: diagSource.granted_train_count,
+          avg_hours_per_train: diagSource.avg_hours_per_train ?? DEFAULT_HOURS_PER_TRAIN,
+        };
+        const hasValues = Object.values(fallback).some(
+          (value) => typeof value === "number" && Number.isFinite(value)
+        );
+        return hasValues ? fallback : null;
+      })();
+
+      setOptimizationDiagnostics(normalizedDiagnostics);
+      setOptimizationNote(data?.note || data?.diagnostics?.note || null);
+      await queryClient.invalidateQueries({ queryKey: ['optimization-latest'] });
+      await queryClient.invalidateQueries({ queryKey: ['optimization-stabling'] });
+      await queryClient.invalidateQueries({ queryKey: ['optimization-shunting'] });
+
+      try {
+        const [stablingRes, shuntingRes] = await Promise.all([
+          optimizationApi.getStablingGeometry(),
+          optimizationApi.getShuntingSchedule(),
+        ]);
+        queryClient.setQueryData(['optimization-stabling'], stablingRes.data);
+        queryClient.setQueryData(['optimization-shunting'], shuntingRes.data);
+      } catch (err) {
+        console.error("Failed to refresh stabling/shunting after optimization", err);
+      }
+    },
+    onError: (error: any) => {
+      const message =
+        error?.message ||
+        error?.response?.data?.detail ||
+        "Optimization failed. Please check inputs and try again.";
+      alert(message);
     },
   });
 
   const runSimulationMutation = useMutation({
-    mutationFn: optimizationApi.simulate,
-    onSuccess: (data) => {
-      setSimulationResults(data.data);
+    mutationFn: (params: SimulationParamsState) => {
+      const scenario = transformSimulationParams(params);
+      return optimizationApi.runSimulation(scenario);
+    },
+    onSuccess: (response, variables) => {
+      const data = response?.data || response;
+      if (!data) {
+        alert("Simulation completed but returned no data.");
+        return;
+      }
+      setSimulationResults(data);
+      setSimulationParamsUsed(variables);
       setShowSimulationResults(true);
+    },
+    onError: (error: any) => {
+      const errorMessage = error?.response?.data?.detail || error?.message || 'Simulation failed';
+      alert(errorMessage);
     },
   });
 
@@ -107,11 +272,11 @@ const Optimization = () => {
           <p className="text-muted-foreground">Advanced optimization and simulation tools</p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline">
+          <Button variant="outline" onClick={handleRefresh} disabled={runOptimizationMutation.isPending}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
-          <Button variant="industrial">
+          <Button variant="industrial" onClick={() => window.print()}>
             <Download className="h-4 w-4 mr-2" />
             Export Results
           </Button>
@@ -198,15 +363,22 @@ const Optimization = () => {
                     id="service-hours"
                     type="number"
                     value={optimizationParams.required_service_hours}
-                    onChange={(e) => setOptimizationParams(prev => ({
-                      ...prev,
-                      required_service_hours: parseInt(e.target.value) || 14
-                    }))}
+                    onChange={(e) => {
+                      const value = parseNumericInput(e.target.value, 0);
+                      setOptimizationParams(prev => ({
+                        ...prev,
+                        required_service_hours: value
+                      }));
+                    }}
                   />
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Helper: hours are converted to trains using a configurable average (default {DEFAULT_HOURS_PER_TRAIN} hrs/train).
+                    The backend returns the exact conversion and granted trains.
+                  </p>
                 </div>
               </div>
               <Button 
-                onClick={() => runOptimizationMutation.mutate(optimizationParams)}
+                onClick={() => runOptimizationMutation.mutate()}
                 disabled={runOptimizationMutation.isPending}
                 className="w-full"
                 size="lg"
@@ -226,8 +398,58 @@ const Optimization = () => {
             </CardContent>
           </Card>
 
+          {optimizationDiagnostics && (() => {
+            const d = optimizationDiagnostics;
+            const requested = Number(d.requested_train_count ?? 0);
+            const granted = Number(d.granted_train_count ?? 0);
+            const eligible = Number(d.eligible_train_count ?? 0);
+
+            if (!requested || granted >= requested) {
+              return null;
+            }
+
+            const requestedHours =
+              typeof d.requested_service_hours === "number"
+                ? d.requested_service_hours.toFixed(1)
+                : d.requested_service_hours;
+
+            return (
+              <Card className="mt-4 border-blue-300 bg-blue-50">
+                <CardContent className="py-3 text-sm text-blue-900 space-y-1">
+                  <div>
+                    Requested{" "}
+                    <span className="font-semibold">
+                      {requestedHours ?? "—"}
+                    </span>{" "}
+                    service hours → approximately{" "}
+                    <span className="font-semibold">{requested}</span> trains
+                    (avg{" "}
+                    <span className="font-semibold">
+                      {d.avg_hours_per_train ?? DEFAULT_HOURS_PER_TRAIN}
+                    </span>{" "}
+                    hrs/train).
+                  </div>
+                  <div>
+                    Only{" "}
+                    <span className="font-semibold">{eligible}</span> trains
+                    were eligible; optimization granted{" "}
+                    <span className="font-semibold">{granted}</span> trains.
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {optimizationNote && (
+            <Card className="mt-4 border-yellow-300 bg-yellow-50">
+              <CardContent className="py-3 text-sm text-yellow-900">
+                {optimizationNote}
+              </CardContent>
+            </Card>
+          )}
+
           {/* Latest Results */}
-          {latestOptimization && (
+          {!!safeLatestDecisions.length && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -237,32 +459,45 @@ const Optimization = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {latestOptimization.map((decision: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-3 border border-border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <Train className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{decision.trainset_id}</span>
-                        <Badge variant={decision.decision === "INDUCT" ? "success" : "secondary"}>
-                          {decision.decision}
-                        </Badge>
+                  {safeLatestDecisions.map((decision: any, index: number) => {
+                    const confidence =
+                      typeof decision?.confidence_score === "number"
+                        ? Math.round(decision.confidence_score * 100)
+                        : null;
+                    const badgeVariant =
+                      decision?.decision === "INDUCT"
+                        ? "success"
+                        : decision?.decision === "STANDBY"
+                        ? "secondary"
+                        : "destructive";
+
+                    return (
+                      <div key={index} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <Train className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-medium">{decision.trainset_id || `Train ${index + 1}`}</span>
+                          <Badge variant={badgeVariant as any}>
+                            {decision.decision ?? "—"}
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm text-muted-foreground">
+                            Confidence: {confidence !== null ? `${confidence}%` : "N/A"}
+                          </span>
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => explainMutation.mutate({
+                              trainsetId: decision.trainset_id,
+                              decision: decision.decision
+                            })}
+                          >
+                            Explain
+                          </Button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm text-muted-foreground">
-                          Confidence: {Math.round(decision.confidence_score * 100)}%
-                        </span>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => explainMutation.mutate({
-                            trainsetId: decision.trainset_id,
-                            decision: decision.decision
-                          })}
-                        >
-                          Explain
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
@@ -312,7 +547,7 @@ const Optimization = () => {
                     value={simulationParams.required_service_count}
                     onChange={(e) => setSimulationParams(prev => ({
                       ...prev,
-                      required_service_count: parseInt(e.target.value) || 14
+                      required_service_count: Math.max(0, parseNumericInput(e.target.value, 14))
                     }))}
                   />
                 </div>
@@ -410,44 +645,86 @@ const Optimization = () => {
             </CardContent>
           </Card>
 
-          {/* Simulation Results */}
-          {runSimulationMutation.data && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Simulation Results</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-foreground">
-                        {runSimulationMutation.data.results?.total_score || 0}
+          {simulationResults && (() => {
+            const simulationData = simulationResults;
+            const baselineResult = getBaselineResult(simulationData);
+            const scenarioResult = getScenarioResult(simulationData);
+
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Simulation Results</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {baselineResult && scenarioResult && (
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div className="border rounded-lg p-4">
+                          <h3 className="font-semibold mb-2">Baseline</h3>
+                          <div className="space-y-2 text-sm">
+                            <div>Inducted: {baselineResult.kpis?.num_inducted_trains || 0}</div>
+                            <div>Shunting Time: {baselineResult.kpis?.total_shunting_time || 0} min</div>
+                            <div>Efficiency: {baselineResult.kpis?.efficiency_improvement || 0}%</div>
+                          </div>
+                        </div>
+                        <div className="border rounded-lg p-4">
+                          <h3 className="font-semibold mb-2">Scenario</h3>
+                          <div className="space-y-2 text-sm">
+                            <div>Inducted: {scenarioResult.kpis?.num_inducted_trains || 0}</div>
+                            <div>Shunting Time: {scenarioResult.kpis?.total_shunting_time || 0} min</div>
+                            <div>Efficiency: {scenarioResult.kpis?.efficiency_improvement || 0}%</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Total Score</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-success">
-                        {runSimulationMutation.data.results?.inducted_count || 0}
+                    )}
+
+                    {simulationData.deltas && (
+                      <div className="border rounded-lg p-4">
+                        <h3 className="font-semibold mb-2">Changes (Scenario - Baseline)</h3>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center">
+                            <div className={`text-2xl font-bold ${simulationData.deltas.num_inducted_trains >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              {simulationData.deltas.num_inducted_trains >= 0 ? '+' : ''}{simulationData.deltas.num_inducted_trains || 0}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Inducted</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-2xl font-bold ${simulationData.deltas.total_shunting_time <= 0 ? 'text-success' : 'text-destructive'}`}>
+                              {simulationData.deltas.total_shunting_time >= 0 ? '+' : ''}{simulationData.deltas.total_shunting_time || 0}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Shunting Time (min)</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-2xl font-bold ${simulationData.deltas.efficiency_improvement >= 0 ? 'text-success' : 'text-destructive'}`}>
+                              {simulationData.deltas.efficiency_improvement >= 0 ? '+' : ''}{(simulationData.deltas.efficiency_improvement || 0).toFixed(2)}%
+                            </div>
+                            <div className="text-sm text-muted-foreground">Efficiency</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-2xl font-bold ${simulationData.deltas.num_unassigned <= 0 ? 'text-success' : 'text-destructive'}`}>
+                              {simulationData.deltas.num_unassigned >= 0 ? '+' : ''}{simulationData.deltas.num_unassigned || 0}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Unassigned</div>
+                          </div>
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Inducted</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-warning">
-                        {runSimulationMutation.data.results?.standby_count || 0}
+                    )}
+
+                    {simulationData.explain_log && simulationData.explain_log.length > 0 && (
+                      <div className="border rounded-lg p-4">
+                        <h3 className="font-semibold mb-2">Explanation</h3>
+                        <ul className="list-disc list-inside space-y-1 text-sm">
+                          {simulationData.explain_log.map((log: string, idx: number) => (
+                            <li key={idx}>{log}</li>
+                          ))}
+                        </ul>
                       </div>
-                      <div className="text-sm text-muted-foreground">Standby</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-destructive">
-                        {runSimulationMutation.data.results?.maintenance_count || 0}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Maintenance</div>
-                    </div>
+                    )}
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                </CardContent>
+              </Card>
+            );
+          })()}
         </TabsContent>
 
         {/* Stabling Geometry */}
@@ -460,12 +737,44 @@ const Optimization = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {stablingGeometry ? (
+              {(() => {
+                const detail = (stablingError as any)?.response?.data?.detail || (stablingError as any)?.response?.data;
+                const noDecisions = detail?.code === 'no_induction_decisions';
+
+                if (noDecisions) {
+                  return (
+                    <div className="text-center py-8">
+                      <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">
+                        No optimization decisions found. Please run AI/ML Optimization first.
+                      </p>
+                    </div>
+                  );
+                }
+
+                if (!stablingGeometry) {
+                  return (
+                    <div className="text-center py-8">
+                      <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No stabling geometry data available</p>
+                    </div>
+                  );
+                }
+
+                return (
                 <div className="space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="text-center">
                       <div className="text-2xl font-bold text-foreground">
-                        {stablingGeometry.optimized_layout?.length || 0}
+                        {stablingGeometry.total_optimized_positions ??
+                          (stablingGeometry.optimized_layout &&
+                            typeof stablingGeometry.optimized_layout === 'object'
+                            ? Object.values(stablingGeometry.optimized_layout).reduce(
+                                (total: number, depot: any) =>
+                                  total + Object.keys(depot?.bay_assignments || {}).length,
+                                0
+                              )
+                            : 0)}
                       </div>
                       <div className="text-sm text-muted-foreground">Optimized Positions</div>
                     </div>
@@ -483,12 +792,8 @@ const Optimization = () => {
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Settings className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No stabling geometry data available</p>
-                </div>
-              )}
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -503,41 +808,61 @@ const Optimization = () => {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {shuntingSchedule ? (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-foreground">
-                        {shuntingSchedule.total_operations || 0}
-                      </div>
-                      <div className="text-sm text-muted-foreground">Total Operations</div>
+              {(() => {
+                const detail = (shuntingError as any)?.response?.data?.detail || (shuntingError as any)?.response?.data;
+                const noDecisions = detail?.code === 'no_induction_decisions';
+
+                if (noDecisions) {
+                  return (
+                    <div className="text-center py-8">
+                      <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">
+                        No optimization decisions found. Please run AI/ML Optimization first to generate a shunting schedule.
+                      </p>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">
-                        {shuntingSchedule.estimated_total_time || 0} min
-                      </div>
-                      <div className="text-sm text-muted-foreground">Estimated Time</div>
+                  );
+                }
+
+                if (!shuntingSchedule) {
+                  return (
+                    <div className="text-center py-8">
+                      <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                      <p className="text-muted-foreground">No shunting schedule available</p>
                     </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-destructive">
-                        {shuntingSchedule.crew_requirements?.high_complexity || 0}
+                  );
+                }
+
+                return (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-foreground">
+                          {shuntingSchedule.total_operations || 0}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Total Operations</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">High Complexity</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-warning">
-                        {shuntingSchedule.crew_requirements?.medium_complexity || 0}
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">
+                          {shuntingSchedule.estimated_total_time || 0} min
+                        </div>
+                        <div className="text-sm text-muted-foreground">Estimated Time</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Medium Complexity</div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-destructive">
+                          {shuntingSchedule.crew_requirements?.high_complexity || 0}
+                        </div>
+                        <div className="text-sm text-muted-foreground">High Complexity</div>
+                      </div>
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-warning">
+                          {shuntingSchedule.crew_requirements?.medium_complexity || 0}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Medium Complexity</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Clock className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">No shunting schedule available</p>
-                </div>
-              )}
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
@@ -566,22 +891,22 @@ const Optimization = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Excluded Trainsets:</span>
-                      <span>{simulationResults.scenario?.excluded_trainsets?.join(', ') || 'None'}</span>
+                      <span>{simulationParamsUsed?.exclude_trainsets || 'None'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Forced Inductions:</span>
-                      <span>{simulationResults.scenario?.forced_inductions?.join(', ') || 'None'}</span>
+                      <span>{simulationParamsUsed?.force_induct || 'None'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Required Service Count:</span>
-                      <span>{simulationResults.scenario?.required_service_count}</span>
+                      <span>{simulationParamsUsed?.required_service_count || 'N/A'}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Weights:</span>
                       <span className="text-xs">
-                        R:{simulationResults.scenario?.weights?.readiness} 
-                        R:{simulationResults.scenario?.weights?.reliability}
-                        B:{simulationResults.scenario?.weights?.branding}
+                        {simulationParamsUsed 
+                          ? <>R:{simulationParamsUsed.w_readiness?.toFixed(2)} R:{simulationParamsUsed.w_reliability?.toFixed(2)} B:{simulationParamsUsed.w_branding?.toFixed(2)} S:{simulationParamsUsed.w_shunt?.toFixed(2)} M:{simulationParamsUsed.w_mileage_balance?.toFixed(2)}</>
+                          : 'N/A'}
                       </span>
                     </div>
                   </div>
@@ -592,63 +917,34 @@ const Optimization = () => {
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Total Decisions:</span>
-                      <span>{simulationResults.results?.length || 0}</span>
+                      <span>{getScenarioResult(simulationResults)?.decisions?.length || 0}</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Inducted:</span>
                       <span className="text-green-600">
-                        {simulationResults.results?.filter((r: any) => r.decision === 'INDUCT').length || 0}
+                        {getScenarioResult(simulationResults)?.kpis?.num_inducted_trains || 0}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Standby:</span>
                       <span className="text-yellow-600">
-                        {simulationResults.results?.filter((r: any) => r.decision === 'STANDBY').length || 0}
+                        {getScenarioResult(simulationResults)?.kpis?.num_standby_trains || 0}
                       </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Maintenance:</span>
                       <span className="text-red-600">
-                        {simulationResults.results?.filter((r: any) => r.decision === 'MAINTENANCE').length || 0}
+                        {getScenarioResult(simulationResults)?.kpis?.num_maintenance_trains || 0}
                       </span>
                     </div>
                   </div>
                 </div>
               </div>
 
-              <div>
-                <h3 className="font-semibold text-lg mb-3">Detailed Results</h3>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {simulationResults.results?.map((result: any, index: number) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-xs font-bold">
-                          {index + 1}
-                        </div>
-                        <span className="font-medium">{result.trainset_id}</span>
-                        <Badge variant={result.decision === 'INDUCT' ? 'success' : 'secondary'}>
-                          {result.decision}
-                        </Badge>
-                      </div>
-                      <div className="flex items-center gap-4 text-sm">
-                        <span>Score: {Math.round((result.score || 0) * 100)}%</span>
-                        <span>Confidence: {Math.round((result.confidence_score || 0) * 100)}%</span>
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => explainMutation.mutate({ 
-                            trainsetId: result.trainset_id, 
-                            decision: result.decision 
-                          })}
-                        >
-                          <Eye className="h-3 w-3 mr-1" />
-                          Explain
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <DetailedResults
+                results={getScenarioResult(simulationResults)?.decisions || []}
+                className="w-full"
+              />
 
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setShowSimulationResults(false)}>

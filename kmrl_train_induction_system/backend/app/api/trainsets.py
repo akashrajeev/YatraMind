@@ -145,7 +145,7 @@ async def get_trainset_fitness(trainset_id: str, _auth=Depends(require_api_key))
         raise HTTPException(status_code=500, detail=f"Fitness check error: {str(e)}")
 
 async def trigger_ml_feedback(trainset_id: str, update_data: dict):
-    """ML Feedback Loop (PyTorch + TensorFlow integration point)"""
+    """ML Feedback Loop (PyTorch integration point)"""
     try:
         # This would integrate with your ML models
         logger.info(f"ML feedback triggered for {trainset_id}")

@@ -1,0 +1,1012 @@
+{
+  "optimization_id": "36642435-aa1a-4940-81ac-02cdfef49d9b",
+  "timestamp": "2025-12-01T13:03:39.123066",
+  "diagnostics": {
+    "requested_service_hours": 8.0,
+    "avg_hours_per_train": 2.0,
+    "requested_train_count": 4,
+    "eligible_train_count": 25,
+    "granted_train_count": 4
+  },
+  "decisions": [
+    {
+      "trainset_id": "T-015",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "High branding obligation - wrapped train must enter service",
+        "No minor defects - optimal condition",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 1.0,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [
+        "High mileage - lower priority for service"
+      ],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-013",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "High branding obligation - wrapped train must enter service",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.99,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [
+        "High mileage - lower priority for service"
+      ],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-014",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "High branding obligation - wrapped train must enter service",
+        "Low mileage - good for fleet balancing",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.98,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.8,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-016",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "High branding obligation - wrapped train must enter service",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.95,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [
+        "High mileage - lower priority for service"
+      ],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.6,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-002",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.97,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.8,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-006",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.97,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.8,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-012",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.96,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 1.0,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-001",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.95,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.5,
+          "impact": "neutral"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-003",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.95,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.8,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-005",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.95,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.5,
+          "impact": "neutral"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-010",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.95,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.5,
+          "impact": "neutral"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-007",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.9400000000000001,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.6,
+          "impact": "positive"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 1.0,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-011",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.9400000000000001,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.6,
+          "impact": "positive"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.8,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-019",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.9199999999999999,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.6,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.5,
+          "impact": "neutral"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-020",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.9199999999999999,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.6,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.5,
+          "impact": "neutral"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-018",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.91,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.6,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.6,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.8,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-017",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.9,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.6,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.6,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.8,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-009",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.685,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.8,
+          "impact": "positive"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-008",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets",
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "score": 0.615626,
+      "top_reasons": [
+        "Safety compliance verified - all certificates valid",
+        "All department certificates valid and current",
+        "No critical job cards pending"
+      ],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.5,
+          "impact": "neutral"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-004",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance"
+      ],
+      "score": 0.0,
+      "top_reasons": [
+        "Mandatory branding commitment - high priority ad-wrap",
+        "No minor defects - optimal condition for service"
+      ],
+      "top_risks": [
+        "High mileage - lower priority for service"
+      ],
+      "violations": [],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 0.0,
+          "impact": "negative"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-021",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "1 critical job cards open"
+      ],
+      "score": 0.0,
+      "top_reasons": [
+        "Branding obligation - medium priority wrapped train"
+      ],
+      "top_risks": [
+        "Open critical job-card - safety compliance failure",
+        "High mileage - lower priority for service"
+      ],
+      "violations": [
+        "Open critical job-card"
+      ],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 0.0,
+          "impact": "negative"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.8,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-022",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "3 critical job cards open",
+        "Expired certificates: signalling"
+      ],
+      "score": 0.0,
+      "top_reasons": [
+        "Mandatory branding commitment - high priority ad-wrap"
+      ],
+      "top_risks": [
+        "signalling certificate expired - safety critical failure",
+        "Open critical job-card - safety compliance failure",
+        "High mileage - lower priority for service"
+      ],
+      "violations": [
+        "signalling certificate expired",
+        "Open critical job-card"
+      ],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 0.0,
+          "impact": "negative"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-023",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "3 critical job cards open",
+        "Expired certificates: rolling_stock"
+      ],
+      "score": 0.0,
+      "top_reasons": [],
+      "top_risks": [
+        "rolling_stock certificate expired - safety critical failure",
+        "Open critical job-card - safety compliance failure",
+        "High mileage - lower priority for service"
+      ],
+      "violations": [
+        "rolling_stock certificate expired",
+        "Open critical job-card"
+      ],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 0.0,
+          "impact": "negative"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.6,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-024",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "2 critical job cards open"
+      ],
+      "score": 0.0,
+      "top_reasons": [
+        "Branding commitment - low priority wrapped train"
+      ],
+      "top_risks": [
+        "Open critical job-card - safety compliance failure",
+        "High mileage - lower priority for service"
+      ],
+      "violations": [
+        "Open critical job-card",
+        "Mileage limit exceeded"
+      ],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 0.0,
+          "impact": "negative"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 0.6,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    },
+    {
+      "trainset_id": "T-025",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "2 critical job cards open"
+      ],
+      "score": 0.0,
+      "top_reasons": [
+        "Mandatory branding commitment - high priority ad-wrap"
+      ],
+      "top_risks": [
+        "Open critical job-card - safety compliance failure",
+        "High mileage - lower priority for service"
+      ],
+      "violations": [
+        "Open critical job-card"
+      ],
+      "shap_values": [
+        {
+          "name": "Safety Compliance",
+          "value": 0.0,
+          "impact": "negative"
+        },
+        {
+          "name": "Branding Obligation",
+          "value": 1.0,
+          "impact": "positive"
+        },
+        {
+          "name": "Defect Impact",
+          "value": 0.30000000000000004,
+          "impact": "negative"
+        },
+        {
+          "name": "Mileage Optimization",
+          "value": 0.3,
+          "impact": "negative"
+        }
+      ]
+    }
+  ]
+}
