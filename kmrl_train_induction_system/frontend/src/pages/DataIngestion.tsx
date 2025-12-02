@@ -46,85 +46,85 @@ const DataIngestion = () => {
   const ingestAllMutation = useMutation({
     mutationFn: ingestionApi.ingestAll,
     onSuccess: () => {
-      queryClient.invalidateQueries(['ingestion-status']);
+      queryClient.invalidateQueries({ queryKey: ['ingestion-status'] });
     },
   });
 
   const ingestMaximoMutation = useMutation({
     mutationFn: ingestionApi.ingestMaximo,
     onSuccess: () => {
-      queryClient.invalidateQueries(['ingestion-status']);
+      queryClient.invalidateQueries({ queryKey: ['ingestion-status'] });
     },
   });
 
   const ingestIoTMutation = useMutation({
     mutationFn: ingestionApi.ingestIoT,
     onSuccess: () => {
-      queryClient.invalidateQueries(['ingestion-status']);
+      queryClient.invalidateQueries({ queryKey: ['ingestion-status'] });
     },
   });
 
   const uploadTimeseriesMutation = useMutation({
     mutationFn: ingestionApi.uploadTimeseries,
     onSuccess: () => {
-      queryClient.invalidateQueries(['ingestion-status']);
-      queryClient.invalidateQueries(['trainsets']);
-      queryClient.invalidateQueries(['optimization']);
-      queryClient.invalidateQueries(['assignments']);
+      queryClient.invalidateQueries({ queryKey: ['ingestion-status'] });
+      queryClient.invalidateQueries({ queryKey: ['trainsets'] });
+      queryClient.invalidateQueries({ queryKey: ['optimization'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 
   const uploadFitnessMutation = useMutation({
     mutationFn: ingestionApi.uploadFitness,
     onSuccess: () => {
-      queryClient.invalidateQueries(['ingestion-status']);
-      queryClient.invalidateQueries(['trainsets']);
-      queryClient.invalidateQueries(['optimization']);
-      queryClient.invalidateQueries(['assignments']);
+      queryClient.invalidateQueries({ queryKey: ['ingestion-status'] });
+      queryClient.invalidateQueries({ queryKey: ['trainsets'] });
+      queryClient.invalidateQueries({ queryKey: ['optimization'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 
   const uploadBrandingMutation = useMutation({
     mutationFn: ingestionApi.uploadBranding,
     onSuccess: () => {
-      queryClient.invalidateQueries(['ingestion-status']);
-      queryClient.invalidateQueries(['trainsets']);
-      queryClient.invalidateQueries(['optimization']);
-      queryClient.invalidateQueries(['assignments']);
+      queryClient.invalidateQueries({ queryKey: ['ingestion-status'] });
+      queryClient.invalidateQueries({ queryKey: ['trainsets'] });
+      queryClient.invalidateQueries({ queryKey: ['optimization'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 
   const uploadDepotMutation = useMutation({
     mutationFn: ingestionApi.uploadDepot,
     onSuccess: () => {
-      queryClient.invalidateQueries(['ingestion-status']);
-      queryClient.invalidateQueries(['trainsets']);
-      queryClient.invalidateQueries(['optimization']);
-      queryClient.invalidateQueries(['assignments']);
+      queryClient.invalidateQueries({ queryKey: ['ingestion-status'] });
+      queryClient.invalidateQueries({ queryKey: ['trainsets'] });
+      queryClient.invalidateQueries({ queryKey: ['optimization'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 
   const startMQTTMutation = useMutation({
     mutationFn: ingestionApi.startMQTT,
     onSuccess: () => {
-      queryClient.invalidateQueries(['mqtt-status']);
+      queryClient.invalidateQueries({ queryKey: ['mqtt-status'] });
     },
   });
 
   const stopMQTTMutation = useMutation({
     mutationFn: ingestionApi.stopMQTT,
     onSuccess: () => {
-      queryClient.invalidateQueries(['mqtt-status']);
+      queryClient.invalidateQueries({ queryKey: ['mqtt-status'] });
     },
   });
 
   const ingestCleaningMutation = useMutation({
     mutationFn: ingestionApi.ingestCleaningGoogle,
     onSuccess: () => {
-      queryClient.invalidateQueries(['ingestion-status']);
-      queryClient.invalidateQueries(['trainsets']);
-      queryClient.invalidateQueries(['optimization']);
-      queryClient.invalidateQueries(['assignments']);
+      queryClient.invalidateQueries({ queryKey: ['ingestion-status'] });
+      queryClient.invalidateQueries({ queryKey: ['trainsets'] });
+      queryClient.invalidateQueries({ queryKey: ['optimization'] });
+      queryClient.invalidateQueries({ queryKey: ['assignments'] });
     },
   });
 
