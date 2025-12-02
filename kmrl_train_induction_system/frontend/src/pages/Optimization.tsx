@@ -8,12 +8,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { optimizationApi } from "@/services/api";
 import { getBaselineResult, getScenarioResult } from "@/utils/simulation";
 import { DetailedResults } from "@/components/simulation/DetailedResults";
-import { 
-  Brain, 
-  Play, 
-  Settings, 
-  BarChart3, 
-  Target, 
+import {
+  Brain,
+  Play,
+  Settings,
+  BarChart3,
+  Target,
   Zap,
   AlertTriangle,
   CheckCircle,
@@ -207,6 +207,7 @@ const Optimization = () => {
       setOptimizationDiagnostics(normalizedDiagnostics);
       setOptimizationNote(data?.note || data?.diagnostics?.note || null);
       await queryClient.invalidateQueries({ queryKey: ['optimization-latest'] });
+      await queryClient.invalidateQueries({ queryKey: ['optimization-constraints'] });
       await queryClient.invalidateQueries({ queryKey: ['optimization-stabling'] });
       await queryClient.invalidateQueries({ queryKey: ['optimization-shunting'] });
 
@@ -377,7 +378,7 @@ const Optimization = () => {
                   </p>
                 </div>
               </div>
-              <Button 
+              <Button
                 onClick={() => runOptimizationMutation.mutate()}
                 disabled={runOptimizationMutation.isPending}
                 className="w-full"
@@ -468,8 +469,8 @@ const Optimization = () => {
                       decision?.decision === "INDUCT"
                         ? "success"
                         : decision?.decision === "STANDBY"
-                        ? "secondary"
-                        : "destructive";
+                          ? "secondary"
+                          : "destructive";
 
                     return (
                       <div key={index} className="flex items-center justify-between p-3 border border-border rounded-lg">
@@ -484,8 +485,8 @@ const Optimization = () => {
                           <span className="text-sm text-muted-foreground">
                             Confidence: {confidence !== null ? `${confidence}%` : "N/A"}
                           </span>
-                          <Button 
-                            size="sm" 
+                          <Button
+                            size="sm"
                             variant="outline"
                             onClick={() => explainMutation.mutate({
                               trainsetId: decision.trainset_id,
@@ -624,7 +625,7 @@ const Optimization = () => {
                 </div>
               </div>
 
-              <Button 
+              <Button
                 onClick={() => runSimulationMutation.mutate(simulationParams)}
                 disabled={runSimulationMutation.isPending}
                 className="w-full"
@@ -762,36 +763,36 @@ const Optimization = () => {
                 }
 
                 return (
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-foreground">
-                        {stablingGeometry.total_optimized_positions ??
-                          (stablingGeometry.optimized_layout &&
-                            typeof stablingGeometry.optimized_layout === 'object'
-                            ? Object.values(stablingGeometry.optimized_layout).reduce(
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-foreground">
+                          {stablingGeometry.total_optimized_positions ??
+                            (stablingGeometry.optimized_layout &&
+                              typeof stablingGeometry.optimized_layout === 'object'
+                              ? Object.values(stablingGeometry.optimized_layout).reduce(
                                 (total: number, depot: any) =>
                                   total + Object.keys(depot?.bay_assignments || {}).length,
                                 0
                               )
-                            : 0)}
+                              : 0)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">Optimized Positions</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Optimized Positions</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-success">
-                        {stablingGeometry.total_shunting_time || 0} min
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-success">
+                          {stablingGeometry.total_shunting_time || 0} min
+                        </div>
+                        <div className="text-sm text-muted-foreground">Total Shunting Time</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Total Shunting Time</div>
-                    </div>
-                    <div className="text-center">
-                      <div className="text-2xl font-bold text-primary">
-                        {stablingGeometry.efficiency_improvement || 0}%
+                      <div className="text-center">
+                        <div className="text-2xl font-bold text-primary">
+                          {stablingGeometry.efficiency_improvement || 0}%
+                        </div>
+                        <div className="text-sm text-muted-foreground">Efficiency Improvement</div>
                       </div>
-                      <div className="text-sm text-muted-foreground">Efficiency Improvement</div>
                     </div>
                   </div>
-                </div>
                 );
               })()}
             </CardContent>
@@ -875,8 +876,8 @@ const Optimization = () => {
             <CardHeader>
               <div className="flex items-center justify-between">
                 <CardTitle className="text-xl">What-If Simulation Results</CardTitle>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => setShowSimulationResults(false)}
                 >
@@ -904,14 +905,14 @@ const Optimization = () => {
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Weights:</span>
                       <span className="text-xs">
-                        {simulationParamsUsed 
+                        {simulationParamsUsed
                           ? <>R:{simulationParamsUsed.w_readiness?.toFixed(2)} R:{simulationParamsUsed.w_reliability?.toFixed(2)} B:{simulationParamsUsed.w_branding?.toFixed(2)} S:{simulationParamsUsed.w_shunt?.toFixed(2)} M:{simulationParamsUsed.w_mileage_balance?.toFixed(2)}</>
                           : 'N/A'}
                       </span>
                     </div>
                   </div>
                 </div>
-                
+
                 <div>
                   <h3 className="font-semibold text-lg mb-3">Simulation Summary</h3>
                   <div className="space-y-2 text-sm">
@@ -968,8 +969,8 @@ const Optimization = () => {
                 <CardTitle className="text-xl">
                   AI Decision Explanation - {explanationData.trainset_id}
                 </CardTitle>
-                <Button 
-                  variant="ghost" 
+                <Button
+                  variant="ghost"
                   size="sm"
                   onClick={() => setShowExplanation(false)}
                 >
@@ -990,7 +991,7 @@ const Optimization = () => {
                     ))}
                   </ul>
                 </div>
-                
+
                 <div>
                   <h3 className="font-semibold text-lg mb-3 text-red-600">Risks & Violations</h3>
                   <ul className="space-y-2">
@@ -1019,11 +1020,10 @@ const Optimization = () => {
                         <span className="text-sm font-medium">{feature.name}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-sm">{feature.value}</span>
-                          <span className={`text-xs px-2 py-1 rounded ${
-                            feature.impact === 'positive' 
-                              ? 'bg-green-100 text-green-800' 
+                          <span className={`text-xs px-2 py-1 rounded ${feature.impact === 'positive'
+                              ? 'bg-green-100 text-green-800'
                               : 'bg-red-100 text-red-800'
-                          }`}>
+                            }`}>
                             {feature.impact === 'positive' ? '↑' : '↓'}
                           </span>
                         </div>

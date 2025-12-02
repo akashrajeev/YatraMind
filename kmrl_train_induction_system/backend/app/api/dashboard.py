@@ -24,9 +24,29 @@ async def get_dashboard_overview():
         
         # Calculate fleet metrics
         total_trainsets = len(trainsets)
+        
+        # DEFAULT: Real-time status
         active_count = sum(1 for t in trainsets if t["status"] == "ACTIVE")
         maintenance_count = sum(1 for t in trainsets if t["status"] == "MAINTENANCE")
         standby_count = sum(1 for t in trainsets if t["status"] == "STANDBY")
+
+        # OVERRIDE: Use latest optimization results for "Tomorrow's Service Plan" if available
+        try:
+            latest_collection = await cloud_db_manager.get_collection("latest_induction")
+            # Get most recent list
+            latest_doc = await latest_collection.find_one(sort=[("created_at", -1)])
+            
+            if latest_doc and "decisions" in latest_doc:
+                decisions = latest_doc["decisions"]
+                if decisions:
+                    # Recalculate based on optimization decisions
+                    active_count = sum(1 for d in decisions if d.get("decision") == "INDUCT")
+                    standby_count = sum(1 for d in decisions if d.get("decision") == "STANDBY")
+                    maintenance_count = sum(1 for d in decisions if d.get("decision") == "MAINTENANCE")
+                    logger.info(f"Using optimization results for dashboard: {active_count} Active, {standby_count} Standby")
+        except Exception as e:
+            logger.warning(f"Failed to fetch optimization results for dashboard: {e}")
+            # Fallback to real-time status (already calculated above)
         
         # Fitness certificate analytics
         valid_certificates = 0
