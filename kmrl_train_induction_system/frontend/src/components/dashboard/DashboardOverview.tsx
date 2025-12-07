@@ -28,7 +28,8 @@ export function DashboardOverview() {
   const { data: overview, isLoading: overviewLoading } = useQuery({
     queryKey: ['dashboard-overview'],
     queryFn: () => dashboardApi.getOverview().then(res => res.data),
-    refetchInterval: 30000,
+    refetchInterval: 10000, // Refetch every 10 seconds for better real-time updates
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   });
 
   const { data: alerts, isLoading: alertsLoading } = useQuery({
