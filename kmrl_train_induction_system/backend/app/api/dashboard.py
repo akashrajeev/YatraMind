@@ -76,6 +76,43 @@ async def get_dashboard_overview():
         # Get sensor health summary from InfluxDB
         sensor_health = await get_sensor_health_summary()
         
+        # Get pending assignments count (actual assignments in database)
+        from app.models.assignment import AssignmentStatus
+        assignments_collection = await cloud_db_manager.get_collection("assignments")
+        actual_pending_count = await assignments_collection.count_documents({"status": AssignmentStatus.PENDING.value})
+        
+        # Get trains from ranked list that don't have assignments yet (virtual assignments)
+        virtual_pending_count = 0
+        try:
+            latest_collection = await cloud_db_manager.get_collection("latest_induction")
+            # Try to get the most recent document, checking both _meta.updated_at and created_at
+            latest_doc = await latest_collection.find_one(sort=[("_meta.updated_at", -1), ("created_at", -1)])
+            
+            if latest_doc and "decisions" in latest_doc:
+                decisions = latest_doc["decisions"]
+                if isinstance(decisions, list) and len(decisions) > 0:
+                    # Get all trainset IDs that have assignments (pending, approved, or overridden)
+                    assigned_trainset_ids = set()
+                    async for assignment_doc in assignments_collection.find(
+                        {"status": {"$in": [AssignmentStatus.PENDING.value, AssignmentStatus.APPROVED.value, AssignmentStatus.OVERRIDDEN.value]}},
+                        {"trainset_id": 1}
+                    ):
+                        trainset_id = assignment_doc.get("trainset_id")
+                        if trainset_id:
+                            assigned_trainset_ids.add(trainset_id)
+                    
+                    # Count trains in ranked list that don't have assignments (these are virtual pending)
+                    for decision in decisions:
+                        if isinstance(decision, dict):
+                            trainset_id = decision.get("trainset_id")
+                            if trainset_id and trainset_id not in assigned_trainset_ids:
+                                virtual_pending_count += 1
+        except Exception as e:
+            logger.warning(f"Failed to count virtual pending assignments: {e}")
+        
+        # Total pending = actual pending + virtual pending (trains in ranked list without assignments)
+        pending_assignments_count = actual_pending_count + virtual_pending_count
+        
         return {
             "total_trainsets": total_trainsets,
             "fleet_status": {
@@ -94,6 +131,7 @@ async def get_dashboard_overview():
             },
             "depot_distribution": depot_distribution,
             "sensor_health": sensor_health,
+            "pending_assignments": pending_assignments_count,
             "last_updated": datetime.now(timezone.utc).isoformat()
         }
     

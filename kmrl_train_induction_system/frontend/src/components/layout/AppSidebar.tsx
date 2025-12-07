@@ -1,4 +1,6 @@
 import { NavLink, useLocation } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { dashboardApi } from "@/services/api";
 import {
   Sidebar,
   SidebarContent,
@@ -30,19 +32,33 @@ import {
   Activity,
 } from "lucide-react";
 
-const navigationItems = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: LayoutDashboard,
-    badge: null,
-  },
-  {
-    title: "Assignments",
-    url: "/assignments",
-    icon: ClipboardList,
-    badge: "12",
-  },
+export function AppSidebar() {
+  const { state } = useSidebar();
+  const location = useLocation();
+  const isCollapsed = state === "collapsed";
+
+  // Fetch pending assignments count for the badge
+  const { data: overview } = useQuery({
+    queryKey: ['dashboard-overview'],
+    queryFn: () => dashboardApi.getOverview().then(res => res.data),
+    refetchInterval: 10000, // Refetch every 10 seconds
+  });
+
+  const pendingCount = overview?.pending_assignments || 0;
+
+  const navigationItems = [
+    {
+      title: "Dashboard",
+      url: "/",
+      icon: LayoutDashboard,
+      badge: null,
+    },
+    {
+      title: "Assignments",
+      url: "/assignments",
+      icon: ClipboardList,
+      badge: pendingCount > 0 ? pendingCount.toString() : null,
+    },
   {
     title: "Trainsets",
     url: "/trainsets",
@@ -55,15 +71,15 @@ const navigationItems = [
     icon: Brain,
     badge: null,
   },
-  {
-    title: "Data Ingestion",
-    url: "/data-ingestion",
-    icon: Database,
-    badge: null,
-  },
-];
+    {
+      title: "Data Ingestion",
+      url: "/data-ingestion",
+      icon: Database,
+      badge: null,
+    },
+  ];
 
-const reportItems = [
+  const reportItems = [
   {
     title: "Reports",
     url: "/reports",
@@ -71,23 +87,18 @@ const reportItems = [
   },
 ];
 
-const systemItems = [
-  {
-    title: "User Management",
-    url: "/users",
-    icon: Users,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
-];
-
-export function AppSidebar() {
-  const { state } = useSidebar();
-  const location = useLocation();
-  const isCollapsed = state === "collapsed";
+  const systemItems = [
+    {
+      title: "User Management",
+      url: "/users",
+      icon: Users,
+    },
+    {
+      title: "Settings",
+      url: "/settings",
+      icon: Settings,
+    },
+  ];
 
   const isActive = (path: string) => {
     return location.pathname === path || (path !== "/" && location.pathname.startsWith(path));

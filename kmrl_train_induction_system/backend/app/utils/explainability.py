@@ -259,6 +259,89 @@ def top_reasons_and_risks(trainset: Dict[str, Any]) -> Dict[str, List[str]]:
     }
 
 
+def generate_maintenance_reasons(trainset: Dict[str, Any]) -> Dict[str, List[str]]:
+    """Generate maintenance-specific reasons explaining why a train needs maintenance"""
+    reasons: List[str] = []
+    risks: List[str] = []
+    
+    # Check critical job cards
+    job_cards = trainset.get("job_cards", {})
+    if not isinstance(job_cards, dict):
+        job_cards = {}
+    
+    critical_cards = job_cards.get("critical_cards", 0)
+    try:
+        critical_cards = int(critical_cards) if critical_cards is not None else 0
+    except (TypeError, ValueError):
+        critical_cards = 0
+    
+    if critical_cards > 0:
+        if critical_cards == 1:
+            reasons.append(f"Critical job card open - requires immediate maintenance")
+        else:
+            reasons.append(f"{critical_cards} critical job cards open - requires immediate maintenance")
+    
+    # Check mileage
+    try:
+        current_mileage = float(trainset.get("current_mileage", 0.0))
+    except (TypeError, ValueError):
+        current_mileage = 0.0
+    
+    try:
+        max_mileage = float(trainset.get("max_mileage_before_maintenance", float('inf')))
+    except (TypeError, ValueError):
+        max_mileage = float('inf')
+    
+    if max_mileage > 0 and current_mileage >= max_mileage * 0.95:
+        mileage_percent = (current_mileage / max_mileage) * 100
+        if mileage_percent >= 100:
+            reasons.append(f"Mileage limit exceeded ({current_mileage:.0f} km) - maintenance required")
+        else:
+            reasons.append(f"Approaching mileage limit ({mileage_percent:.0f}% of {max_mileage:.0f} km) - maintenance due")
+    
+    # Check expired certificates
+    fitness_certs = trainset.get("fitness_certificates", {})
+    if isinstance(fitness_certs, dict):
+        expired_certs = []
+        for dept, cert in fitness_certs.items():
+            if isinstance(cert, dict) and cert.get("status") == "EXPIRED":
+                expired_certs.append(dept)
+        if expired_certs:
+            if len(expired_certs) == 1:
+                reasons.append(f"{expired_certs[0]} certificate expired - maintenance required")
+            else:
+                reasons.append(f"Multiple certificates expired ({', '.join(expired_certs)}) - maintenance required")
+    
+    # Check sensor health if available
+    sensor_health = trainset.get("sensor_health_score")
+    if sensor_health is not None:
+        try:
+            sensor_health = float(sensor_health)
+            if sensor_health < 0.7:
+                risks.append(f"Low sensor health ({sensor_health*100:.0f}%) - may require maintenance")
+        except (TypeError, ValueError):
+            pass
+    
+    # Check ML predicted failure risk
+    predicted_risk = trainset.get("predicted_failure_risk")
+    if predicted_risk is not None:
+        try:
+            predicted_risk = float(predicted_risk)
+            if predicted_risk > 0.7:
+                risks.append(f"High failure risk predicted ({predicted_risk*100:.0f}%) - maintenance recommended")
+        except (TypeError, ValueError):
+            pass
+    
+    # If no specific reasons found, add generic maintenance reason
+    if not reasons:
+        reasons.append("Maintenance required based on system analysis")
+    
+    return {
+        "top_reasons": reasons[:3],
+        "top_risks": risks[:2],
+    }
+
+
 def generate_shap_values(trainset: Dict[str, Any], ml_features: List[str] = None) -> List[ShapFeature]:
     """Generate SHAP values for top features based on Tiered Constraint Hierarchy
     
