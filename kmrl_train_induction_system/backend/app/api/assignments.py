@@ -13,9 +13,11 @@ from app.models.assignment import (
     ApprovalRequest, OverrideRequest, AssignmentStatus
 )
 from app.models.audit import AuditLogCreate, AuditAction
+from app.models.trainset import InductionDecision
 from app.utils.cloud_database import cloud_db_manager
 from app.security import require_api_key
 from app.services.notification_service import NotificationService
+from app.utils.explainability import generate_maintenance_reasons
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -209,28 +211,109 @@ async def get_assignment_summary(
         )
 
 
+def _needs_maintenance(trainset: Dict[str, Any]) -> bool:
+    """Check if trainset needs maintenance
+    
+    Uses safe dict access to prevent KeyError on malformed data.
+    Matches the logic from optimizer.py
+    """
+    # Safe dict access with defaults
+    job_cards = trainset.get("job_cards", {})
+    if not isinstance(job_cards, dict):
+        job_cards = {}
+    
+    critical_cards = job_cards.get("critical_cards", 0)
+    try:
+        critical_cards = int(critical_cards) if critical_cards is not None else 0
+    except (TypeError, ValueError):
+        critical_cards = 0
+    
+    # Safe mileage access
+    try:
+        current_mileage = float(trainset.get("current_mileage", 0.0))
+    except (TypeError, ValueError):
+        current_mileage = 0.0
+    
+    try:
+        max_mileage = float(trainset.get("max_mileage_before_maintenance", float('inf')))
+    except (TypeError, ValueError):
+        max_mileage = float('inf')
+    
+    return (
+        critical_cards > 0 or
+        (max_mileage > 0 and current_mileage >= max_mileage * 0.95)
+    )
+
+
 @router.get("/conflicts", response_model=List[Assignment])
 async def get_conflict_assignments(
     _auth=Depends(require_api_key)
 ):
-    """Get assignments with conflicts (violations)"""
+    """Get all trains that need maintenance with maintenance reasons"""
     try:
-        collection = await cloud_db_manager.get_collection("assignments")
+        trainsets_collection = await cloud_db_manager.get_collection("trainsets")
+        assignments_collection = await cloud_db_manager.get_collection("assignments")
         
-        # Find assignments with violations
-        cursor = collection.find({
-            "decision.violations": {"$exists": True, "$ne": []}
-        })
+        # Get ALL trainsets and check which ones need maintenance
+        trainsets_cursor = trainsets_collection.find({})
         
-        assignments = []
-        async for doc in cursor:
+        maintenance_trainsets = []
+        async for trainset_doc in trainsets_cursor:
             try:
-                assignments.append(_transform_doc_to_assignment(doc))
+                trainset_doc.pop("_id", None)
+                trainset_id = trainset_doc.get("trainset_id", "")
+                if not trainset_id:
+                    continue
+                
+                # Check if train needs maintenance
+                if _needs_maintenance(trainset_doc):
+                    # Generate maintenance reasons
+                    maintenance_info = generate_maintenance_reasons(trainset_doc)
+                    
+                    # Try to find existing assignment for this trainset
+                    existing_assignment = await assignments_collection.find_one({"trainset_id": trainset_id})
+                    
+                    if existing_assignment:
+                        # Update existing assignment with maintenance decision and reasons
+                        assignment = _transform_doc_to_assignment(existing_assignment)
+                        # Update decision to MAINTENANCE if not already
+                        if assignment.decision.decision != "MAINTENANCE":
+                            assignment.decision.decision = "MAINTENANCE"
+                        # Update with maintenance reasons
+                        assignment.decision.top_reasons = maintenance_info.get("top_reasons", [])
+                        assignment.decision.top_risks = maintenance_info.get("top_risks", [])
+                        assignment.decision.score = 0.0  # Maintenance trains get 0 score
+                        assignment.decision.confidence_score = 1.0  # High confidence for maintenance
+                    else:
+                        # Create new assignment for maintenance
+                        assignment = Assignment(
+                            id=str(uuid.uuid4()),
+                            trainset_id=trainset_id,
+                            decision=InductionDecision(
+                                trainset_id=trainset_id,
+                                decision="MAINTENANCE",
+                                confidence_score=1.0,
+                                reasons=maintenance_info.get("top_reasons", []),
+                                top_reasons=maintenance_info.get("top_reasons", []),
+                                top_risks=maintenance_info.get("top_risks", []),
+                                score=0.0,
+                                violations=[],
+                                shap_values=[]
+                            ),
+                            status=AssignmentStatus.PENDING,
+                            created_by="system",
+                            priority=5  # High priority for maintenance
+                        )
+                    
+                    maintenance_trainsets.append(assignment)
             except Exception as e:
-                logger.warning(f"Skipping invalid assignment document: {e}")
+                logger.warning(f"Skipping trainset {trainset_doc.get('trainset_id', 'unknown')}: {e}")
                 continue
         
-        return assignments
+        # Sort by priority (maintenance trains should be prioritized)
+        maintenance_trainsets.sort(key=lambda x: x.priority, reverse=True)
+        
+        return maintenance_trainsets
         
     except Exception as e:
         logger.error(f"Error fetching conflict assignments: {e}")
