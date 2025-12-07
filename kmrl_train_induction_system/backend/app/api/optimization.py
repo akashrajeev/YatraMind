@@ -2,7 +2,6 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from typing import List, Dict, Any, Optional
 from datetime import datetime
-import random
 import asyncio
 import json
 import logging
@@ -10,7 +9,7 @@ import uuid
 from pathlib import Path
 from math import ceil
 
-from app.models.trainset import OptimizationRequest, InductionDecision
+from app.models.trainset import OptimizationRequest, InductionDecision, StablingGeometryResponse
 from app.services.optimizer import TrainInductionOptimizer
 from app.services.solver import RoleAssignmentSolver, SolverWeights
 from app.services.rule_engine import DurableRulesEngine
@@ -22,7 +21,7 @@ from app.utils.explainability import (
     render_explanation_html,
     render_explanation_text
 )
-from app.config import settings, get_config
+from app.config import settings
 from app.security import require_api_key, require_role
 from app.models.user import UserRole, User
 from pydantic import BaseModel, Field
@@ -49,55 +48,8 @@ async def run_optimization(
         if not trainsets_data:
             raise HTTPException(status_code=404, detail="No trainsets found")
 
-        cfg = get_config()
-        avg_hours = float(cfg.get("AVG_HOURS_PER_TRAIN", 12))
-        allow_hours_mode = bool(cfg.get("ALLOW_HOURS_MODE", True))
-
-        raw_hours = request.required_service_hours
-        raw_count = request.required_service_count
-
-        req_hours: float = 0.0
-        requested_train_count: int = 0
-
-        if raw_hours is not None:
-            try:
-                req_hours = float(raw_hours)
-            except (TypeError, ValueError):
-                req_hours = 0.0
-
-        if req_hours <= 0 and raw_count is not None:
-            try:
-                requested_train_count = max(0, int(raw_count))
-            except (TypeError, ValueError):
-                requested_train_count = 0
-            if allow_hours_mode and avg_hours > 0 and requested_train_count > 0:
-                req_hours = requested_train_count * avg_hours
-
-        if req_hours < 0:
-            req_hours = 0.0
-
-        fleet_size = len(trainsets_data)
-        if req_hours > 0 and fleet_size > 0:
-            max_reasonable = fleet_size * settings.max_hours_warning_threshold_multiplier
-            if req_hours > max_reasonable:
-                logger.warning(
-                    "Requested service hours %.1f exceeds reasonable threshold %.1f "
-                    "(fleet_size=%d, multiplier=%d)",
-                    req_hours,
-                    max_reasonable,
-                    fleet_size,
-                    settings.max_hours_warning_threshold_multiplier,
-                )
-
-        if allow_hours_mode and req_hours > 0 and avg_hours > 0:
-            requested_train_count = int(ceil(req_hours / avg_hours))
-        elif requested_train_count == 0 and req_hours > 0:
-            requested_train_count = max(0, int(req_hours))
-
-        request.required_service_hours = req_hours
-
         optimizer = TrainInductionOptimizer()
-        optimization_result = await optimizer.optimize(trainsets_data, request)
+        optimization_result, fleet_req = await optimizer.optimize(trainsets_data, request)
 
         granted_train_count = sum(1 for d in optimization_result if d.decision == "INDUCT")
         eligible_train_count = len(optimization_result)
@@ -121,16 +73,17 @@ async def run_optimization(
         stabling_geometry["total_optimized_positions"] = total_positions
 
         # Persist decisions immediately so downstream stabling/shunting calls have fresh data
-        await store_optimization_history(request, optimization_result)
+        await store_optimization_history(request, optimization_result, fleet_req)
         background_tasks.add_task(write_optimization_metrics, optimization_result)
 
         # Diagnostics block exposed to both API response and snapshot
         diagnostics: Dict[str, Any] = {
-            "requested_service_hours": req_hours,
-            "avg_hours_per_train": avg_hours,
-            "requested_train_count": requested_train_count,
+            "required_service_trains": fleet_req.required_service_trains,
+            "standby_buffer": fleet_req.standby_buffer,
+            "calculation_method": fleet_req.calculation_method,
             "eligible_train_count": eligible_train_count,
             "granted_train_count": granted_train_count,
+            "fleet_requirement": fleet_req.dict(),
         }
 
         try:
@@ -150,40 +103,38 @@ async def run_optimization(
             logger.warning("Failed to write optimization snapshot: %s", e)
 
         note_parts: List[str] = []
-        if req_hours > 0 and avg_hours > 0:
-            note_parts.append(
-                f"Requested {req_hours:.1f} service hours \u2192 approximately "
-                f"{requested_train_count} trains (avg {avg_hours:.1f} hrs/train)."
+        
+        if fleet_req.calculation_method == "timetable":
+             note_parts.append(
+                f"Requirement derived from timetable: {fleet_req.required_service_trains} trains "
+                f"(+ {fleet_req.standby_buffer} standby)."
             )
 
-        if requested_train_count and eligible_train_count and requested_train_count > eligible_train_count:
-            note_parts.append(
-                f"Only {eligible_train_count} eligible trains available; "
-                f"optimization granted {granted_train_count} trains."
-            )
-        elif requested_train_count and granted_train_count < requested_train_count:
+        if fleet_req.required_service_trains and granted_train_count < fleet_req.required_service_trains:
             note_parts.append(
                 f"Optimization granted {granted_train_count} trains, "
-                f"which is fewer than the requested {requested_train_count}."
+                f"which is fewer than the required {fleet_req.required_service_trains}."
             )
 
         note = " ".join(note_parts) if note_parts else None
 
         logger.info(
-            "Optimization diagnostics: req_hours=%.2f avg_hours=%.2f "
-            "requested_train_count=%d eligible_train_count=%d granted_train_count=%d",
-            req_hours,
-            avg_hours,
-            requested_train_count,
+            "Optimization diagnostics: method=%s eligible=%d granted=%d required=%d",
+            fleet_req.calculation_method,
             eligible_train_count,
             granted_train_count,
+            fleet_req.required_service_trains
         )
 
         response: Dict[str, Any] = {
-            "requested_service_hours": req_hours,
-            "requested_train_count": requested_train_count,
+            "required_service_trains": fleet_req.required_service_trains,
+            "standby_buffer": fleet_req.standby_buffer,
+            "total_required_trains": fleet_req.total_required_trains,
+            "calculation_method": fleet_req.calculation_method,
             "eligible_train_count": eligible_train_count,
             "granted_train_count": granted_train_count,
+            "actual_induct_count": granted_train_count,
+            "service_shortfall": max(0, fleet_req.required_service_trains - granted_train_count),
             "note": note,
             "diagnostics": diagnostics,
             "decisions": [d.dict() for d in optimization_result],
@@ -464,69 +415,17 @@ async def get_latest_ranked_list():
                 except Exception:
                     pass  # If date parsing fails, regenerate
         
-        # If no stored list or it's too old, regenerate
-        logger.info("Regenerating ranked list")
-        # Get all trainsets from database and create ranked list
-        trainsets_collection = await cloud_db_manager.get_collection("trainsets")
-        trainsets = []
-        async for trainset_doc in trainsets_collection.find({}):
-            trainsets.append(trainset_doc)
-        
-        logger.info(f"Found {len(trainsets)} trainsets in database")
-        
-        if not trainsets:
-                logger.info("No trainsets found, creating sample data")
-                # Create sample trainsets if none exist - using proper KMRL trainset IDs
-                sample_trainsets = [
-                    {
-                        "trainset_id": f"T-{i:03d}", 
-                        "status": "ACTIVE", 
-                        "sensor_health_score": round(random.uniform(0.7, 0.95), 2),
-                        "predicted_failure_risk": round(random.uniform(0.05, 0.3), 2),
-                        "total_operational_hours": random.randint(100, 2000),
-                        "branding": {
-                            "priority": random.choice(["HIGH", "MEDIUM", "LOW"]),
-                            "runtime_requirements": [random.randint(8, 16)]
-                        },
-                        "certificates": {
-                            "rolling_stock": {
-                                "status": random.choice(["valid", "expired", "pending"]),
-                                "expiry_days": random.randint(-30, 365)
-                            },
-                            "signalling": {
-                                "status": random.choice(["valid", "expired", "pending"]),
-                                "expiry_days": random.randint(-30, 365)
-                            },
-                            "telecom": {
-                                "status": random.choice(["valid", "expired", "pending"]),
-                                "expiry_days": random.randint(-30, 365)
-                            }
-                        },
-                        "job_cards": [
-                            {
-                                "id": f"JC-{i}-{j}",
-                                "status": random.choice(["open", "closed", "pending"]),
-                                "priority": random.choice(["critical", "high", "medium", "low"]),
-                                "description": f"Maintenance task {j}"
-                            } for j in range(random.randint(0, 3))
-                        ],
-                        "cleaning": {
-                            "bay_available": random.choice([True, False]),
-                            "manpower_available": random.choice([True, False])
-                        },
-                        "stabling": {
-                            "bay_position": random.choice(["near_exit", "middle", "far"])
-                        },
-                        "maintenance": {
-                            "scheduled_dates": [f"2024-{random.randint(1,12):02d}-{random.randint(1,28):02d}"],
-                            "types": random.sample(["preventive", "corrective", "emergency"], random.randint(1, 2))
-                        }
-                    }
-                    for i in range(1, 31)  # Create 30 trainsets
-                ]
-                await trainsets_collection.insert_many(sample_trainsets)
-                trainsets = sample_trainsets
-                logger.info(f"Created {len(trainsets)} sample trainsets")
+        # If no stored list or it's too old, return error (deterministic behavior)
+        # Do NOT generate random mock data - require explicit optimization run
+        logger.warning("No recent optimization found. An optimization must be run first via /api/optimization/run")
+        raise HTTPException(
+            status_code=404,
+            detail={
+                "error": "no_optimization_found",
+                "message": "No optimization has been run yet. Please run an optimization via POST /api/optimization/run first.",
+                "hint": "The /latest endpoint requires a stored optimization result. Run an optimization to generate ranked decisions."
+            }
+        )
         
         # Create ranked decisions for all trainsets with proper scoring
         mock_decisions = []
@@ -724,67 +623,24 @@ async def get_latest_ranked_list():
         logger.info(f"Stored ranked list with {len(top_decisions)} decisions")
         return top_decisions
         
+    except HTTPException:
+        # Re-raise HTTP exceptions (like our 404 for no optimization)
+        raise
     except Exception as e:
-        logger.error(f"Error fetching latest induction list: {e}")
-        # Return mock data on error - create all 30 trainsets
-        mock_decisions = []
-        trainset_ids = [f"T-{i:03d}" for i in range(1, 31)]  # T-001 to T-030
-        decisions = ["INDUCT", "STANDBY", "MAINTENANCE"]
-        
-        for i, trainset_id in enumerate(trainset_ids):
-            # Calculate realistic score based on index
-            base_score = 0.6 + (i * 0.01)  # Scores from 0.61 to 0.90
-            score = min(0.95, base_score)
-            
-            # Determine decision based on score
-            if score >= 0.8:
-                decision = "INDUCT"
-            elif score >= 0.7:
-                decision = "STANDBY"
-            else:
-                decision = "MAINTENANCE"
-            
-            confidence = round(random.uniform(0.75, 0.95), 2)
-            
-            mock_decision = {
-                "trainset_id": trainset_id,
-                "decision": decision,
-                "confidence_score": confidence,
-                "score": round(score, 3),
-                "top_reasons": [
-                    "All department certificates valid",
-                    "Low predicted failure probability",
-                    "Available cleaning slot before dawn"
-                ],
-                "top_risks": [
-                    "Safety certificate expiring soon" if random.random() > 0.7 else None
-                ],
-                "violations": [],
-                "shap_values": [
-                    {"name": "Sensor Health Score", "value": round(random.uniform(0.7, 0.95), 2), "impact": "positive"},
-                    {"name": "Predicted Failure Risk", "value": round(random.uniform(0.05, 0.3), 2), "impact": "positive"},
-                    {"name": "Branding Priority", "value": random.choice(["HIGH", "MEDIUM", "LOW"]), "impact": "positive"},
-                    {"name": "Certificate Status", "value": "valid", "impact": "positive"},
-                    {"name": "Runtime Compliance", "value": round(random.uniform(0.8, 1.0), 2), "impact": "positive"}
-                ],
-                "reasons": [
-                    "All department certificates valid",
-                    "Low predicted failure probability",
-                    "High sensor health score",
-                    "Valid maintenance schedule"
-                ]
+        logger.error(f"Error fetching latest induction list: {e}", exc_info=True)
+        # Return deterministic error instead of random mock data
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "internal_error",
+                "message": f"Failed to fetch latest induction list: {str(e)}",
+                "hint": "Please ensure an optimization has been run and try again."
             }
-            mock_decisions.append(mock_decision)
-        
-        # Sort by score (highest first)
-        mock_decisions.sort(key=lambda x: x["score"], reverse=True)
-        
-        logger.info(f"Returning {len(mock_decisions)} mock decisions due to error")
-        return mock_decisions
+        )
 
-@router.get("/stabling-geometry")
+@router.get("/stabling-geometry", response_model=StablingGeometryResponse)
 async def get_stabling_geometry_optimization():
-    """Get optimized stabling geometry to minimize shunting and turn-out time"""
+    """Get optimized stabling geometry with rich, structured intelligence"""
     try:
         # Load current trainsets
         collection = await cloud_db_manager.get_collection("trainsets")
@@ -812,36 +668,39 @@ async def get_stabling_geometry_optimization():
                 },
             )
 
-        # Run stabling geometry optimization using the latest decisions
+        # Try to get fleet requirements from latest optimization result
+        fleet_req = None
+        try:
+            latest_collection = await cloud_db_manager.get_collection("latest_induction")
+            latest_doc = await latest_collection.find_one(sort=[("_meta.updated_at", -1), ("created_at", -1)])
+            if latest_doc and "fleet_requirement" in latest_doc:
+                fleet_req = latest_doc["fleet_requirement"]
+            else:
+                # Try optimization history
+                history_collection = await cloud_db_manager.get_collection("optimization_history")
+                history_doc = await history_collection.find_one(sort=[("timestamp", -1)])
+                if history_doc and "fleet_requirement" in history_doc:
+                    fleet_req = history_doc["fleet_requirement"]
+        except Exception as e:
+            logger.warning(f"Could not retrieve fleet requirements: {e}")
+
+        # Generate rich stabling geometry response
         stabling_optimizer = StablingGeometryOptimizer()
-        stabling_geometry = await stabling_optimizer.optimize_stabling_geometry(
-            trainsets_data, decisions
+        rich_response = await stabling_optimizer.generate_rich_stabling_geometry(
+            trainsets_data, decisions, fleet_req
         )
 
-        efficiency_metrics = stabling_geometry.get("efficiency_metrics", {})
-        overall_efficiency = efficiency_metrics.get("overall_efficiency")
-        if overall_efficiency is not None:
-            stabling_geometry["efficiency_improvement"] = round(
-                float(overall_efficiency) * 100, 2
-            )
-        else:
-            stabling_geometry["efficiency_improvement"] = 0.0
-
-        optimized_layout = stabling_geometry.get("optimized_layout", {})
-        total_positions = sum(
-            len(depot_data.get("bay_assignments", {})) for depot_data in optimized_layout.values()
-        )
-        stabling_geometry["total_optimized_positions"] = total_positions
-
-        return stabling_geometry
+        return rich_response
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Stabling geometry optimization failed: {e}")
         raise HTTPException(status_code=500, detail=f"Stabling geometry failed: {str(e)}")
 
 @router.get("/shunting-schedule")
 async def get_shunting_schedule():
-    """Get detailed shunting schedule for operations team"""
+    """Get detailed shunting schedule with ordered moves and operational intelligence"""
     try:
         # Load current trainsets
         collection = await cloud_db_manager.get_collection("trainsets")
@@ -879,34 +738,99 @@ async def get_shunting_schedule():
             stabling_data.get("optimized_layout", {})
         )
 
+        # Calculate totals
         total_time = sum(
             op.get("estimated_time", 0)
             for op in shunting_schedule
             if isinstance(op.get("estimated_time"), (int, float))
         )
 
+        # Group by depot and order by priority (service > maintenance > standby)
+        decision_map = {d.get("trainset_id"): d.get("decision") for d in decisions if isinstance(d, dict)}
+        
+        # Create trainset map for additional context
+        trainset_map = {t.get("trainset_id"): t for t in trainsets_data}
+        
+        # Enhance schedule with decision context and priority
+        enhanced_schedule = []
+        for op in shunting_schedule:
+            trainset_id = op.get("trainset_id")
+            decision = decision_map.get(trainset_id, "STANDBY")
+            trainset = trainset_map.get(trainset_id, {})
+            
+            # Determine priority (1 = highest, 3 = lowest)
+            priority = 1 if decision == "INDUCT" else 2 if decision == "MAINTENANCE" else 3
+            
+            enhanced_op = {
+                **op,
+                "priority": priority,
+                "decision": decision,
+                "trainset_mileage": trainset.get("current_mileage", 0),
+                "sequence": None  # Will be set after sorting
+            }
+            enhanced_schedule.append(enhanced_op)
+        
+        # Sort by priority, then by estimated_time (fastest first within same priority)
+        enhanced_schedule.sort(key=lambda x: (x["priority"], x.get("estimated_time", 0)))
+        
+        # Assign sequence numbers
+        for idx, op in enumerate(enhanced_schedule, 1):
+            op["sequence"] = idx
+        
+        # Group by depot for better organization
+        schedule_by_depot: Dict[str, List[Dict[str, Any]]] = {}
+        for op in enhanced_schedule:
+            depot = op.get("depot", "UNKNOWN")
+            if depot not in schedule_by_depot:
+                schedule_by_depot[depot] = []
+            schedule_by_depot[depot].append(op)
+        
+        # Calculate depot-level summaries
+        depot_summaries = {}
+        for depot, ops in schedule_by_depot.items():
+            depot_time = sum(op.get("estimated_time", 0) for op in ops)
+            depot_summaries[depot] = {
+                "total_operations": len(ops),
+                "estimated_time_min": depot_time,
+                "high_complexity": len([op for op in ops if op.get("complexity") == "HIGH"]),
+                "medium_complexity": len([op for op in ops if op.get("complexity") == "MEDIUM"]),
+                "low_complexity": len([op for op in ops if op.get("complexity") == "LOW"]),
+            }
+
         return {
-            "shunting_schedule": shunting_schedule,
-            "total_operations": len(shunting_schedule),
+            "shunting_schedule": enhanced_schedule,
+            "schedule_by_depot": schedule_by_depot,
+            "depot_summaries": depot_summaries,
+            "total_operations": len(enhanced_schedule),
             "estimated_total_time": int(total_time),
             "crew_requirements": {
                 "high_complexity": len(
-                    [op for op in shunting_schedule if op.get("complexity") == "HIGH"]
+                    [op for op in enhanced_schedule if op.get("complexity") == "HIGH"]
                 ),
                 "medium_complexity": len(
-                    [op for op in shunting_schedule if op.get("complexity") == "MEDIUM"]
+                    [op for op in enhanced_schedule if op.get("complexity") == "MEDIUM"]
                 ),
                 "low_complexity": len(
-                    [op for op in shunting_schedule if op.get("complexity") == "LOW"]
+                    [op for op in enhanced_schedule if op.get("complexity") == "LOW"]
                 ),
             },
+            "operational_window": {
+                "start_time": "21:00 IST",
+                "end_time": "23:00 IST",
+                "duration_minutes": 120,
+                "recommended_start": "21:00 IST",
+                "buffer_minutes": max(0, 120 - int(total_time))
+            },
+            "optimization_timestamp": datetime.now().isoformat(),
         }
         
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Shunting schedule generation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Shunting schedule failed: {str(e)}")
 
-async def store_optimization_history(request: OptimizationRequest, result: List[InductionDecision]):
+async def store_optimization_history(request: OptimizationRequest, result: List[InductionDecision], fleet_req: Optional[Any] = None):
     """Store optimization results in MongoDB"""
     try:
         collection = await cloud_db_manager.get_collection("optimization_history")
@@ -914,7 +838,8 @@ async def store_optimization_history(request: OptimizationRequest, result: List[
         history_record = {
             "timestamp": datetime.now().isoformat(),
             "target_date": request.target_date.isoformat(),
-            "required_service_hours": request.required_service_hours,
+            "required_service_count": request.required_service_count,
+            "service_date": request.service_date,
             "total_decisions": len(result),
             "inducted_count": sum(1 for d in result if d.decision == "INDUCT"),
             "standby_count": sum(1 for d in result if d.decision == "STANDBY"),
@@ -923,14 +848,22 @@ async def store_optimization_history(request: OptimizationRequest, result: List[
             "decisions": [d.dict() for d in result]
         }
         
+        # Store fleet requirement if provided
+        if fleet_req:
+            history_record["fleet_requirement"] = fleet_req.dict() if hasattr(fleet_req, "dict") else fleet_req
+        
         insert_result = await collection.insert_one(history_record)
         # Also persist latest ranked list separately for quick access
         latest_collection = await cloud_db_manager.get_collection("latest_induction")
         await latest_collection.delete_many({})
-        await latest_collection.insert_one({
+        latest_doc = {
             "_meta": {"updated_at": datetime.now().isoformat()},
             "decisions": [d.dict() for d in result]
-        })
+        }
+        # Store fleet requirement in latest as well
+        if fleet_req:
+            latest_doc["fleet_requirement"] = fleet_req.dict() if hasattr(fleet_req, "dict") else fleet_req
+        await latest_collection.insert_one(latest_doc)
         logger.info("Optimization history stored in MongoDB")
         
     except Exception as e:

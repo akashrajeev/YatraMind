@@ -111,22 +111,4 @@ if _defaults:
     if "WARN_ON_CAPACITY_EXCEEDED" in _defaults and not os.getenv("WARN_ON_CAPACITY_EXCEEDED"):
         settings.warn_on_capacity_exceeded = bool(_defaults["WARN_ON_CAPACITY_EXCEEDED"])
 
-# Simple configuration dict for hours mode & simulation save dir
-DEFAULTS = {
-    "AVG_HOURS_PER_TRAIN": 12,
-    "SIMULATION_SAVE_DIR": "backend/simulation_runs",
-    "ALLOW_HOURS_MODE": True,
-}
 
-
-def get_config() -> dict:
-    """
-    Lightweight config accessor for optimization-related defaults.
-    """
-    cfg = DEFAULTS.copy()
-
-    avg = getattr(settings, "default_hours_per_train", None)
-    if isinstance(avg, (int, float)) and avg > 0:
-        cfg["AVG_HOURS_PER_TRAIN"] = float(avg)
-
-    return cfg

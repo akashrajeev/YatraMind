@@ -149,12 +149,16 @@ const Assignments = () => {
 
   const approveMutation = useMutation({
     mutationFn: assignmentApi.approve,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success("Assignment Approved", {
         description: `Successfully approved ${data.data?.approved_count || 1} assignment(s)`,
       });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['assignments-summary'] });
+      // Invalidate and immediately refetch queries for real-time updates
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['assignments'] }),
+        queryClient.invalidateQueries({ queryKey: ['assignments-summary'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-overview'] }), // Immediate refetch for dashboard
+      ]);
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.detail || error.message || "Failed to approve assignment";
@@ -167,12 +171,16 @@ const Assignments = () => {
 
   const overrideMutation = useMutation({
     mutationFn: assignmentApi.override,
-    onSuccess: (data) => {
+    onSuccess: async (data) => {
       toast.success("Assignment Overridden", {
         description: data.data?.message || "Assignment decision has been overridden",
       });
-      queryClient.invalidateQueries({ queryKey: ['assignments'] });
-      queryClient.invalidateQueries({ queryKey: ['assignments-summary'] });
+      // Invalidate and immediately refetch queries for real-time updates
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['assignments'] }),
+        queryClient.invalidateQueries({ queryKey: ['assignments-summary'] }),
+        queryClient.refetchQueries({ queryKey: ['dashboard-overview'] }), // Immediate refetch for dashboard
+      ]);
     },
     onError: (error: any) => {
       const errorMessage = error.response?.data?.detail || error.message || "Failed to override assignment";
@@ -208,8 +216,43 @@ const Assignments = () => {
     }
   };
 
-  // Filter assignments by status
-  const pendingAssignments = assignments.filter(a => a.status === "PENDING");
+  // Create a map of trainset_id to assignment for quick lookup
+  const assignmentsMap = new Map(assignments.map(a => [a.trainset_id, a]));
+  
+  // Get pending assignments from ranked list (sorted by rank) or from assignments
+  // Priority: ranked list order (if exists) > assignment priority
+  const pendingAssignments = rankedList.length > 0
+    ? rankedList
+        .map((decision: any, index: number) => {
+          const assignment = assignmentsMap.get(decision.trainset_id);
+          // If assignment exists and is pending, use it; otherwise create a virtual one
+          if (assignment && assignment.status === "PENDING") {
+            return {
+              ...assignment,
+              rank: index + 1,
+              decision: decision // Use decision from ranked list
+            };
+          } else if (!assignment) {
+            // Create virtual assignment for trains in ranked list but not in assignments
+            return {
+              id: `virtual-${decision.trainset_id}`,
+              trainset_id: decision.trainset_id,
+              decision: decision,
+              status: "PENDING" as const,
+              priority: 5 - index, // Higher rank = higher priority
+              rank: index + 1,
+              created_at: new Date().toISOString(),
+              created_by: "system",
+              last_updated: new Date().toISOString()
+            };
+          }
+          return null;
+        })
+        .filter((a): a is NonNullable<typeof a> => a !== null && a.status === "PENDING")
+    : assignments
+        .filter(a => a.status === "PENDING")
+        .sort((a, b) => (b.priority || 0) - (a.priority || 0)); // Sort by priority descending
+  
   const approvedAssignments = assignments.filter(a => a.status === "APPROVED");
   const overriddenAssignments = assignments.filter(a => a.status === "OVERRIDDEN");
 
@@ -504,65 +547,92 @@ const Assignments = () => {
           {conflictAlerts.length === 0 ? (
             <div className="text-center py-8">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4" />
-              <p className="text-muted-foreground">No conflict alerts detected</p>
+              <p className="text-muted-foreground">No trains requiring maintenance</p>
             </div>
           ) : (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Conflict Alerts</h3>
+                <h3 className="text-lg font-semibold">Maintenance Required</h3>
                 <Badge variant="destructive" className="flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3" />
-                  {conflictAlerts.length} Conflicts
+                  {conflictAlerts.length} Trains Need Maintenance
                 </Badge>
               </div>
-              {conflictAlerts.map((assignment: any) => (
+              {conflictAlerts.map((assignment: any, index: number) => (
                 <Card
-                  key={assignment.id}
-                  className="border border-red-200 bg-red-50/70 text-red-900 dark:border-red-900/60 dark:bg-red-950/70 dark:text-red-100"
+                  key={assignment.id || assignment.trainset_id}
+                  className="hover:shadow-md transition-shadow"
                 >
                   <CardHeader>
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg text-red-800 dark:text-red-100">
-                        {assignment.trainset_id}
-                      </CardTitle>
-                      <Badge className="bg-red-100 text-red-900 dark:bg-red-900 dark:text-white" variant="destructive">
-                        Conflict Detected
-                      </Badge>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">
+                          {index + 1}
+                        </div>
+                        <CardTitle className="text-lg">{assignment.trainset_id}</CardTitle>
+                        <Badge variant="destructive" className="bg-orange-500 hover:bg-orange-600">
+                          MAINTENANCE
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Score: {Math.round((assignment.decision?.score || 0) * 100)}%
+                        </span>
+                        <span className="text-sm font-medium text-muted-foreground">
+                          Confidence: {Math.round((assignment.decision?.confidence_score || 1.0) * 100)}%
+                        </span>
+                      </div>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-3">
                       <div>
-                        <h4 className="font-medium text-sm text-muted-foreground mb-2">
-                          Violations:
-                        </h4>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-2">Top Reasons:</h4>
                         <ul className="list-disc list-inside text-sm space-y-1">
-                          {assignment.decision?.violations?.map((violation: string, i: number) => (
-                            <li key={i} className="text-red-700 dark:text-red-200">
-                              {violation}
+                          {assignment.decision?.top_reasons && assignment.decision.top_reasons.length > 0 ? (
+                            assignment.decision.top_reasons.slice(0, 3).map((reason: string, i: number) => (
+                              <li key={i} className="text-orange-600 dark:text-orange-400">
+                                {reason}
+                              </li>
+                            ))
+                          ) : (
+                            <li className="text-orange-600 dark:text-orange-400">
+                              Maintenance required based on system analysis
                             </li>
-                          ))}
+                          )}
                         </ul>
                       </div>
+                      {assignment.decision?.top_risks && assignment.decision.top_risks.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-sm text-muted-foreground mb-2">Risks:</h4>
+                          <ul className="list-disc list-inside text-sm space-y-1">
+                            {assignment.decision.top_risks.slice(0, 2).map((risk: string, i: number) => (
+                              <li key={i} className="text-red-600 dark:text-red-400">
+                                {risk}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <Button
                           size="sm"
-                          variant="destructive"
+                          variant="outline"
                           onClick={() =>
-                            handleExplainDecision(assignment.trainset_id, assignment.decision?.decision)
+                            handleExplainDecision(assignment.trainset_id, assignment.decision?.decision || "MAINTENANCE")
                           }
                           disabled={explanationMutation.isPending}
                         >
                           <Eye className="h-4 w-4 mr-2" />
-                          Explain Conflict
+                          Explain Decision
                         </Button>
                         <Button
                           size="sm"
-                          variant="outline"
-                          className="text-red-900 border-red-200 hover:bg-red-100 dark:text-red-100 dark:border-red-800 dark:hover:bg-red-900/40"
+                          variant="secondary"
+                          onClick={() => handleViewDetails(assignment.trainset_id)}
                         >
                           <Info className="h-4 w-4 mr-2" />
-                          Resolve
+                          View Details
                         </Button>
                       </div>
                     </div>
@@ -584,85 +654,132 @@ const Assignments = () => {
               <p className="text-muted-foreground">No pending assignments</p>
             </div>
           ) : (
-            pendingAssignments.map((assignment) => (
-              <Card key={assignment.id} className="hover:shadow-md transition-shadow">
+            pendingAssignments.map((assignment, index) => (
+              <Card key={assignment.id || assignment.trainset_id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{assignment.trainset_id}</CardTitle>
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-primary text-primary-foreground rounded-full flex items-center justify-center font-bold">
+                        {assignment.rank || (index + 1)}
+                      </div>
+                      <CardTitle className="text-lg">{assignment.trainset_id}</CardTitle>
+                      <Badge variant={assignment.decision.decision === "INDUCT" ? "success" : assignment.decision.decision === "MAINTENANCE" ? "destructive" : "secondary"}>
+                        {assignment.decision.decision}
+                      </Badge>
+                    </div>
                     <div className="flex items-center gap-2">
                       {getStatusBadge(assignment.status)}
-                      <span className={`text-sm font-medium ${getPriorityColor(assignment.priority.toString())}`}>
-                        Priority {assignment.priority}
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Score: {Math.round((assignment.decision?.score || 0) * 100)}%
+                      </span>
+                      <span className="text-sm font-medium text-muted-foreground">
+                        Confidence: {Math.round((assignment.decision?.confidence_score || 0.8) * 100)}%
                       </span>
                     </div>
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-muted-foreground">Decision:</span>
-                      <p className="font-medium">{assignment.decision.decision}</p>
+                  <div className="space-y-3">
+                    {assignment.decision?.top_reasons && assignment.decision.top_reasons.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-2">Top Reasons:</h4>
+                        <ul className="list-disc list-inside text-sm space-y-1">
+                          {assignment.decision.top_reasons.slice(0, 3).map((reason: string, i: number) => (
+                            <li key={i} className="text-green-600 dark:text-green-400">{reason}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    {assignment.decision?.top_risks && assignment.decision.top_risks.length > 0 && (
+                      <div>
+                        <h4 className="font-medium text-sm text-muted-foreground mb-2">Risks:</h4>
+                        <ul className="list-disc list-inside text-sm space-y-1">
+                          {assignment.decision.top_risks.slice(0, 2).map((risk: string, i: number) => (
+                            <li key={i} className="text-red-600 dark:text-red-400">{risk}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-4">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleViewDetails(assignment.trainset_id)}
+                      >
+                        <Info className="h-4 w-4 mr-2" />
+                        View Details
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (!assignment.id || assignment.id.startsWith('virtual-')) {
+                            toast.error("Error", { description: "Cannot override: Assignment not yet created. Please approve first." });
+                            return;
+                          }
+                          console.log("Override clicked - Assignment:", assignment);
+                          const newDecision = assignment.decision.decision === "INDUCT" ? "STANDBY" :
+                            assignment.decision.decision === "STANDBY" ? "MAINTENANCE" : "INDUCT";
+                          overrideMutation.mutate({
+                            assignment_id: assignment.id,
+                            user_id: "system",
+                            override_decision: newDecision,
+                            reason: `Manual override: Changed from ${assignment.decision.decision} to ${newDecision}`
+                          });
+                        }}
+                        disabled={overrideMutation.isPending || assignment.status !== "PENDING" || assignment.id?.startsWith('virtual-')}
+                      >
+                        {overrideMutation.isPending ? "Overriding..." : "Override"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="industrial"
+                        onClick={async (e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          
+                          // If virtual assignment, create it first
+                          if (!assignment.id || assignment.id.startsWith('virtual-')) {
+                            try {
+                              // Create assignment first
+                              const createResponse = await assignmentApi.create({
+                                trainset_id: assignment.trainset_id,
+                                decision: assignment.decision,
+                                created_by: "system",
+                                priority: assignment.priority || 5
+                              });
+                              
+                              // Invalidate queries to refresh the list
+                              queryClient.invalidateQueries({ queryKey: ['assignments'] });
+                              
+                              // Then approve it
+                              approveMutation.mutate({
+                                assignment_ids: [createResponse.data.id],
+                                user_id: "system",
+                                comments: "Approved by supervisor"
+                              });
+                            } catch (error: any) {
+                              toast.error("Error", { 
+                                description: error.response?.data?.detail || "Failed to create assignment" 
+                              });
+                            }
+                            return;
+                          }
+                          
+                          console.log("Approve clicked - Assignment:", assignment);
+                          approveMutation.mutate({
+                            assignment_ids: [assignment.id],
+                            user_id: "system",
+                            comments: "Approved by supervisor"
+                          });
+                        }}
+                        disabled={approveMutation.isPending || assignment.status !== "PENDING"}
+                      >
+                        {approveMutation.isPending ? "Approving..." : "Approve"}
+                      </Button>
                     </div>
-                    <div>
-                      <span className="text-muted-foreground">Confidence:</span>
-                      <p className="font-medium">{Math.round(assignment.decision.confidence_score * 100)}%</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasoning}</p>
-                  <div className="flex gap-2 mt-4">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => handleViewDetails(assignment.trainset_id)}
-                    >
-                      <Info className="h-4 w-4 mr-2" />
-                      View Details
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (!assignment.id) {
-                          toast.error("Error", { description: "Assignment ID is missing" });
-                          return;
-                        }
-                        console.log("Override clicked - Assignment:", assignment);
-                        const newDecision = assignment.decision.decision === "INDUCT" ? "STANDBY" :
-                          assignment.decision.decision === "STANDBY" ? "MAINTENANCE" : "INDUCT";
-                        overrideMutation.mutate({
-                          assignment_id: assignment.id,
-                          user_id: "system",
-                          override_decision: newDecision,
-                          reason: `Manual override: Changed from ${assignment.decision.decision} to ${newDecision}`
-                        });
-                      }}
-                      disabled={overrideMutation.isPending || assignment.status !== "PENDING"}
-                    >
-                      {overrideMutation.isPending ? "Overriding..." : "Override"}
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="industrial"
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (!assignment.id) {
-                          toast.error("Error", { description: "Assignment ID is missing" });
-                          return;
-                        }
-                        console.log("Approve clicked - Assignment:", assignment);
-                        approveMutation.mutate({
-                          assignment_ids: [assignment.id],
-                          user_id: "system",
-                          comments: "Approved by supervisor"
-                        });
-                      }}
-                      disabled={approveMutation.isPending || assignment.status !== "PENDING"}
-                    >
-                      {approveMutation.isPending ? "Approving..." : "Approve"}
-                    </Button>
                   </div>
                 </CardContent>
               </Card>

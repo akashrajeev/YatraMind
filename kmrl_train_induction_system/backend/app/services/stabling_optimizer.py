@@ -5,6 +5,9 @@ from typing import List, Dict, Any, Tuple, Set, Optional
 from datetime import datetime, timedelta
 import logging
 from app.config import settings
+from app.models.trainset import (
+    FleetSummary, DepotAllocation, BayAssignment, OptimizationKPIs, StablingGeometryResponse
+)
 
 logger = logging.getLogger(__name__)
 
@@ -87,20 +90,326 @@ class StablingGeometryOptimizer:
                 optimized_layout, total_shunting_time, total_turnout_time
             )
             
+            # Calculate capacity statistics
+            total_capacity = sum(
+                self.depot_layouts[depot_name]["total_bays"]
+                for depot_name in depot_assignments.keys()
+                if depot_name in self.depot_layouts
+            )
+            total_assigned = sum(
+                len(layout.get("bay_assignments", {}))
+                for layout in optimized_layout.values()
+            )
+            total_requested = sum(len(trainsets) for trainsets in depot_assignments.values())
+            
             result = {
                 "optimized_layout": optimized_layout,
                 "efficiency_metrics": efficiency_metrics,
                 "total_shunting_time": total_shunting_time,
                 "total_turnout_time": total_turnout_time,
-                "optimization_timestamp": datetime.now().isoformat()
+                "optimization_timestamp": datetime.now().isoformat(),
+                "capacity_stats": {
+                    "total_bays_available": total_capacity,
+                    "total_trainsets_assigned": total_assigned,
+                    "total_trainsets_requested": total_requested,
+                    "capacity_utilization": round(total_assigned / total_capacity * 100, 2) if total_capacity > 0 else 0.0
+                }
             }
             
-            # Add unassigned trainsets if any
+            # Add unassigned trainsets if any and set capacity warning flag
             if unassigned_trainsets:
                 result["unassigned"] = unassigned_trainsets
-                logger.warning(f"Stabling optimization: {len(unassigned_trainsets)} trainsets could not be assigned bays")
+                result["capacity_warning"] = True
+                result["capacity_warning_message"] = (
+                    f"Capacity exceeded: {len(unassigned_trainsets)} trainsets could not be assigned bays. "
+                    f"Requested: {total_requested}, Available: {total_capacity}, Assigned: {total_assigned}"
+                )
+                logger.warning(
+                    f"Stabling optimization: {len(unassigned_trainsets)} trainsets could not be assigned bays "
+                    f"(capacity: {total_capacity}, requested: {total_requested}, assigned: {total_assigned})"
+                )
+            else:
+                result["capacity_warning"] = False
             
             return result
+        except Exception as e:
+            logger.error(f"Stabling geometry optimization failed: {e}", exc_info=True)
+            # Return empty/safe result or re-raise. Re-raising is safer for now.
+            raise
+    
+    def _generate_fleet_summary(self, trainsets: List[Dict[str, Any]], 
+                                induction_decisions: List[Dict[str, Any]],
+                                fleet_req: Optional[Dict[str, Any]] = None) -> FleetSummary:
+        """Generate fleet-level summary statistics"""
+        total_trainsets = len(trainsets)
+        
+        # Count decisions by type
+        decision_map = {d.get("trainset_id"): d.get("decision") for d in induction_decisions if isinstance(d, dict)}
+        actual_induct = sum(1 for d in induction_decisions if d.get("decision") == "INDUCT")
+        actual_standby = sum(1 for d in induction_decisions if d.get("decision") == "STANDBY")
+        maintenance_count = sum(1 for d in induction_decisions if d.get("decision") == "MAINTENANCE")
+        
+        # Count eligible (passed Tier 1 filters)
+        eligible_count = actual_induct + actual_standby
+        
+        # Get fleet requirements
+        required_service_trains = fleet_req.get("required_service_trains", 0) if fleet_req else 0
+        standby_buffer = fleet_req.get("standby_buffer", 0) if fleet_req else 0
+        total_required = fleet_req.get("total_required_trains", 0) if fleet_req else 0
+        
+        service_shortfall = max(0, required_service_trains - actual_induct)
+        compliance_rate = (actual_induct / required_service_trains) if required_service_trains > 0 else 0.0
+        
+        return FleetSummary(
+            total_trainsets=total_trainsets,
+            required_service_trains=required_service_trains,
+            standby_buffer=standby_buffer,
+            total_required_trains=total_required,
+            eligible_count=eligible_count,
+            actual_induct_count=actual_induct,
+            actual_standby_count=actual_standby,
+            maintenance_count=maintenance_count,
+            service_shortfall=service_shortfall,
+            compliance_rate=round(compliance_rate, 3)
+        )
+    
+    def _generate_depot_allocation(self, depot_assignments: Dict[str, List[Dict[str, Any]]],
+                                   optimized_layout: Dict[str, Any]) -> List[DepotAllocation]:
+        """Generate depot-level allocation breakdown"""
+        allocations = []
+        
+        for depot_name, depot_trainsets in depot_assignments.items():
+            if depot_name not in self.depot_layouts:
+                continue
+            
+            depot_layout = self.depot_layouts[depot_name]
+            depot_opt = optimized_layout.get(depot_name, {})
+            bay_assignments = depot_opt.get("bay_assignments", {})
+            
+            # Count trains by decision type in this depot
+            service_trains = sum(1 for t in depot_trainsets 
+                               if t.get("induction_decision", {}).get("decision") == "INDUCT")
+            standby_trains = sum(1 for t in depot_trainsets 
+                              if t.get("induction_decision", {}).get("decision") == "STANDBY")
+            maintenance_trains = sum(1 for t in depot_trainsets 
+                                   if t.get("induction_decision", {}).get("decision") == "MAINTENANCE")
+            
+            # Get capacities
+            service_bay_capacity = len(depot_layout.get("service_bays", []))
+            maintenance_bay_capacity = len(depot_layout.get("maintenance_bays", []))
+            total_bay_capacity = depot_layout.get("total_bays", 0)
+            
+            # Check for capacity warnings
+            capacity_warning = (
+                service_trains > service_bay_capacity or
+                maintenance_trains > maintenance_bay_capacity or
+                (service_trains + standby_trains + maintenance_trains) > total_bay_capacity
+            )
+            
+            allocations.append(DepotAllocation(
+                depot_name=depot_name,
+                service_trains=service_trains,
+                standby_trains=standby_trains,
+                maintenance_trains=maintenance_trains,
+                total_trains=service_trains + standby_trains + maintenance_trains,
+                service_bay_capacity=service_bay_capacity,
+                maintenance_bay_capacity=maintenance_bay_capacity,
+                total_bay_capacity=total_bay_capacity,
+                capacity_warning=capacity_warning
+            ))
+        
+        return allocations
+    
+    def _generate_bay_layout(self, optimized_layout: Dict[str, Any],
+                            trainsets: List[Dict[str, Any]],
+                            induction_decisions: List[Dict[str, Any]]) -> Dict[str, List[BayAssignment]]:
+        """Generate enhanced bay layout with role and details"""
+        bay_layout = {}
+        
+        # Create decision map for quick lookup
+        decision_map = {}
+        for d in induction_decisions:
+            if isinstance(d, dict):
+                decision_map[d.get("trainset_id")] = d
+            elif hasattr(d, "trainset_id"):
+                decision_map[d.trainset_id] = d
+        
+        # Create trainset map
+        trainset_map = {t.get("trainset_id"): t for t in trainsets}
+        
+        for depot_name, depot_opt in optimized_layout.items():
+            if depot_name not in self.depot_layouts:
+                continue
+            
+            depot_layout = self.depot_layouts[depot_name]
+            bay_assignments = depot_opt.get("bay_assignments", {})
+            
+            # Create reverse map: bay -> trainset_id
+            bay_to_trainset = {bay: ts_id for ts_id, bay in bay_assignments.items()}
+            
+            depot_bays = []
+            
+            # Process all bays in depot
+            for bay_id in range(1, depot_layout["total_bays"] + 1):
+                trainset_id = bay_to_trainset.get(bay_id)
+                bay_info = depot_layout["bay_positions"].get(bay_id, {})
+                
+                # Determine role based on bay type and decision
+                role = "EMPTY"
+                if trainset_id:
+                    decision = decision_map.get(trainset_id, {})
+                    if isinstance(decision, dict):
+                        decision_type = decision.get("decision", "STANDBY")
+                    else:
+                        decision_type = getattr(decision, "decision", "STANDBY")
+                    
+                    # Map decision to role
+                    if decision_type == "INDUCT":
+                        role = "SERVICE"
+                    elif decision_type == "MAINTENANCE":
+                        role = "MAINTENANCE"
+                    else:
+                        role = "STANDBY"
+                
+                # Get turnout time and distance
+                turnout_time = bay_info.get("turnout_time") if trainset_id else None
+                distance_to_exit = None
+                if bay_info.get("x") is not None and bay_info.get("y") is not None:
+                    # Calculate distance to exit (assume exit is at y=0, x=0)
+                    distance_to_exit = int(math.sqrt(bay_info["x"]**2 + bay_info["y"]**2))
+                
+                # Generate notes
+                notes = None
+                if trainset_id:
+                    trainset = trainset_map.get(trainset_id, {})
+                    note_parts = []
+                    
+                    # Branding info
+                    branding = trainset.get("branding", {})
+                    if isinstance(branding, dict) and branding.get("current_advertiser"):
+                        note_parts.append(f"Active wrap: {branding.get('current_advertiser')}")
+                    
+                    # Job cards
+                    job_cards = trainset.get("job_cards", {})
+                    if isinstance(job_cards, dict):
+                        open_cards = job_cards.get("open_cards", 0)
+                        if open_cards > 0:
+                            note_parts.append(f"{open_cards} open job cards")
+                    
+                    # Mileage
+                    mileage = trainset.get("current_mileage", 0)
+                    if mileage > 40000:
+                        note_parts.append(f"High mileage: {int(mileage)} km")
+                    
+                    if note_parts:
+                        notes = "; ".join(note_parts)
+                
+                depot_bays.append(BayAssignment(
+                    bay_id=bay_id,
+                    role=role,
+                    trainset_id=trainset_id,
+                    turnout_time_min=turnout_time,
+                    distance_to_exit_m=distance_to_exit,
+                    notes=notes
+                ))
+            
+            bay_layout[depot_name] = depot_bays
+        
+        return bay_layout
+    
+    def _generate_warnings(self, fleet_summary: FleetSummary,
+                          depot_allocations: List[DepotAllocation],
+                          unassigned_trainsets: List[Dict[str, Any]]) -> List[str]:
+        """Generate operational warnings"""
+        warnings = []
+        
+        # Service shortfall warning
+        if fleet_summary.service_shortfall > 0:
+            warnings.append(
+                f"Service shortfall: {fleet_summary.service_shortfall} trains short of required "
+                f"{fleet_summary.required_service_trains} service trains."
+            )
+        
+        # Standby buffer warning
+        if fleet_summary.actual_standby_count < fleet_summary.standby_buffer:
+            warnings.append(
+                f"Standby buffer shortfall: Only {fleet_summary.actual_standby_count} standby trains available "
+                f"vs {fleet_summary.standby_buffer} requested."
+            )
+        
+        # Depot capacity warnings
+        for depot in depot_allocations:
+            if depot.capacity_warning:
+                if depot.service_trains > depot.service_bay_capacity:
+                    warnings.append(
+                        f"{depot.depot_name} service bay capacity exceeded by "
+                        f"{depot.service_trains - depot.service_bay_capacity} rake(s). "
+                        f"One or more SERVICE rakes are parked in non-service bays."
+                    )
+                if depot.maintenance_trains > depot.maintenance_bay_capacity:
+                    warnings.append(
+                        f"{depot.depot_name} maintenance bay capacity exceeded by "
+                        f"{depot.maintenance_trains - depot.maintenance_bay_capacity} rake(s)."
+                    )
+        
+        # Unassigned trainsets warning
+        if unassigned_trainsets:
+            warnings.append(
+                f"{len(unassigned_trainsets)} trainset(s) could not be assigned bays due to capacity constraints."
+            )
+        
+        return warnings
+    
+    async def generate_rich_stabling_geometry(self, trainsets: List[Dict[str, Any]],
+                                            induction_decisions: List[Dict[str, Any]],
+                                            fleet_req: Optional[Dict[str, Any]] = None) -> StablingGeometryResponse:
+        """Generate rich, structured stabling geometry response with intelligence"""
+        try:
+            # First run the standard optimization
+            standard_result = await self.optimize_stabling_geometry(trainsets, induction_decisions)
+            
+            # Extract data from standard result
+            optimized_layout = standard_result.get("optimized_layout", {})
+            unassigned_trainsets = standard_result.get("unassigned", [])
+            total_shunting_time = standard_result.get("total_shunting_time", 0)
+            total_turnout_time = standard_result.get("total_turnout_time", 0)
+            efficiency_metrics = standard_result.get("efficiency_metrics", {})
+            
+            # Group trainsets by depot for allocation calculation
+            depot_assignments, _ = self._group_trainsets_by_depot(trainsets, induction_decisions)
+            
+            # Generate structured components
+            fleet_summary = self._generate_fleet_summary(trainsets, induction_decisions, fleet_req)
+            depot_allocation = self._generate_depot_allocation(depot_assignments, optimized_layout)
+            bay_layout = self._generate_bay_layout(optimized_layout, trainsets, induction_decisions)
+            warnings = self._generate_warnings(fleet_summary, depot_allocation, unassigned_trainsets)
+            
+            # Calculate KPIs
+            optimized_positions = sum(
+                len(depot.get("bay_assignments", {}))
+                for depot in optimized_layout.values()
+            )
+            
+            efficiency_improvement = efficiency_metrics.get("overall_efficiency", 0.0) * 100
+            energy_savings = efficiency_metrics.get("energy_savings", 0.0)
+            
+            optimization_kpis = OptimizationKPIs(
+                optimized_positions=optimized_positions,
+                total_shunting_time_min=total_shunting_time,
+                total_turnout_time_min=total_turnout_time,
+                efficiency_improvement_pct=round(efficiency_improvement, 2),
+                energy_savings_kwh=round(energy_savings, 2) if energy_savings else None,
+                night_movements_reduced=None  # Can be calculated if baseline is available
+            )
+            
+            return StablingGeometryResponse(
+                fleet_summary=fleet_summary,
+                depot_allocation=depot_allocation,
+                bay_layout=bay_layout,
+                optimization_kpis=optimization_kpis,
+                warnings=warnings,
+                optimization_timestamp=standard_result.get("optimization_timestamp", datetime.now().isoformat())
+            )
             
         except Exception as e:
             logger.error(f"Stabling geometry optimization failed: {e}")

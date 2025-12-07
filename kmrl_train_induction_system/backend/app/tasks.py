@@ -47,8 +47,8 @@ def nightly_run_optimization() -> dict:
                     await ts_col.update_one({"trainset_id": rid}, {"$set": {"predicted_failure_risk": pr.get("risk_prob", 0.2), "risk_top_features": pr.get("top_features", [])}}, upsert=False)
 
             optimizer = TrainInductionOptimizer()
-            req = OptimizationRequest(target_date=datetime.now(), required_service_hours=14)
-            result: List[InductionDecision] = await optimizer.optimize(trainsets_data, req)
+            req = OptimizationRequest(target_date=datetime.now())  # Uses default timetable
+            result, _ = await optimizer.optimize(trainsets_data, req)
 
             # Persist
             await store_optimization_history(req, result)
