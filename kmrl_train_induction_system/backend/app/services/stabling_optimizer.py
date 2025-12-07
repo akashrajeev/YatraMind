@@ -132,6 +132,10 @@ class StablingGeometryOptimizer:
                 result["capacity_warning"] = False
             
             return result
+        except Exception as e:
+            logger.error(f"Stabling geometry optimization failed: {e}", exc_info=True)
+            # Return empty/safe result or re-raise. Re-raising is safer for now.
+            raise
     
     def _generate_fleet_summary(self, trainsets: List[Dict[str, Any]], 
                                 induction_decisions: List[Dict[str, Any]],
@@ -360,51 +364,52 @@ class StablingGeometryOptimizer:
                                             induction_decisions: List[Dict[str, Any]],
                                             fleet_req: Optional[Dict[str, Any]] = None) -> StablingGeometryResponse:
         """Generate rich, structured stabling geometry response with intelligence"""
-        # First run the standard optimization
-        standard_result = await self.optimize_stabling_geometry(trainsets, induction_decisions)
-        
-        # Extract data from standard result
-        optimized_layout = standard_result.get("optimized_layout", {})
-        unassigned_trainsets = standard_result.get("unassigned", [])
-        total_shunting_time = standard_result.get("total_shunting_time", 0)
-        total_turnout_time = standard_result.get("total_turnout_time", 0)
-        efficiency_metrics = standard_result.get("efficiency_metrics", {})
-        
-        # Group trainsets by depot for allocation calculation
-        depot_assignments, _ = self._group_trainsets_by_depot(trainsets, induction_decisions)
-        
-        # Generate structured components
-        fleet_summary = self._generate_fleet_summary(trainsets, induction_decisions, fleet_req)
-        depot_allocation = self._generate_depot_allocation(depot_assignments, optimized_layout)
-        bay_layout = self._generate_bay_layout(optimized_layout, trainsets, induction_decisions)
-        warnings = self._generate_warnings(fleet_summary, depot_allocation, unassigned_trainsets)
-        
-        # Calculate KPIs
-        optimized_positions = sum(
-            len(depot.get("bay_assignments", {}))
-            for depot in optimized_layout.values()
-        )
-        
-        efficiency_improvement = efficiency_metrics.get("overall_efficiency", 0.0) * 100
-        energy_savings = efficiency_metrics.get("energy_savings", 0.0)
-        
-        optimization_kpis = OptimizationKPIs(
-            optimized_positions=optimized_positions,
-            total_shunting_time_min=total_shunting_time,
-            total_turnout_time_min=total_turnout_time,
-            efficiency_improvement_pct=round(efficiency_improvement, 2),
-            energy_savings_kwh=round(energy_savings, 2) if energy_savings else None,
-            night_movements_reduced=None  # Can be calculated if baseline is available
-        )
-        
-        return StablingGeometryResponse(
-            fleet_summary=fleet_summary,
-            depot_allocation=depot_allocation,
-            bay_layout=bay_layout,
-            optimization_kpis=optimization_kpis,
-            warnings=warnings,
-            optimization_timestamp=standard_result.get("optimization_timestamp", datetime.now().isoformat())
-        )
+        try:
+            # First run the standard optimization
+            standard_result = await self.optimize_stabling_geometry(trainsets, induction_decisions)
+            
+            # Extract data from standard result
+            optimized_layout = standard_result.get("optimized_layout", {})
+            unassigned_trainsets = standard_result.get("unassigned", [])
+            total_shunting_time = standard_result.get("total_shunting_time", 0)
+            total_turnout_time = standard_result.get("total_turnout_time", 0)
+            efficiency_metrics = standard_result.get("efficiency_metrics", {})
+            
+            # Group trainsets by depot for allocation calculation
+            depot_assignments, _ = self._group_trainsets_by_depot(trainsets, induction_decisions)
+            
+            # Generate structured components
+            fleet_summary = self._generate_fleet_summary(trainsets, induction_decisions, fleet_req)
+            depot_allocation = self._generate_depot_allocation(depot_assignments, optimized_layout)
+            bay_layout = self._generate_bay_layout(optimized_layout, trainsets, induction_decisions)
+            warnings = self._generate_warnings(fleet_summary, depot_allocation, unassigned_trainsets)
+            
+            # Calculate KPIs
+            optimized_positions = sum(
+                len(depot.get("bay_assignments", {}))
+                for depot in optimized_layout.values()
+            )
+            
+            efficiency_improvement = efficiency_metrics.get("overall_efficiency", 0.0) * 100
+            energy_savings = efficiency_metrics.get("energy_savings", 0.0)
+            
+            optimization_kpis = OptimizationKPIs(
+                optimized_positions=optimized_positions,
+                total_shunting_time_min=total_shunting_time,
+                total_turnout_time_min=total_turnout_time,
+                efficiency_improvement_pct=round(efficiency_improvement, 2),
+                energy_savings_kwh=round(energy_savings, 2) if energy_savings else None,
+                night_movements_reduced=None  # Can be calculated if baseline is available
+            )
+            
+            return StablingGeometryResponse(
+                fleet_summary=fleet_summary,
+                depot_allocation=depot_allocation,
+                bay_layout=bay_layout,
+                optimization_kpis=optimization_kpis,
+                warnings=warnings,
+                optimization_timestamp=standard_result.get("optimization_timestamp", datetime.now().isoformat())
+            )
             
         except Exception as e:
             logger.error(f"Stabling geometry optimization failed: {e}")
