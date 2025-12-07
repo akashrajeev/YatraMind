@@ -503,7 +503,7 @@ class DataIngestionService:
             logger.error(f"Failed to send files to n8n: {e}")
             raise
 
-    async def process_n8n_result(self, data: Dict[str, Any]) -> Dict[str, Any]:
+    async def process_n8n_result(self, data: Dict[str, Any], apply_updates: bool = False) -> Dict[str, Any]:
         """Process and store JSON result received from n8n."""
         try:
             # 1. Store the raw result in a dedicated collection
@@ -512,45 +512,75 @@ class DataIngestionService:
             doc = {
                 "data": data,
                 "ingested_at": datetime.now().isoformat(),
-                "processed": False
+                "processed": False,
+                "skipped_updates": not apply_updates
             }
             
             result = await collection.insert_one(doc)
             
-            # 2. Router Logic: Process 'updates' if present
+            # 2. Router Logic: Process 'updates' if present AND apply_updates is True
             updates_processed = 0
             errors = []
             
-            if "updates" in data and isinstance(data["updates"], list):
-                logger.info(f"Processing {len(data['updates'])} updates from n8n result")
+            if apply_updates:
+                # Handle n8n bulk output format: [{"output": [...]}]
+                if isinstance(data, list):
+                    logger.info("Detected list input (n8n bulk format)")
+                    for item in data:
+                        if isinstance(item, dict) and "output" in item and isinstance(item["output"], list):
+                            logger.info(f"Processing bulk output with {len(item['output'])} items")
+                            for trainset_data in item["output"]:
+                                try:
+                                    await self._process_bulk_trainset_data(trainset_data)
+                                    updates_processed += 1
+                                except Exception as e:
+                                    logger.error(f"Failed to process bulk item: {e}")
+                                    errors.append(str(e))
                 
-                for update_item in data["updates"]:
-                    try:
-                        source_type = update_item.get("source_type")
-                        item_data = update_item.get("data")
-                        
-                        if not source_type or not item_data:
-                            continue
+                # Handle nested body format: {"body": {"output": [...]}}
+                elif isinstance(data, dict) and "body" in data and isinstance(data["body"], dict) and "output" in data["body"] and isinstance(data["body"]["output"], list):
+                    logger.info("Detected nested body input (n8n bulk format)")
+                    items = data["body"]["output"]
+                    logger.info(f"Processing nested bulk output with {len(items)} items")
+                    for trainset_data in items:
+                        try:
+                            await self._process_bulk_trainset_data(trainset_data)
+                            updates_processed += 1
+                        except Exception as e:
+                            logger.error(f"Failed to process bulk item: {e}")
+                            errors.append(str(e))
+
+                # Handle standard format: {"updates": [...]}
+                elif "updates" in data and isinstance(data["updates"], list):
+                    logger.info(f"Processing {len(data['updates'])} updates from n8n result")
+                    
+                    for update_item in data["updates"]:
+                        try:
+                            source_type = update_item.get("source_type")
+                            item_data = update_item.get("data")
                             
-                        if source_type == "fitness":
-                            await self._update_fitness_factor(item_data)
-                        elif source_type == "job_card":
-                            await self._update_job_card_factor(item_data)
-                        elif source_type == "branding":
-                            await self._update_branding_factor(item_data)
-                        elif source_type == "cleaning":
-                            await self._update_cleaning_factor(item_data)
-                        elif source_type == "iot_sensor":
-                            await self._update_iot_factor(item_data)
-                        else:
-                            logger.warning(f"Unknown source_type in n8n update: {source_type}")
-                            continue
+                            if not source_type or not item_data:
+                                continue
+                                
+                            if source_type == "fitness":
+                                await self._update_fitness_factor(item_data)
+                            elif source_type == "job_card":
+                                await self._update_job_card_factor(item_data)
+                            elif source_type == "branding":
+                                await self._update_branding_factor(item_data)
+                            elif source_type == "cleaning":
+                                await self._update_cleaning_factor(item_data)
+                            elif source_type == "iot_sensor":
+                                await self._update_iot_factor(item_data)
+                            else:
+                                logger.warning(f"Unknown source_type in n8n update: {source_type}")
+                                continue
+                                
+                            updates_processed += 1
                             
-                        updates_processed += 1
-                        
-                    except Exception as e:
-                        logger.error(f"Failed to process update item: {e}")
-                        errors.append(str(e))
+                        except Exception as e:
+                            logger.error(f"Failed to process update item: {e}")
+                            errors.append(str(e))
                 
                 # Update the raw doc to mark as processed
                 await collection.update_one(
@@ -567,7 +597,7 @@ class DataIngestionService:
                 source="n8n_webhook",
                 target_collection="n8n_ingested_data",
                 raw_payload={"id": str(result.inserted_id), "updates_count": updates_processed},
-                normalized_docs=[doc]
+                normalized_docs=None  # Already inserted manually above
             )
             
             return {
@@ -581,6 +611,56 @@ class DataIngestionService:
         except Exception as e:
             logger.error(f"Failed to process n8n result: {e}")
             raise
+
+    async def _process_bulk_trainset_data(self, data: Dict[str, Any]):
+        """
+        Helper to process a flat trainset object from n8n bulk output.
+        Maps fields to specific factor update methods.
+        """
+        trainset_id = data.get("trainset_id")
+        if not trainset_id:
+            return
+
+        # 1. Fitness Certificates
+        if "fitness_certificates" in data:
+            certs = data["fitness_certificates"]
+            if isinstance(certs, dict):
+                for cert_type, cert_data in certs.items():
+                    if isinstance(cert_data, dict):
+                        payload = {
+                            "trainset_id": trainset_id,
+                            "certificate": cert_type,
+                            "status": cert_data.get("status"),
+                            "expiry_date": cert_data.get("expiry_date")
+                        }
+                        await self._update_fitness_factor(payload)
+
+        # 2. Job Cards
+        if "job_cards" in data:
+            jc = data["job_cards"]
+            if isinstance(jc, dict):
+                payload = {
+                    "trainset_id": trainset_id,
+                    "open_cards": jc.get("open_cards"),
+                    "critical_cards": jc.get("critical_cards")
+                }
+                await self._update_job_card_factor(payload)
+
+        # 3. Branding
+        if "branding" in data:
+            branding = data["branding"]
+            if isinstance(branding, dict):
+                payload = {
+                    "trainset_id": trainset_id,
+                    "current_advertiser": branding.get("current_advertiser"),
+                    "priority": branding.get("priority"),
+                    "revenue_per_day": branding.get("revenue_per_day")
+                }
+                await self._update_branding_factor(payload)
+
+        # 4. Cleaning (if present)
+        if "cleaning" in data:
+             await self._update_cleaning_factor({"trainset_id": trainset_id, **data["cleaning"]})
 
     # --------------------------- Factor Update Helpers --------------------------- #
 

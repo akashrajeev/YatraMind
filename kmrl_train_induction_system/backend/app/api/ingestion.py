@@ -279,12 +279,23 @@ async def upload_to_n8n(files: List[UploadFile] = File(...)):
         logger.error(f"N8N upload failed: {e}")
         raise HTTPException(status_code=500, detail=f"N8N upload failed: {str(e)}")
 
+from typing import List, Dict, Any, Union
+
 @router.post("/ingest/n8n/result")
-async def receive_n8n_result(data: Dict[str, Any], _auth=Depends(require_api_key)):
-    """Receive processed JSON result from n8n."""
+async def receive_n8n_result(
+    data: Union[Dict[str, Any], List[Any]], 
+    apply_updates: bool = True,
+    _auth=Depends(require_api_key)
+):
+    """
+    Receive processed JSON result from n8n.
+    
+    - **apply_updates**: If True (default), updates system state (fitness, job cards, etc.).
+                         If False, only logs the raw data to n8n_ingested_data collection.
+    """
     try:
         svc = DataIngestionService()
-        result = await svc.process_n8n_result(data)
+        result = await svc.process_n8n_result(data, apply_updates=apply_updates)
         return result
     except Exception as e:
         logger.error(f"N8N result ingestion failed: {e}")

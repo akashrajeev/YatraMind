@@ -64,8 +64,11 @@ async def batch_predict(features: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     _ensure_deterministic_seeding()
     
     # Log input hash for reproducibility tracking
+    # Log input hash for reproducibility tracking
     import hashlib
-    input_hash = hashlib.md5(str(sorted(features)).encode()).hexdigest()[:8]
+    # Sort by trainset_id to ensure deterministic order for hashing (avoids dict comparison error)
+    sorted_features = sorted(features, key=lambda x: str(x.get("trainset_id", "")))
+    input_hash = hashlib.md5(str(sorted_features).encode()).hexdigest()[:8]
     logger.debug(f"ML batch_predict called with {len(features)} features, input_hash={input_hash}")
     
     bundle = await load_latest_model()
