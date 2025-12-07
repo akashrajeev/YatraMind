@@ -56,13 +56,13 @@ class OptimizationWeights(BaseModel):
 
 class OptimizationRequest(BaseModel):
     target_date: datetime = Field(default_factory=datetime.utcnow)
-    required_service_hours: Optional[float] = Field(
-        14,
-        description="Preferred request format (hours). Converted to train count using avg_hours_per_train.",
+    service_date: Optional[str] = Field(
+        default=None,
+        description="Date for timetable lookup (YYYY-MM-DD). If not provided, uses default timetable configuration.",
     )
     required_service_count: Optional[int] = Field(
         default=None,
-        description="Backward compatibility: explicit train count request. Overrides hours if provided.",
+        description="Manual override: explicit train count request. If provided, overrides timetable calculation.",
     )
     override_constraints: Optional[Dict[str, Any]] = None
     weights: Optional[OptimizationWeights] = Field(
@@ -88,3 +88,61 @@ class InductionDecision(BaseModel):
     top_risks: List[str] = Field(default_factory=list, description="Top 3 negative reasons")
     violations: List[str] = Field(default_factory=list, description="List of rule violations if assignment chosen despite violation")
     shap_values: List[ShapFeature] = Field(default_factory=list, description="Top 5 features and their impact if ML used")
+
+
+# Stabling Geometry Models
+class FleetSummary(BaseModel):
+    """Fleet-level summary statistics"""
+    total_trainsets: int
+    required_service_trains: int
+    standby_buffer: int
+    total_required_trains: int
+    eligible_count: int
+    actual_induct_count: int
+    actual_standby_count: int
+    maintenance_count: int
+    service_shortfall: int = Field(default=0, description="Number of trains short if requirement not met")
+    compliance_rate: float = Field(default=0.0, ge=0.0, le=1.0, description="Compliance rate (0-1)")
+
+
+class DepotAllocation(BaseModel):
+    """Depot-level allocation breakdown"""
+    depot_name: str
+    service_trains: int
+    standby_trains: int
+    maintenance_trains: int
+    total_trains: int
+    service_bay_capacity: int
+    maintenance_bay_capacity: int
+    total_bay_capacity: int
+    capacity_warning: bool = Field(default=False, description="True if any category exceeds capacity")
+
+
+class BayAssignment(BaseModel):
+    """Individual bay assignment with details"""
+    bay_id: int
+    role: str = Field(..., description="SERVICE | STANDBY | MAINTENANCE")
+    trainset_id: Optional[str] = Field(None, description="Trainset assigned to this bay, None if empty")
+    turnout_time_min: Optional[int] = Field(None, description="Time to exit bay in minutes")
+    distance_to_exit_m: Optional[int] = Field(None, description="Distance to depot exit in meters")
+    notes: Optional[str] = Field(None, description="Additional context (branding, job cards, etc.)")
+
+
+class OptimizationKPIs(BaseModel):
+    """Optimization performance metrics"""
+    optimized_positions: int
+    total_shunting_time_min: int
+    total_turnout_time_min: int
+    efficiency_improvement_pct: float = Field(default=0.0, description="Efficiency improvement percentage")
+    energy_savings_kwh: Optional[float] = Field(None, description="Estimated energy savings in kWh")
+    night_movements_reduced: Optional[int] = Field(None, description="Number of movements reduced vs baseline")
+
+
+class StablingGeometryResponse(BaseModel):
+    """Rich stabling geometry response with structured intelligence"""
+    fleet_summary: FleetSummary
+    depot_allocation: List[DepotAllocation]
+    bay_layout: Dict[str, List[BayAssignment]] = Field(..., description="Depot name -> list of bay assignments")
+    optimization_kpis: OptimizationKPIs
+    warnings: List[str] = Field(default_factory=list, description="Capacity or operational warnings")
+    optimization_timestamp: str = Field(..., description="ISO timestamp of optimization")

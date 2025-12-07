@@ -64,7 +64,7 @@ const splitCommaList = (value: string) =>
 const Optimization = () => {
   const [optimizationParams, setOptimizationParams] = useState<OptimizationParamsState>({
     target_date: new Date().toISOString().split('T')[0],
-    required_service_hours: 14
+    required_service_hours: 0 // Default to 0 to trigger timetable logic
   });
 
   const [simulationParams, setSimulationParams] = useState<SimulationParamsState>({
@@ -358,6 +358,10 @@ const Optimization = () => {
                     }))}
                   />
                 </div>
+
+              </div>
+              {/* Hidden by default, can be re-enabled if manual override is needed */}
+              {/* 
                 <div>
                   <Label htmlFor="service-hours">Required Service Hours</Label>
                   <Input
@@ -377,6 +381,13 @@ const Optimization = () => {
                     The backend returns the exact conversion and granted trains.
                   </p>
                 </div>
+                */}
+
+
+              <div className="text-sm text-muted-foreground bg-secondary/20 p-3 rounded-md">
+                <p>
+                  <strong>Note:</strong> Fleet requirements are now automatically calculated based on the timetable for the selected date.
+                </p>
               </div>
               <Button
                 onClick={() => runOptimizationMutation.mutate()}
@@ -762,36 +773,180 @@ const Optimization = () => {
                   );
                 }
 
+                const fleetSummary = stablingGeometry.fleet_summary;
+                const depotAllocation = stablingGeometry.depot_allocation || [];
+                const bayLayout = stablingGeometry.bay_layout || {};
+                const kpis = stablingGeometry.optimization_kpis;
+                const warnings = stablingGeometry.warnings || [];
+
                 return (
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-foreground">
-                          {stablingGeometry.total_optimized_positions ??
-                            (stablingGeometry.optimized_layout &&
-                              typeof stablingGeometry.optimized_layout === 'object'
-                              ? Object.values(stablingGeometry.optimized_layout).reduce(
-                                (total: number, depot: any) =>
-                                  total + Object.keys(depot?.bay_assignments || {}).length,
-                                0
-                              )
-                              : 0)}
+                  <div className="space-y-6">
+                    {/* Fleet Summary */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Fleet Summary</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-foreground">{fleetSummary?.total_trainsets || 0}</div>
+                            <div className="text-xs text-muted-foreground">Total Trainsets</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-success">{fleetSummary?.actual_induct_count || 0}</div>
+                            <div className="text-xs text-muted-foreground">Service Trains</div>
+                            <div className="text-xs text-muted-foreground">(Req: {fleetSummary?.required_service_trains || 0})</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-warning">{fleetSummary?.actual_standby_count || 0}</div>
+                            <div className="text-xs text-muted-foreground">Standby</div>
+                            <div className="text-xs text-muted-foreground">(Buffer: {fleetSummary?.standby_buffer || 0})</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-destructive">{fleetSummary?.maintenance_count || 0}</div>
+                            <div className="text-xs text-muted-foreground">Maintenance</div>
+                          </div>
+                          <div className="text-center">
+                            <div className={`text-xl font-bold ${fleetSummary?.service_shortfall > 0 ? 'text-destructive' : 'text-success'}`}>
+                              {fleetSummary?.service_shortfall || 0}
+                            </div>
+                            <div className="text-xs text-muted-foreground">Service Shortfall</div>
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">Optimized Positions</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-success">
-                          {stablingGeometry.total_shunting_time || 0} min
+                      </CardContent>
+                    </Card>
+
+                    {/* Warnings */}
+                    {warnings.length > 0 && (
+                      <Card className="border-yellow-300 bg-yellow-50">
+                        <CardHeader>
+                          <CardTitle className="text-lg flex items-center gap-2">
+                            <AlertTriangle className="h-5 w-5 text-yellow-600" />
+                            Operational Warnings
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <ul className="list-disc list-inside space-y-1 text-sm text-yellow-900">
+                            {warnings.map((warning: string, idx: number) => (
+                              <li key={idx}>{warning}</li>
+                            ))}
+                          </ul>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Depot Allocation */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Depot Allocation</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {depotAllocation.map((depot: any) => (
+                            <div key={depot.depot_name} className="border rounded-lg p-4">
+                              <div className="flex items-center justify-between mb-3">
+                                <h3 className="font-semibold text-lg">{depot.depot_name}</h3>
+                                {depot.capacity_warning && (
+                                  <Badge variant="destructive">Capacity Warning</Badge>
+                                )}
+                              </div>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Service</div>
+                                  <div className="text-lg font-bold text-success">{depot.service_trains}</div>
+                                  <div className="text-xs text-muted-foreground">Capacity: {depot.service_bay_capacity}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Standby</div>
+                                  <div className="text-lg font-bold text-warning">{depot.standby_trains}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Maintenance</div>
+                                  <div className="text-lg font-bold text-destructive">{depot.maintenance_trains}</div>
+                                  <div className="text-xs text-muted-foreground">Capacity: {depot.maintenance_bay_capacity}</div>
+                                </div>
+                                <div>
+                                  <div className="text-sm text-muted-foreground">Total</div>
+                                  <div className="text-lg font-bold">{depot.total_trains}</div>
+                                  <div className="text-xs text-muted-foreground">Total Capacity: {depot.total_bay_capacity}</div>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                        <div className="text-sm text-muted-foreground">Total Shunting Time</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">
-                          {stablingGeometry.efficiency_improvement || 0}%
+                      </CardContent>
+                    </Card>
+
+                    {/* Bay Layout Grid */}
+                    {Object.keys(bayLayout).length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Bay Layout</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-6">
+                            {Object.entries(bayLayout).map(([depotName, bays]: [string, any]) => (
+                              <div key={depotName}>
+                                <h3 className="font-semibold mb-3">{depotName}</h3>
+                                <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-2">
+                                  {bays.map((bay: any) => {
+                                    const roleColors: Record<string, string> = {
+                                      SERVICE: "bg-green-100 border-green-300 text-green-900",
+                                      STANDBY: "bg-yellow-100 border-yellow-300 text-yellow-900",
+                                      MAINTENANCE: "bg-red-100 border-red-300 text-red-900",
+                                      EMPTY: "bg-gray-100 border-gray-300 text-gray-500"
+                                    };
+                                    return (
+                                      <div
+                                        key={bay.bay_id}
+                                        className={`border rounded p-2 text-center text-xs ${roleColors[bay.role] || roleColors.EMPTY}`}
+                                        title={bay.notes || `${bay.role} - ${bay.trainset_id || 'Empty'}`}
+                                      >
+                                        <div className="font-bold">Bay {bay.bay_id}</div>
+                                        <div className="text-xs">{bay.trainset_id || 'Empty'}</div>
+                                        <div className="text-xs opacity-75">{bay.role}</div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Optimization KPIs */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Optimization Performance</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-foreground">{kpis?.optimized_positions || 0}</div>
+                            <div className="text-xs text-muted-foreground">Optimized Positions</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-primary">{kpis?.total_shunting_time_min || 0} min</div>
+                            <div className="text-xs text-muted-foreground">Shunting Time</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-success">{kpis?.total_turnout_time_min || 0} min</div>
+                            <div className="text-xs text-muted-foreground">Turnout Time</div>
+                          </div>
+                          <div className="text-center">
+                            <div className="text-xl font-bold text-primary">{kpis?.efficiency_improvement_pct?.toFixed(1) || 0}%</div>
+                            <div className="text-xs text-muted-foreground">Efficiency Improvement</div>
+                          </div>
                         </div>
-                        <div className="text-sm text-muted-foreground">Efficiency Improvement</div>
-                      </div>
-                    </div>
+                        {kpis?.energy_savings_kwh && (
+                          <div className="mt-4 text-center text-sm text-muted-foreground">
+                            Estimated Energy Savings: <span className="font-semibold">{kpis.energy_savings_kwh.toFixed(1)} kWh</span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
                   </div>
                 );
               })()}
@@ -833,34 +988,185 @@ const Optimization = () => {
                   );
                 }
 
+                const schedule = shuntingSchedule.shunting_schedule || [];
+                const scheduleByDepot = shuntingSchedule.schedule_by_depot || {};
+                const depotSummaries = shuntingSchedule.depot_summaries || {};
+                const operationalWindow = shuntingSchedule.operational_window;
+
                 return (
-                  <div className="space-y-4">
+                  <div className="space-y-6">
+                    {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-foreground">
-                          {shuntingSchedule.total_operations || 0}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Total Operations</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-primary">
-                          {shuntingSchedule.estimated_total_time || 0} min
-                        </div>
-                        <div className="text-sm text-muted-foreground">Estimated Time</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-destructive">
-                          {shuntingSchedule.crew_requirements?.high_complexity || 0}
-                        </div>
-                        <div className="text-sm text-muted-foreground">High Complexity</div>
-                      </div>
-                      <div className="text-center">
-                        <div className="text-2xl font-bold text-warning">
-                          {shuntingSchedule.crew_requirements?.medium_complexity || 0}
-                        </div>
-                        <div className="text-sm text-muted-foreground">Medium Complexity</div>
-                      </div>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-foreground">
+                              {shuntingSchedule.total_operations || 0}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Total Operations</div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-primary">
+                              {shuntingSchedule.estimated_total_time || 0} min
+                            </div>
+                            <div className="text-sm text-muted-foreground">Estimated Time</div>
+                            {operationalWindow && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Window: {operationalWindow.start_time} - {operationalWindow.end_time}
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-destructive">
+                              {shuntingSchedule.crew_requirements?.high_complexity || 0}
+                            </div>
+                            <div className="text-sm text-muted-foreground">High Complexity</div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-6">
+                          <div className="text-center">
+                            <div className="text-2xl font-bold text-warning">
+                              {shuntingSchedule.crew_requirements?.medium_complexity || 0}
+                            </div>
+                            <div className="text-sm text-muted-foreground">Medium Complexity</div>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
+
+                    {/* Depot Summaries */}
+                    {Object.keys(depotSummaries).length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Depot Summaries</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {Object.entries(depotSummaries).map(([depot, summary]: [string, any]) => (
+                              <div key={depot} className="border rounded-lg p-4">
+                                <h3 className="font-semibold mb-2">{depot}</h3>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>
+                                    <span className="text-muted-foreground">Operations:</span>
+                                    <span className="ml-2 font-semibold">{summary.total_operations}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Time:</span>
+                                    <span className="ml-2 font-semibold">{summary.estimated_time_min} min</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">High:</span>
+                                    <span className="ml-2 font-semibold text-destructive">{summary.high_complexity}</span>
+                                  </div>
+                                  <div>
+                                    <span className="text-muted-foreground">Medium:</span>
+                                    <span className="ml-2 font-semibold text-warning">{summary.medium_complexity}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Ordered Schedule by Depot */}
+                    {Object.keys(scheduleByDepot).length > 0 && (
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="text-lg">Ordered Shunting Schedule</CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Operations ordered by priority (Service → Maintenance → Standby) and time
+                          </p>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-6">
+                            {Object.entries(scheduleByDepot).map(([depot, ops]: [string, any]) => (
+                              <div key={depot}>
+                                <h3 className="font-semibold text-lg mb-3">{depot}</h3>
+                                <div className="space-y-2">
+                                  {ops.map((op: any) => {
+                                    const complexityColors: Record<string, string> = {
+                                      HIGH: "border-red-300 bg-red-50",
+                                      MEDIUM: "border-yellow-300 bg-yellow-50",
+                                      LOW: "border-green-300 bg-green-50"
+                                    };
+                                    const decisionColors: Record<string, string> = {
+                                      INDUCT: "text-green-600",
+                                      MAINTENANCE: "text-red-600",
+                                      STANDBY: "text-yellow-600"
+                                    };
+                                    return (
+                                      <div
+                                        key={op.sequence}
+                                        className={`border rounded-lg p-3 ${complexityColors[op.complexity] || complexityColors.LOW}`}
+                                      >
+                                        <div className="flex items-center justify-between">
+                                          <div className="flex items-center gap-3">
+                                            <div className="font-bold text-lg w-8">#{op.sequence}</div>
+                                            <div>
+                                              <div className="font-semibold">{op.trainset_id}</div>
+                                              <div className="text-sm text-muted-foreground">{op.operation}</div>
+                                            </div>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="font-semibold">{op.estimated_time} min</div>
+                                            <div className={`text-xs font-medium ${decisionColors[op.decision] || ''}`}>
+                                              {op.decision}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">{op.complexity}</div>
+                                          </div>
+                                        </div>
+                                        {op.crew_required && (
+                                          <div className="mt-2 text-xs text-muted-foreground">
+                                            Crew: {op.crew_required}
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {/* Operational Window Info */}
+                    {operationalWindow && (
+                      <Card className="border-blue-300 bg-blue-50">
+                        <CardContent className="pt-6">
+                          <div className="text-sm">
+                            <div className="font-semibold mb-2">Operational Window</div>
+                            <div className="grid grid-cols-2 gap-2">
+                              <div>
+                                <span className="text-muted-foreground">Window:</span>
+                                <span className="ml-2 font-semibold">
+                                  {operationalWindow.start_time} - {operationalWindow.end_time}
+                                </span>
+                              </div>
+                              <div>
+                                <span className="text-muted-foreground">Buffer:</span>
+                                <span className={`ml-2 font-semibold ${operationalWindow.buffer_minutes < 30 ? 'text-destructive' : 'text-success'}`}>
+                                  {operationalWindow.buffer_minutes} minutes
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
                 );
               })()}
@@ -870,182 +1176,186 @@ const Optimization = () => {
       </Tabs>
 
       {/* Simulation Results Modal */}
-      {showSimulationResults && simulationResults && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">What-If Simulation Results</CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowSimulationResults(false)}
-                >
-                  ×
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Simulation Parameters</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Excluded Trainsets:</span>
-                      <span>{simulationParamsUsed?.exclude_trainsets || 'None'}</span>
+      {
+        showSimulationResults && simulationResults && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-6xl w-full max-h-[90vh] overflow-y-auto">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl">What-If Simulation Results</CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowSimulationResults(false)}
+                  >
+                    ×
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Simulation Parameters</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Excluded Trainsets:</span>
+                        <span>{simulationParamsUsed?.exclude_trainsets || 'None'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Forced Inductions:</span>
+                        <span>{simulationParamsUsed?.force_induct || 'None'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Required Service Count:</span>
+                        <span>{simulationParamsUsed?.required_service_count || 'N/A'}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Weights:</span>
+                        <span className="text-xs">
+                          {simulationParamsUsed
+                            ? <>R:{simulationParamsUsed.w_readiness?.toFixed(2)} R:{simulationParamsUsed.w_reliability?.toFixed(2)} B:{simulationParamsUsed.w_branding?.toFixed(2)} S:{simulationParamsUsed.w_shunt?.toFixed(2)} M:{simulationParamsUsed.w_mileage_balance?.toFixed(2)}</>
+                            : 'N/A'}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Forced Inductions:</span>
-                      <span>{simulationParamsUsed?.force_induct || 'None'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Required Service Count:</span>
-                      <span>{simulationParamsUsed?.required_service_count || 'N/A'}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Weights:</span>
-                      <span className="text-xs">
-                        {simulationParamsUsed
-                          ? <>R:{simulationParamsUsed.w_readiness?.toFixed(2)} R:{simulationParamsUsed.w_reliability?.toFixed(2)} B:{simulationParamsUsed.w_branding?.toFixed(2)} S:{simulationParamsUsed.w_shunt?.toFixed(2)} M:{simulationParamsUsed.w_mileage_balance?.toFixed(2)}</>
-                          : 'N/A'}
-                      </span>
+                  </div>
+
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Simulation Summary</h3>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Total Decisions:</span>
+                        <span>{getScenarioResult(simulationResults)?.decisions?.length || 0}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Inducted:</span>
+                        <span className="text-green-600">
+                          {getScenarioResult(simulationResults)?.kpis?.num_inducted_trains || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Standby:</span>
+                        <span className="text-yellow-600">
+                          {getScenarioResult(simulationResults)?.kpis?.num_standby_trains || 0}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Maintenance:</span>
+                        <span className="text-red-600">
+                          {getScenarioResult(simulationResults)?.kpis?.num_maintenance_trains || 0}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Simulation Summary</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Total Decisions:</span>
-                      <span>{getScenarioResult(simulationResults)?.decisions?.length || 0}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Inducted:</span>
-                      <span className="text-green-600">
-                        {getScenarioResult(simulationResults)?.kpis?.num_inducted_trains || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Standby:</span>
-                      <span className="text-yellow-600">
-                        {getScenarioResult(simulationResults)?.kpis?.num_standby_trains || 0}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Maintenance:</span>
-                      <span className="text-red-600">
-                        {getScenarioResult(simulationResults)?.kpis?.num_maintenance_trains || 0}
-                      </span>
-                    </div>
-                  </div>
+                <DetailedResults
+                  results={getScenarioResult(simulationResults)?.decisions || []}
+                  className="w-full"
+                />
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowSimulationResults(false)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => window.print()}>
+                    Print Results
+                  </Button>
                 </div>
-              </div>
-
-              <DetailedResults
-                results={getScenarioResult(simulationResults)?.decisions || []}
-                className="w-full"
-              />
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowSimulationResults(false)}>
-                  Close
-                </Button>
-                <Button onClick={() => window.print()}>
-                  Print Results
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+              </CardContent>
+            </Card>
+          </div>
+        )
+      }
 
       {/* Explanation Modal */}
-      {showExplanation && explanationData && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">
-                  AI Decision Explanation - {explanationData.trainset_id}
-                </CardTitle>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowExplanation(false)}
-                >
-                  ×
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-green-600">Top Reasons</h3>
-                  <ul className="space-y-2">
-                    {explanationData.top_reasons?.map((reason: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{reason}</span>
-                      </li>
-                    ))}
-                  </ul>
+      {
+        showExplanation && explanationData && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xl">
+                    AI Decision Explanation - {explanationData.trainset_id}
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowExplanation(false)}
+                  >
+                    ×
+                  </Button>
                 </div>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3 text-green-600">Top Reasons</h3>
+                    <ul className="space-y-2">
+                      {explanationData.top_reasons?.map((reason: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm">{reason}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
 
-                <div>
-                  <h3 className="font-semibold text-lg mb-3 text-red-600">Risks & Violations</h3>
-                  <ul className="space-y-2">
-                    {explanationData.top_risks?.map((risk: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm">{risk}</span>
-                      </li>
-                    ))}
-                    {explanationData.violations?.map((violation: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-red-600">{violation}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-
-              {explanationData.shap_values && explanationData.shap_values.length > 0 && (
-                <div>
-                  <h3 className="font-semibold text-lg mb-3">Feature Impact Analysis</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {explanationData.shap_values.map((feature: any, i: number) => (
-                      <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <span className="text-sm font-medium">{feature.name}</span>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm">{feature.value}</span>
-                          <span className={`text-xs px-2 py-1 rounded ${feature.impact === 'positive'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
-                            }`}>
-                            {feature.impact === 'positive' ? '↑' : '↓'}
-                          </span>
-                        </div>
-                      </div>
-                    ))}
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3 text-red-600">Risks & Violations</h3>
+                    <ul className="space-y-2">
+                      {explanationData.top_risks?.map((risk: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm">{risk}</span>
+                        </li>
+                      ))}
+                      {explanationData.violations?.map((violation: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2">
+                          <AlertTriangle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                          <span className="text-sm text-red-600">{violation}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </div>
-              )}
 
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setShowExplanation(false)}>
-                  Close
-                </Button>
-                <Button onClick={() => window.print()}>
-                  Print Explanation
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-    </div>
+                {explanationData.shap_values && explanationData.shap_values.length > 0 && (
+                  <div>
+                    <h3 className="font-semibold text-lg mb-3">Feature Impact Analysis</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {explanationData.shap_values.map((feature: any, i: number) => (
+                        <div key={i} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                          <span className="text-sm font-medium">{feature.name}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm">{feature.value}</span>
+                            <span className={`text-xs px-2 py-1 rounded ${feature.impact === 'positive'
+                              ? 'bg-green-100 text-green-800'
+                              : 'bg-red-100 text-red-800'
+                              }`}>
+                              {feature.impact === 'positive' ? '↑' : '↓'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  <Button variant="outline" onClick={() => setShowExplanation(false)}>
+                    Close
+                  </Button>
+                  <Button onClick={() => window.print()}>
+                    Print Explanation
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )
+      }
+    </div >
   );
 };
 
