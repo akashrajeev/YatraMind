@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 class WhatIfScenario(BaseModel):
     """What-If scenario configuration"""
-    required_service_hours: Optional[int] = Field(None, description="Override service hours requirement")
+    required_service_count: Optional[int] = Field(None, description="Override train count requirement (manual override)")
+    service_date: Optional[str] = Field(None, description="Service date for timetable lookup (YYYY-MM-DD)")
     override_train_attributes: Optional[Dict[str, Dict[str, Any]]] = Field(
         None, 
         description="Path-based nested setter (e.g., {'T-001': {'fitness.telecom.valid_until': '2024-12-31'}})"

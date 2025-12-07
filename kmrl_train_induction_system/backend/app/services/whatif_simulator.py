@@ -12,7 +12,7 @@ import numpy as np
 import torch
 import random
 
-from app.services.optimizer import TrainInductionOptimizer, compute_trains_needed
+from app.services.optimizer import TrainInductionOptimizer
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.models.trainset import OptimizationRequest, OptimizationWeights
 from app.utils.snapshot import capture_snapshot
@@ -41,7 +41,8 @@ def _apply_overrides(snapshot: Dict[str, Any], scenario: Dict[str, Any]) -> Dict
     Apply scenario overrides to snapshot.
     
     Supports:
-    - required_service_hours: Override service hours requirement
+    - required_service_count: Override train count requirement (manual override)
+    - service_date: Override service date for timetable lookup
     - override_train_attributes: Path-based nested setter (e.g., "fitness.telecom.valid_until")
     - depot_layout_override: Override depot layouts
     - cleaning_capacity_override: Override cleaning capacity
@@ -61,9 +62,13 @@ def _apply_overrides(snapshot: Dict[str, Any], scenario: Dict[str, Any]) -> Dict
             torch.cuda.manual_seed_all(seed)
         logger.info(f"Applied random seed: {seed}")
     
-    # Override required_service_hours (stored in config)
-    if "required_service_hours" in scenario:
-        scenario_snapshot["config"]["required_service_hours"] = scenario["required_service_hours"]
+    # Override required_service_count (stored in config)
+    if "required_service_count" in scenario:
+        scenario_snapshot["config"]["required_service_count"] = scenario["required_service_count"]
+    
+    # Override service_date (stored in config)
+    if "service_date" in scenario:
+        scenario_snapshot["config"]["service_date"] = scenario["service_date"]
     
     # Override train attributes using path-based setter
     if "override_train_attributes" in scenario:
@@ -231,8 +236,11 @@ def _generate_explain_log(baseline_kpis: Dict[str, Any], scenario_kpis: Dict[str
     if "force_decisions" in scenario:
         explain_log.append(f"Force decisions applied to {len(scenario['force_decisions'])} trainsets")
     
-    if "required_service_hours" in scenario:
-        explain_log.append(f"Service hours requirement changed to {scenario['required_service_hours']} hours")
+    if "required_service_count" in scenario:
+        explain_log.append(f"Service train count requirement changed to {scenario['required_service_count']} trains")
+    
+    if "service_date" in scenario:
+        explain_log.append(f"Service date changed to {scenario['service_date']}")
     
     if not explain_log:
         explain_log.append("No significant changes detected between baseline and scenario")
@@ -270,7 +278,8 @@ async def run_whatif(scenario: Dict[str, Any], snapshot: Optional[Dict[str, Any]
         scenario_snapshot = _apply_overrides(snapshot, scenario)
         
         # Prepare optimization request with weights if provided
-        required_hours = scenario.get("required_service_hours", snapshot["config"].get("required_service_hours", 14))
+        required_count = scenario.get("required_service_count", snapshot["config"].get("required_service_count"))
+        service_date = scenario.get("service_date", snapshot["config"].get("service_date"))
         
         # Create weights from scenario if provided, otherwise use defaults
         scenario_weights = None
@@ -286,7 +295,8 @@ async def run_whatif(scenario: Dict[str, Any], snapshot: Optional[Dict[str, Any]
         
         request = OptimizationRequest(
             target_date=datetime.utcnow().date(),
-            required_service_hours=int(required_hours),
+            service_date=service_date,
+            required_service_count=required_count,
             weights=scenario_weights
         )
         
@@ -296,10 +306,11 @@ async def run_whatif(scenario: Dict[str, Any], snapshot: Optional[Dict[str, Any]
         # Baseline uses default weights (no scenario weights)
         baseline_request = OptimizationRequest(
             target_date=datetime.utcnow().date(),
-            required_service_hours=int(snapshot["config"].get("required_service_hours", 14)),
+            service_date=snapshot["config"].get("service_date"),
+            required_service_count=snapshot["config"].get("required_service_count"),
             weights=OptimizationWeights()  # Baseline always uses defaults
         )
-        baseline_decisions = await baseline_optimizer.optimize(
+        baseline_decisions, _ = await baseline_optimizer.optimize(
             snapshot["trainsets"], 
             baseline_request
         )
@@ -317,7 +328,7 @@ async def run_whatif(scenario: Dict[str, Any], snapshot: Optional[Dict[str, Any]
         # Run scenario optimization (in-memory, no DB writes)
         logger.info("Running scenario optimization")
         scenario_optimizer = TrainInductionOptimizer()
-        scenario_decisions = await scenario_optimizer.optimize(
+        scenario_decisions, _ = await scenario_optimizer.optimize(
             scenario_snapshot["trainsets"],
             request
         )

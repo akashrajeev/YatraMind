@@ -10,7 +10,8 @@ from app.utils.explainability import (
     generate_comprehensive_explanation,
     calculate_composite_score
 )
-from app.config import settings, get_config
+from app.config import settings
+from app.services.fleet_planning import compute_required_trains, FleetRequirementResult
 
 logger = logging.getLogger(__name__)
 
@@ -29,67 +30,7 @@ WEIGHTS = {
     "SHUNTING_COMPLEXITY_PENALTY": -20.0 # Minor penalty if train is blocked by others
 }
 
-def compute_trains_needed(required_hours: float, candidate_trains: List[Dict[str, Any]]) -> int:
-    """
-    Convert required service hours into number of trains needed.
-    
-    Uses per-train 'estimated_service_hours' if present (average), otherwise DEFAULT_HOURS_PER_TRAIN.
-    Always returns ceil(required_hours / avg_hours) but not exceed len(candidate_trains).
-    
-    Args:
-        required_hours: Total service hours required (must be > 0)
-        candidate_trains: List of candidate trainsets (may have 'estimated_service_hours' field)
-        
-    Returns:
-        Number of trains needed (at least 1, at most len(candidate_trains))
-    """
-    if required_hours <= 0:
-        logger.warning(f"Invalid required_hours: {required_hours}, defaulting to 1 train")
-        return 1
-    
-    if not candidate_trains:
-        logger.warning("No candidate trains provided, returning 0")
-        return 0
-    
-    # Calculate average hours per train
-    hours_list = []
-    for train in candidate_trains:
-        # Try to get estimated_service_hours from train data
-        est_hours = train.get("estimated_service_hours")
-        if est_hours is not None:
-            try:
-                hours_list.append(float(est_hours))
-            except (ValueError, TypeError):
-                pass
-    
-    if hours_list:
-        avg_hours = sum(hours_list) / len(hours_list)
-        logger.debug(f"Using average estimated_service_hours: {avg_hours:.2f} hours/train")
-    else:
-        avg_hours = settings.default_hours_per_train
-        logger.debug(f"No estimated_service_hours found, using default: {avg_hours:.2f} hours/train")
-    
-    # Calculate trains needed (always round up)
-    trains_needed = math.ceil(required_hours / avg_hours)
-    
-    # Clamp to available trains
-    trains_needed = min(trains_needed, len(candidate_trains))
-    
-    # Warn if requested hours seems unreasonably large
-    max_reasonable = len(candidate_trains) * settings.max_hours_warning_threshold_multiplier
-    if required_hours > max_reasonable:
-        logger.warning(
-            f"Requested service hours ({required_hours}) exceeds reasonable threshold "
-            f"({max_reasonable} = {len(candidate_trains)} trains × {settings.max_hours_warning_threshold_multiplier}). "
-            f"Clamping to {trains_needed} trains."
-        )
-    
-    logger.info(
-        f"Converted {required_hours} service hours to {trains_needed} trains "
-        f"(avg {avg_hours:.2f} hours/train)"
-    )
-    
-    return max(1, trains_needed)  # Always return at least 1
+
 
 
 class TrainInductionOptimizer:
@@ -366,48 +307,43 @@ class TrainInductionOptimizer:
                 # Tier 3: Optimization Soft Objectives
                 tier3_scores[idx] = self._calculate_tier3_score(t)
 
-            # Capacity constraint: Convert service hours to number of trains needed
-            cfg = get_config()
-            avg_hours = cfg.get("AVG_HOURS_PER_TRAIN", 12)
-
-            # Defensive read of requested hours / explicit count
-            import math  # local import to avoid circular issues in some environments
-            req_hours = 0.0
-            try:
-                if getattr(request, "required_service_hours", None) is not None:
-                    req_hours = float(request.required_service_hours)
-            except Exception:
-                req_hours = 0.0
-
-            req_count_ui = None
-            if getattr(request, "required_service_count", None) is not None:
-                try:
-                    req_count_ui = int(request.required_service_count)
-                except Exception:
-                    req_count_ui = None
-
-            if req_count_ui is not None:
-                required_train_count = max(1, req_count_ui)
-            elif req_hours > 0:
-                required_train_count = max(1, math.ceil(req_hours / float(avg_hours)))
-            else:
-                # default fallback: 1 train
-                required_train_count = 1
-
-            eligible_count = len(eligible_trainsets)
-            granted_train_count = min(required_train_count, eligible_count)
-            target = granted_train_count
-
-            logger.info(
-                "Optimization target from hours: req_hours=%s avg=%s "
-                "req_trains=%s eligible=%s granted=%s",
-                req_hours,
-                avg_hours,
-                required_train_count,
-                eligible_count,
-                granted_train_count,
+            # --- Timetable-Driven Fleet Requirement ---
+            # Compute required trains using timetable-driven logic
+            fleet_req = compute_required_trains(
+                service_date=request.service_date,
+                timetable_config=None, # Use default for now, or load from DB if available
+                override_count=request.required_service_count
             )
-            solver.Add(solver.Sum([x_vars[i] for i in x_vars]) <= target)
+            
+            required_service_trains = fleet_req.required_service_trains
+            # standby_buffer = fleet_req.standby_buffer # Not used directly in solver constraint, but useful for context
+            
+            eligible_count = len(eligible_trainsets)
+            target_service = min(required_service_trains, eligible_count)
+            
+            logger.info(
+                f"Fleet Requirement: required={required_service_trains}, eligible={eligible_count}, "
+                f"target={target_service}, method={fleet_req.calculation_method}"
+            )
+            
+            # Constraint: sum(INDUCT) <= target_service
+            # Ideally we want == target_service, but if not feasible, <= is safer.
+            # To encourage picking as many as possible up to target, we can add a reward for each selected train.
+            # But our objective function already has positive scores for most trains (unless penalties outweigh).
+            # Let's stick to <= target_service as per prompt "At minimum, ensure: ... sum(INDUCT_x) <= target_service"
+            
+            solver.Add(solver.Sum([x_vars[i] for i in x_vars]) <= target_service)
+            
+            # To ensure we get exactly target_service if possible, we can add a constraint
+            # solver.Add(solver.Sum([x_vars[i] for i in x_vars]) == target_service)
+            # But let's use <= and rely on maximization to fill it up?
+            # Actually, if we use <=, the solver might pick fewer trains if some have negative scores?
+            # Our scores can be negative (penalties). 
+            # So we SHOULD enforce == if possible, or >= target_service (but we can't exceed eligible).
+            # Let's try to enforce equality to target_service, since we want to meet the service requirement.
+            
+            if target_service > 0:
+                 solver.Add(solver.Sum([x_vars[i] for i in x_vars]) == target_service)
 
             # Lexicographic objective: Tier 2 dominates Tier 3
             # Scale Tier 2 by large factor to ensure lexicographic ordering
@@ -436,7 +372,7 @@ class TrainInductionOptimizer:
                 # no trains at all (all x_i = 0), fall back to the deterministic
                 # tiered scoring path so we still get a meaningful ranked split
                 # of INDUCT / STANDBY / MAINTENANCE.
-                if not chosen_indices:
+                if not chosen_indices and target_service > 0:
                     logger.warning(
                         "OR-Tools returned a feasible solution with no inducted trains; "
                         "falling back to scoring-based tiered optimization."
@@ -599,7 +535,27 @@ class TrainInductionOptimizer:
             # POST-PROCESSING: Final Safety Gate + Strict Sorting
             decisions = self._apply_final_safety_gate_and_sort(decisions)
             
-            return decisions
+            # Attach fleet requirement metadata to the first decision (or all?)
+            # Actually, the caller (API) needs this metadata. 
+            # But optimize() returns List[InductionDecision].
+            # We can't easily attach it to the list.
+            # The prompt says: "Extend the optimization response with additional metadata fields... Include these in the JSON returned by the main optimization endpoint"
+            # So `optimize` should probably return a tuple or object with metadata, OR we can attach it to the decisions?
+            # No, `optimize` signature is `-> List[InductionDecision]`.
+            # I should probably change `optimize` to return a richer object, OR 
+            # I can compute the fleet requirement IN the API handler and pass it to `optimize`?
+            # But `optimize` needs to know the target count for the solver.
+            # So `optimize` MUST compute it (or be passed the computed value).
+            # If I compute it in API, I can pass it to `optimize`.
+            # But the prompt says: "Create a single place in the backend... that exposes a function... compute_required_trains... In the main induction optimization logic: Replace the existing logic with a call to the new function."
+            # So `optimize` calls it.
+            # How do we get the metadata out?
+            # Maybe I can add a temporary attribute to the list? Or change the return type?
+            # Changing return type might break other callers.
+            # Let's check callers. Only `app/api/optimization.py` calls it.
+            # So I can change the return type to `Tuple[List[InductionDecision], FleetRequirementResult]`.
+            
+            return decisions, fleet_req
             
         except Exception as e:
             logger.error(f"Optimization failed: {e}", exc_info=True)
@@ -825,10 +781,19 @@ class TrainInductionOptimizer:
         # Sort by combined score (Tier 2 dominates)
         scored_trainsets.sort(key=lambda x: x[3], reverse=True)
         
-        # Convert service hours to number of trains needed
-        trains_needed = compute_trains_needed(request.required_service_hours, [t[0] for t in scored_trainsets])
-        target_inductions = min(trains_needed, len(scored_trainsets))
-        logger.info(f"Fallback optimization target: {target_inductions} trains (from {request.required_service_hours} service hours)")
+        # Use timetable-driven fleet requirement logic (single source of truth)
+        fleet_req = compute_required_trains(
+            service_date=request.service_date,
+            timetable_config=None,  # Use default for now
+            override_count=request.required_service_count
+        )
+        required_service_trains = fleet_req.required_service_trains
+        eligible_count = len(scored_trainsets)
+        target_inductions = min(required_service_trains, eligible_count)
+        logger.info(
+            f"Fallback optimization target: {target_inductions} trains "
+            f"(required={required_service_trains}, eligible={eligible_count}, method={fleet_req.calculation_method})"
+        )
         decisions: List[InductionDecision] = []
         inducted = 0
         
@@ -1485,9 +1450,19 @@ class TrainInductionOptimizer:
 
         scored_trainsets.sort(key=lambda x: x[3], reverse=True)
 
-        
-
-        target_inductions = min(request.required_service_hours, len(scored_trainsets))
+        # Use timetable-driven fleet requirement logic (single source of truth)
+        fleet_req = compute_required_trains(
+            service_date=request.service_date,
+            timetable_config=None,  # Use default for now
+            override_count=request.required_service_count
+        )
+        required_service_trains = fleet_req.required_service_trains
+        eligible_count = len(scored_trainsets)
+        target_inductions = min(required_service_trains, eligible_count)
+        logger.info(
+            f"Fallback optimization target: {target_inductions} trains "
+            f"(required={required_service_trains}, eligible={eligible_count}, method={fleet_req.calculation_method})"
+        )
 
         decisions: List[InductionDecision] = []
 
@@ -2416,9 +2391,19 @@ class TrainInductionOptimizer:
 
         scored_trainsets.sort(key=lambda x: x[3], reverse=True)
 
-        
-
-        target_inductions = min(request.required_service_hours, len(scored_trainsets))
+        # Use timetable-driven fleet requirement logic (single source of truth)
+        fleet_req = compute_required_trains(
+            service_date=request.service_date,
+            timetable_config=None,  # Use default for now
+            override_count=request.required_service_count
+        )
+        required_service_trains = fleet_req.required_service_trains
+        eligible_count = len(scored_trainsets)
+        target_inductions = min(required_service_trains, eligible_count)
+        logger.info(
+            f"Fallback optimization target: {target_inductions} trains "
+            f"(required={required_service_trains}, eligible={eligible_count}, method={fleet_req.calculation_method})"
+        )
 
         decisions: List[InductionDecision] = []
 
