@@ -1,8 +1,7 @@
-# backend/app/main.py
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.api import trainsets, optimization, dashboard, ingestion, assignments, reports, auth, simulation, users
+from app.api import trainsets, optimization, dashboard, ingestion, assignments, reports, auth, simulation, users, notifications
 from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -66,20 +65,17 @@ if _HAS_PROM:
     Instrumentator().instrument(app).expose(app, include_in_schema=False)
 
 # Include API routers
-app.include_router(trainsets.router, prefix="/api/trainsets", tags=["Trainsets"])
-app.include_router(optimization.router, prefix="/api/optimization", tags=["Optimization"])
-app.include_router(dashboard.router, prefix="/api/dashboard", tags=["Dashboard"])
-app.include_router(ingestion.router, prefix="/api/ingestion", tags=["Data Ingestion"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["Users"])
+app.include_router(trainsets.router, prefix="/api/v1/trainsets", tags=["Trainsets"])
+app.include_router(optimization.router, prefix="/api/v1/optimization", tags=["Optimization"])
+app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["Dashboard"])
+app.include_router(ingestion.router, prefix="/api/v1/ingestion", tags=["Ingestion"])
 app.include_router(assignments.router, prefix="/api/v1/assignments", tags=["Assignments"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
-app.include_router(users.router, prefix="/api/v1/users", tags=["User Management"])
-app.include_router(simulation.router, prefix="/api/simulation", tags=["Simulation"])
+app.include_router(simulation.router, prefix="/api/v1/simulation", tags=["Simulation"])
+app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])
 
-scheduler: AsyncIOScheduler | None = None
-
-# Socket.IO event handlers (OPTIONAL - only active if sio is configured)
 # These handlers are defined but won't execute unless Socket.IO is enabled above
 if _HAS_SOCKETIO and sio:
     @sio.event

@@ -28,9 +28,9 @@ api.interceptors.response.use(
 
 // Dashboard API
 export const dashboardApi = {
-  getOverview: () => api.get('/dashboard/overview'),
-  getAlerts: () => api.get('/dashboard/alerts'),
-  getPerformance: () => api.get('/dashboard/performance'),
+  getOverview: () => api.get('/v1/dashboard/overview'),
+  getAlerts: () => api.get('/v1/dashboard/alerts'),
+  getPerformance: () => api.get('/v1/dashboard/performance'),
 };
 
 // Assignments API
@@ -74,73 +74,74 @@ export const reportsApi = {
 
 // Optimization API
 export const optimizationApi = {
-  runOptimization: (data: any) => api.post('/optimization/run', data),
-  getHistory: () => api.get('/optimization/history'),
-  getStatus: (id: string) => api.get(`/optimization/status/${id}`),
-  checkConstraints: () => api.get('/optimization/constraints/check'),
+  runOptimization: (data: any) => api.post('/v1/optimization/run', data),
+  getHistory: () => api.get('/v1/optimization/history'),
+  getStatus: (id: string) => api.get(`/v1/optimization/status/${id}`),
+  checkConstraints: () => api.get('/v1/optimization/constraints/check'),
   explainAssignment: (trainsetId: string, decision?: string, format?: string) =>
-    api.get(`/optimization/explain/${trainsetId}`, {
+    api.get(`/v1/optimization/explain/${trainsetId}`, {
       params: { decision, format }
     }),
   explainBatch: (assignments: any[], format?: string) =>
-    api.post('/optimization/explain/batch', { assignments, format }),
-  simulate: (params: any) => api.get('/optimization/simulate', { params }),
-  runSimulation: (scenario: any) => api.post('/simulation/run', scenario),
-  getSimulationResult: (id: string) => api.get(`/simulation/result/${id}`),
-  getSnapshot: () => api.get('/simulation/snapshot'),
-  getLatest: () => api.get('/optimization/latest'),
-  getStablingGeometry: () => api.get('/optimization/stabling-geometry'),
-  getShuntingSchedule: () => api.get('/optimization/shunting-schedule'),
+    api.post('/v1/optimization/explain/batch', { assignments, format }),
+  simulate: (params: any) => api.get('/v1/optimization/simulate', { params }),
+  runSimulation: (scenario: any) => api.post('/v1/simulation/run', scenario),
+  getSimulationResult: (id: string) => api.get(`/v1/simulation/result/${id}`),
+  getSnapshot: () => api.get('/v1/simulation/snapshot'),
+  getLatest: () => api.get('/v1/optimization/latest'),
+  getStablingGeometry: () => api.get('/v1/optimization/stabling-geometry'),
+  getShuntingSchedule: () => api.get('/v1/optimization/shunting-schedule'),
   reorderRankedList: (data: { trainset_ids: string[]; reason?: string }) =>
-    api.post('/optimization/latest/reorder', data),
+    api.post('/v1/optimization/latest/reorder', data),
 };
 
 // Trainsets API
 export const trainsetsApi = {
-  getAll: (params?: any) => api.get('/trainsets/', { params }),
-  getById: (id: string) => api.get(`/trainsets/${id}`),
-  update: (id: string, data: any) => api.put(`/trainsets/${id}`, data),
-  getFitness: (id: string) => api.get(`/trainsets/${id}/fitness`),
-  getDetails: (id: string) => api.get(`/trainsets/${id}/details`),
+  getAll: (params?: any) => api.get('/v1/trainsets/', { params }),
+  getById: (id: string) => api.get(`/v1/trainsets/${id}`),
+  update: (id: string, data: any) => api.put(`/v1/trainsets/${id}`, data),
+  getFitness: (id: string) => api.get(`/v1/trainsets/${id}/fitness`),
+  getDetails: (id: string) => api.get(`/v1/trainsets/${id}/details`),
+  getReviews: () => api.get('/v1/trainsets/reviews/all'),
 };
 
 // Data Ingestion API
 export const ingestionApi = {
-  ingestAll: () => api.post('/ingestion/ingest/all'),
-  ingestMaximo: () => api.post('/ingestion/ingest/maximo'),
-  ingestIoT: () => api.post('/ingestion/ingest/iot'),
+  ingestAll: () => api.post('/v1/ingestion/ingest/all'),
+  ingestMaximo: () => api.post('/v1/ingestion/ingest/maximo'),
+  ingestIoT: () => api.post('/v1/ingestion/ingest/iot'),
   uploadTimeseries: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('/ingestion/ingest/timeseries/upload', formData, {
+    return api.post('/v1/ingestion/ingest/timeseries/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   uploadFitness: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('/ingestion/fitness/upload', formData, {
+    return api.post('/v1/ingestion/fitness/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   uploadBranding: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('/ingestion/branding/upload', formData, {
+    return api.post('/v1/ingestion/branding/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   uploadDepot: (file: File) => {
     const formData = new FormData();
     formData.append('file', file);
-    return api.post('/ingestion/depot/upload', formData, {
+    return api.post('/v1/ingestion/depot/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
   ingestCleaningGoogle: (sheetUrl: string) => {
     const formData = new FormData();
     formData.append('sheet_url', sheetUrl);
-    return api.post('/ingestion/cleaning/google', formData, {
+    return api.post('/v1/ingestion/cleaning/google', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
@@ -149,21 +150,21 @@ export const ingestionApi = {
     files.forEach(file => {
       formData.append('files', file);
     });
-    return api.post('/ingestion/ingest/n8n/upload', formData, {
+    return api.post('/v1/ingestion/ingest/n8n/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
     });
   },
-  getStatus: () => api.get('/ingestion/status'),
-  startMQTT: () => api.post('/ingestion/mqtt/start'),
-  stopMQTT: () => api.post('/ingestion/mqtt/stop'),
-  getMQTTStatus: () => api.get('/ingestion/mqtt/status'),
+  getStatus: () => api.get('/v1/ingestion/status'),
+  startMQTT: () => api.post('/v1/ingestion/mqtt/start'),
+  stopMQTT: () => api.post('/v1/ingestion/mqtt/stop'),
+  getMQTTStatus: () => api.get('/v1/ingestion/mqtt/status'),
 };
 
 // Notifications API
 export const notificationsApi = {
-  getAll: () => api.get('/notifications'),
-  markAsRead: (id: string) => api.put(`/notifications/${id}/read`),
-  markAllAsRead: () => api.put('/notifications/read-all'),
+  getAll: () => api.get('/v1/notifications'),
+  markAsRead: (id: string) => api.put(`/v1/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/v1/notifications/read-all'),
 };
 
 // Auth API

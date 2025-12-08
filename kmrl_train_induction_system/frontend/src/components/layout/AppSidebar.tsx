@@ -32,9 +32,13 @@ import {
   Activity,
 } from "lucide-react";
 
+import { useAuth } from "@/contexts/AuthContext";
+import { UserRole } from "@/types/auth";
+
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
+  const { user } = useAuth();
   const isCollapsed = state === "collapsed";
 
   // Fetch pending assignments count for the badge
@@ -58,47 +62,51 @@ export function AppSidebar() {
       url: "/assignments",
       icon: ClipboardList,
       badge: pendingCount > 0 ? pendingCount.toString() : null,
+      hidden: user?.role === UserRole.STATION_SUPERVISOR
     },
-  {
-    title: "Trainsets",
-    url: "/trainsets",
-    icon: Train,
-    badge: null,
-  },
-  {
-    title: "Optimization",
-    url: "/optimization",
-    icon: Brain,
-    badge: null,
-  },
+    {
+      title: "Trainsets",
+      url: "/trainsets",
+      icon: Train,
+      badge: null,
+    },
+    {
+      title: "Optimization",
+      url: "/optimization",
+      icon: Brain,
+      badge: null,
+      hidden: user?.role === UserRole.STATION_SUPERVISOR
+    },
     {
       title: "Data Ingestion",
       url: "/data-ingestion",
       icon: Database,
       badge: null,
+      hidden: user?.role === UserRole.STATION_SUPERVISOR
     },
-  ];
+  ].filter(item => !item.hidden);
 
   const reportItems = [
-  {
-    title: "Reports",
-    url: "/reports",
-    icon: BarChart3,
-  },
-];
+    {
+      title: "Reports",
+      url: "/reports",
+      icon: BarChart3,
+    },
+  ];
 
   const systemItems = [
     {
       title: "User Management",
       url: "/users",
       icon: Users,
+      hidden: user?.role === UserRole.STATION_SUPERVISOR
     },
     {
       title: "Settings",
       url: "/settings",
       icon: Settings,
     },
-  ];
+  ].filter(item => !item.hidden);
 
   const isActive = (path: string) => {
     return location.pathname === path || (path !== "/" && location.pathname.startsWith(path));
@@ -106,8 +114,8 @@ export function AppSidebar() {
 
   const getNavClass = (path: string) => {
     const active = isActive(path);
-    return active 
-      ? "bg-primary/20 text-primary border-r-2 border-primary font-medium" 
+    return active
+      ? "bg-primary/20 text-primary border-r-2 border-primary font-medium"
       : "hover:bg-muted/50 text-muted-foreground hover:text-foreground";
   };
 
@@ -124,11 +132,10 @@ export function AppSidebar() {
               {navigationItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className={`${getNavClass(item.url)} transition-all duration-200 ${
-                        isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
-                      }`}
+                    <NavLink
+                      to={item.url}
+                      className={`${getNavClass(item.url)} transition-all duration-200 ${isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
+                        }`}
                     >
                       <item.icon className={isCollapsed ? "!h-5 !w-5 flex-shrink-0" : "h-5 w-5 flex-shrink-0"} />
                       {!isCollapsed && (
@@ -159,11 +166,10 @@ export function AppSidebar() {
               {reportItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className={`${getNavClass(item.url)} transition-all duration-200 ${
-                        isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
-                      }`}
+                    <NavLink
+                      to={item.url}
+                      className={`${getNavClass(item.url)} transition-all duration-200 ${isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
+                        }`}
                     >
                       <item.icon className={isCollapsed ? "!h-5 !w-5 flex-shrink-0" : "h-5 w-5 flex-shrink-0"} />
                       {!isCollapsed && <span>{item.title}</span>}
@@ -185,11 +191,10 @@ export function AppSidebar() {
               {systemItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <NavLink 
-                      to={item.url} 
-                      className={`${getNavClass(item.url)} transition-all duration-200 ${
-                        isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
-                      }`}
+                    <NavLink
+                      to={item.url}
+                      className={`${getNavClass(item.url)} transition-all duration-200 ${isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
+                        }`}
                     >
                       <item.icon className={isCollapsed ? "!h-5 !w-5 flex-shrink-0" : "h-5 w-5 flex-shrink-0"} />
                       {!isCollapsed && <span>{item.title}</span>}
