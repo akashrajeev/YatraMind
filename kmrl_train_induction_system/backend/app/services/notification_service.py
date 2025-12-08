@@ -64,14 +64,21 @@ class NotificationService:
     async def get_user_notifications(
         self,
         user_id: str,
+        role: Optional[str] = None,
         unread_only: bool = False,
         limit: int = 50
     ) -> List[Notification]:
-        """Get notifications for a specific user"""
+        """Get notifications for a specific user or role"""
         try:
             collection = await cloud_db_manager.get_collection("notifications")
             
-            filter_query = {"user_id": user_id}
+            # Filter by user_id OR role
+            match_conditions = [{"user_id": user_id}]
+            if role:
+                match_conditions.append({"role": role})
+            
+            filter_query = {"$or": match_conditions}
+            
             if unread_only:
                 filter_query["status"] = {"$in": [NotificationStatus.PENDING.value, NotificationStatus.SENT.value]}
             

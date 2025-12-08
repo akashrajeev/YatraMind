@@ -74,13 +74,17 @@ export interface Alert {
   acknowledged_at?: string
 }
 
+import { UserRole } from './auth';
+
 export interface User {
   id: string
   username: string
   name: string
   email?: string
-  role: 'SUPERVISOR' | 'MAINTENANCE_ENGINEER' | 'OPERATIONS_MANAGER' | 'READONLY_VIEWER'
+  role: UserRole
   permissions: string[]
+  is_active?: boolean
+  is_approved?: boolean
 }
 
 export interface AuditLog {
