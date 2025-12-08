@@ -13,6 +13,18 @@ class TrainsetStatus(str, Enum):
     MAINTENANCE = "MAINTENANCE"
 
 
+class LocationType(str, Enum):
+    FULL_DEPOT = "FULL_DEPOT"
+    TERMINAL_YARD = "TERMINAL_YARD"
+    MAINLINE_SIDING = "MAINLINE_SIDING"
+
+
+class MaintenanceSeverity(str, Enum):
+    NONE = "NONE"
+    LIGHT = "LIGHT"
+    HEAVY = "HEAVY"
+
+
 class JobCards(BaseModel):
     open_cards: int = 0
     critical_cards: int = 0
@@ -28,6 +40,7 @@ class Trainset(BaseModel):
     job_cards: JobCards = Field(default_factory=JobCards)
     branding_priority: int = 0
     sensor_health_score: float = 1.0
+    maintenance_severity: MaintenanceSeverity = Field(default=MaintenanceSeverity.NONE, description="Maintenance severity flag")
 
 
 class TrainsetUpdate(BaseModel):
@@ -103,6 +116,7 @@ class FleetSummary(BaseModel):
     maintenance_count: int
     service_shortfall: int = Field(default=0, description="Number of trains short if requirement not met")
     compliance_rate: float = Field(default=0.0, ge=0.0, le=1.0, description="Compliance rate (0-1)")
+    standby_at_muttom: int = Field(default=0, description="Standby rakes currently at Muttom depot")
 
 
 class DepotAllocation(BaseModel):
@@ -116,6 +130,10 @@ class DepotAllocation(BaseModel):
     maintenance_bay_capacity: int
     total_bay_capacity: int
     capacity_warning: bool = Field(default=False, description="True if any category exceeds capacity")
+    location_type: Optional[str] = Field(default=None, description="FULL_DEPOT | TERMINAL_YARD | MAINLINE_SIDING")
+    supports_heavy_maintenance: Optional[bool] = None
+    supports_cleaning: Optional[bool] = None
+    can_start_service: Optional[bool] = None
 
 
 class BayAssignment(BaseModel):
@@ -126,6 +144,14 @@ class BayAssignment(BaseModel):
     turnout_time_min: Optional[int] = Field(None, description="Time to exit bay in minutes")
     distance_to_exit_m: Optional[int] = Field(None, description="Distance to depot exit in meters")
     notes: Optional[str] = Field(None, description="Additional context (branding, job cards, etc.)")
+    reason_code: Optional[str] = Field(None, description="Placement rationale e.g. DEADKM_OPTIMIZED, MAINT_DEPOT")
+    dead_km_in: Optional[float] = Field(None, description="Dead kilometres inbound to stabling location")
+    dead_km_out: Optional[float] = Field(None, description="Dead kilometres outbound to first departure")
+    first_departure_station: Optional[str] = Field(None, description="First departure station for this rake")
+    stabled_at: Optional[str] = Field(None, description="Location where the train is stabled")
+    placement_reason_code: Optional[str] = Field(None, description="MAINT_DEPOT | DEADKM_MIN | MUTTOM_STANDBY_BUFFER | WRAP_SLA | DEFAULT")
+    placement_reason_text: Optional[str] = Field(None, description="Human-readable summary of placement rationale")
+    dead_km: Optional[Dict[str, float]] = Field(default=None, description="Dead km breakdown {in,out,total}")
 
 
 class OptimizationKPIs(BaseModel):
@@ -146,3 +172,12 @@ class StablingGeometryResponse(BaseModel):
     optimization_kpis: OptimizationKPIs
     warnings: List[str] = Field(default_factory=list, description="Capacity or operational warnings")
     optimization_timestamp: str = Field(..., description="ISO timestamp of optimization")
+    depot_usage: Optional[Dict[str, Any]] = Field(default=None, description="Aggregated depot usage breakdown")
+    shunting_operations: Optional[List[Dict[str, Any]]] = None
+    capacity_summary: Optional[Dict[str, Any]] = None
+    unassigned_trainsets: Optional[List[Dict[str, Any]]] = None
+    maintenance_queue: Optional[List[Dict[str, Any]]] = None
+    shunting_window: Optional[Dict[str, Any]] = None
+    service_requirement: Optional[Dict[str, Any]] = None
+    induction_summary: Optional[Dict[str, Any]] = None
+    stabling_summary: Optional[Dict[str, Any]] = None

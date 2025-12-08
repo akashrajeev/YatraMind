@@ -745,6 +745,10 @@ async def get_shunting_schedule():
             if isinstance(op.get("estimated_time"), (int, float))
         )
 
+        available_minutes = 120  # 21:00–23:00
+        buffer_minutes = available_minutes - total_time
+        feasible = buffer_minutes >= 0
+
         # Group by depot and order by priority (service > maintenance > standby)
         decision_map = {d.get("trainset_id"): d.get("decision") for d in decisions if isinstance(d, dict)}
         
@@ -820,6 +824,12 @@ async def get_shunting_schedule():
                 "duration_minutes": 120,
                 "recommended_start": "21:00 IST",
                 "buffer_minutes": max(0, 120 - int(total_time))
+            },
+            "shunting_window": {
+                "available_minutes": available_minutes,
+                "required_minutes": total_time,
+                "buffer_minutes": buffer_minutes,
+                "feasible": feasible
             },
             "optimization_timestamp": datetime.now().isoformat(),
         }
