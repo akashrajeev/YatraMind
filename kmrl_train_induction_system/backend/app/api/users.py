@@ -14,11 +14,29 @@ async def get_pending_users(
     """Get list of users pending approval"""
     try:
         collection = await cloud_db_manager.get_collection("users")
-        cursor = collection.find({"is_approved": False})
+        # Filter for pending users:
+        # 1. Must be unapproved
+        # 2. If role is Supervisor/Driver, must also be email_verified
+        query = {
+            "is_approved": False,
+            "$or": [
+                # Roles that don't require email verification (or legacy/other roles)
+                {"role": {"$nin": [UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR, UserRole.METRO_DRIVER]}},
+                # Roles that DO require email verification
+                {
+                    "role": {"$in": [UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR, UserRole.METRO_DRIVER]}, 
+                    "email_verified": True
+                }
+            ]
+        }
+        cursor = collection.find(query)
         users = []
         async for doc in cursor:
             doc.pop('_id', None)
             doc.pop('hashed_password', None)
+            # Ensure safe instantiation even if email_verified missing in old docs
+            if "email_verified" not in doc:
+                doc["email_verified"] = False 
             users.append(User(**doc))
         return users
     except Exception as e:

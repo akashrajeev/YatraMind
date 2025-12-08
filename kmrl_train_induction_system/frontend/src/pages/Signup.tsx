@@ -12,6 +12,9 @@ const Signup: React.FC = () => {
         email: '',
         role: UserRole.PASSENGER
     });
+    const [otp, setOtp] = useState('');
+    const [userId, setUserId] = useState<string | null>(null);
+    const [showOtp, setShowOtp] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
     const [loading, setLoading] = useState(false);
@@ -24,16 +27,45 @@ const Signup: React.FC = () => {
         });
     };
 
+    const handleVerifyOtp = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setError('');
+        setLoading(true);
+
+        try {
+            if (!userId) {
+                setError("User ID missing. Please register again.");
+                return;
+            }
+            await authApi.verifyEmail({ user_id: userId, otp });
+            setSuccess(true);
+            setLoading(false);
+        } catch (err: any) {
+            console.error('OTP Verification error:', err);
+            let errorMessage = 'Verification failed. Please check your code.';
+            const detail = err.response?.data?.detail;
+            if (detail) errorMessage = typeof detail === 'string' ? detail : JSON.stringify(detail);
+            setError(errorMessage);
+            setLoading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
         setLoading(true);
 
         try {
-            await authApi.register(formData);
-            setSuccess(true);
-            // If passenger, they can login immediately. Others need approval.
-            if (formData.role === UserRole.PASSENGER) {
+            const response = await authApi.register(formData);
+            // Check if response has data property (axios) or is the data itself
+            const userData = response.data || response;
+
+            // If needs verification (Supervisor/Driver), show OTP screen
+            if (formData.role !== UserRole.PASSENGER) {
+                setUserId(userData.id);
+                setShowOtp(true);
+            } else {
+                setSuccess(true);
                 setTimeout(() => navigate('/login'), 2000);
             }
         } catch (err: any) {
@@ -74,6 +106,58 @@ const Signup: React.FC = () => {
                     >
                         Back to Login
                     </Link>
+                </div>
+            </div>
+        );
+    }
+
+    if (showOtp) {
+        return (
+            <div className="min-h-screen bg-gray-900 flex items-center justify-center px-4 py-12">
+                <div className="max-w-md w-full bg-gray-800 rounded-lg shadow-xl p-8 border border-gray-700">
+                    <div className="text-center mb-8">
+                        <h1 className="text-3xl font-bold text-white mb-2">Verify Email</h1>
+                        <p className="text-gray-400">Enter the 6-digit code sent to {formData.email}</p>
+                    </div>
+
+                    {error && (
+                        <div className="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-md mb-6 flex items-center">
+                            <AlertCircle className="w-5 h-5 mr-2" />
+                            {error}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleVerifyOtp} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-400 mb-1">
+                                Verification Code
+                            </label>
+                            <div className="relative">
+                                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <Lock className="h-5 w-5 text-gray-500" />
+                                </div>
+                                <input
+                                    type="text"
+                                    name="otp"
+                                    value={otp}
+                                    onChange={(e) => setOtp(e.target.value)}
+                                    className="block w-full pl-10 bg-gray-700 border border-gray-600 rounded-md py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 tracking-widest text-center text-xl"
+                                    placeholder="000000"
+                                    required
+                                    maxLength={6}
+                                    minLength={6}
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-6"
+                        >
+                            {loading ? 'Verifying...' : 'Verify Email'}
+                        </button>
+                    </form>
                 </div>
             </div>
         );

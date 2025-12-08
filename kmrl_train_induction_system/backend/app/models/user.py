@@ -28,6 +28,7 @@ class User(BaseModel):
     permissions: List[str] = Field(default_factory=list, description="User permissions")
     is_active: bool = Field(default=True, description="Whether user account is active")
     is_approved: bool = Field(default=False, description="Whether user account is approved by admin")
+    email_verified: bool = Field(default=False, description="Whether email is verified")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     last_login: Optional[datetime] = Field(None, description="Last login timestamp")
@@ -58,6 +59,8 @@ class UserUpdate(BaseModel):
     department: Optional[str] = None
     phone: Optional[str] = None
     employee_id: Optional[str] = None
+    email_verified: Optional[bool] = None
+    is_approved: Optional[bool] = None
 
 
 class UserLogin(BaseModel):
@@ -70,6 +73,18 @@ class Token(BaseModel):
     token_type: str = "bearer"
     expires_in: int
     user: User
+
+
+class EmailToken(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    token: str = Field(..., description="Verification token")
+    created_at: datetime = Field(default_factory=datetime.utcnow, description="Creation timestamp")
+    expires_at: datetime = Field(..., description="Expiration timestamp")
+
+
+class VerifyOTP(BaseModel):
+    user_id: str = Field(..., description="User ID")
+    otp: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code")
 
 
 class PasswordChange(BaseModel):

@@ -183,6 +183,8 @@ export const authApi = {
   refreshToken: () => api.post('/v1/auth/refresh-token'),
   changePassword: (data: { current_password: string; new_password: string }) =>
     api.post('/v1/auth/change-password', data),
+  verifyEmail: (data: { user_id: string; otp: string }) =>
+    api.post('/v1/auth/verify-email', data),
 };
 
 // Add auth token to requests
