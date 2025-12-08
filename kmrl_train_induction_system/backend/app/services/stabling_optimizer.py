@@ -6,7 +6,13 @@ from datetime import datetime, timedelta
 import logging
 from app.config import settings
 from app.models.trainset import (
-    FleetSummary, DepotAllocation, BayAssignment, OptimizationKPIs, StablingGeometryResponse
+    FleetSummary,
+    DepotAllocation,
+    BayAssignment,
+    OptimizationKPIs,
+    StablingGeometryResponse,
+    MaintenanceSeverity,
+    LocationType,
 )
 
 logger = logging.getLogger(__name__)
@@ -15,43 +21,103 @@ class StablingGeometryOptimizer:
     """Optimize stabling geometry to minimize nightly shunting and morning turn-out time"""
     
     def __init__(self):
-        # Depot layout with bay positions and characteristics
+        # Location coordinates (approximate, used for dead-km estimation)
+        self.location_coords = {
+            "Muttom Depot": (0, 0),
+            "Aluva Terminal": (0, 5000),
+            "Petta Terminal": (8000, 0),
+        }
+        # Distance matrix in km (approx). Symmetric.
+        self.distance_matrix = {
+            ("Muttom Depot", "Aluva Terminal"): 5.0,
+            ("Muttom Depot", "Petta Terminal"): 8.0,
+            ("Aluva Terminal", "Petta Terminal"): 12.0,
+        }
+
+        # Depot / terminal layouts with capabilities
         self.depot_layouts = {
-            "Aluva": {
-                "total_bays": 8,
-                "maintenance_bays": [1, 2, 3],  # Bays 1-3 for maintenance
-                "cleaning_bays": [4, 5],       # Bays 4-5 for cleaning
-                "service_bays": [6, 7, 8],     # Bays 6-8 for service trains
+            "Muttom Depot": {
+                "location_type": LocationType.FULL_DEPOT.value,
+                "supports_heavy_maintenance": True,
+                "supports_cleaning": True,
+                "can_start_service": True,
+                "service_bay_capacity": 6,
+                "maintenance_bay_capacity": 4,
+                "standby_bay_capacity": 2,
+                "total_bays": 12,
+                "maintenance_bays": [1, 2, 3, 4],  # true maintenance capability
+                "cleaning_bays": [5, 6],
+                "service_bays": [7, 8, 9, 10, 11, 12],
+                "standby_bays": [11, 12],
                 "bay_positions": {
-                    1: {"x": 0, "y": 0, "type": "maintenance", "turnout_time": 15},
-                    2: {"x": 50, "y": 0, "type": "maintenance", "turnout_time": 12},
-                    3: {"x": 100, "y": 0, "type": "maintenance", "turnout_time": 18},
-                    4: {"x": 0, "y": 50, "type": "cleaning", "turnout_time": 8},
-                    5: {"x": 50, "y": 50, "type": "cleaning", "turnout_time": 10},
-                    6: {"x": 0, "y": 100, "type": "service", "turnout_time": 5},
-                    7: {"x": 50, "y": 100, "type": "service", "turnout_time": 6},
-                    8: {"x": 100, "y": 100, "type": "service", "turnout_time": 7}
+                    1: {"x": 0, "y": 0, "type": "maintenance", "turnout_time": 14},
+                    2: {"x": 40, "y": 0, "type": "maintenance", "turnout_time": 12},
+                    3: {"x": 80, "y": 0, "type": "maintenance", "turnout_time": 15},
+                    4: {"x": 120, "y": 0, "type": "maintenance", "turnout_time": 16},
+                    5: {"x": 0, "y": 40, "type": "cleaning", "turnout_time": 9},
+                    6: {"x": 40, "y": 40, "type": "cleaning", "turnout_time": 9},
+                    7: {"x": 0, "y": 80, "type": "service", "turnout_time": 6},
+                    8: {"x": 40, "y": 80, "type": "service", "turnout_time": 6},
+                    9: {"x": 80, "y": 80, "type": "service", "turnout_time": 5},
+                    10: {"x": 120, "y": 80, "type": "service", "turnout_time": 5},
+                    11: {"x": 0, "y": 120, "type": "service", "turnout_time": 7},
+                    12: {"x": 40, "y": 120, "type": "service", "turnout_time": 7},
                 },
                 "shunting_tracks": ["TRACK_A", "TRACK_B", "TRACK_C"],
-                "turnout_points": ["POINT_1", "POINT_2", "POINT_3"]
+                "turnout_points": ["POINT_1", "POINT_2", "POINT_3"],
             },
-            "Petta": {
+            "Aluva Terminal": {
+                "location_type": LocationType.TERMINAL_YARD.value,
+                "supports_heavy_maintenance": False,
+                "supports_cleaning": False,
+                "can_start_service": True,
+                "service_bay_capacity": 4,
+                "maintenance_bay_capacity": 0,
+                "standby_bay_capacity": 2,
                 "total_bays": 6,
-                "maintenance_bays": [1, 2],
-                "cleaning_bays": [3],
-                "service_bays": [4, 5, 6],
+                "maintenance_bays": [],  # no maintenance at terminal
+                "cleaning_bays": [1, 2],
+                "service_bays": [3, 4, 5, 6],
+                "standby_bays": [5, 6],
                 "bay_positions": {
-                    1: {"x": 0, "y": 0, "type": "maintenance", "turnout_time": 20},
-                    2: {"x": 50, "y": 0, "type": "maintenance", "turnout_time": 15},
-                    3: {"x": 0, "y": 50, "type": "cleaning", "turnout_time": 12},
-                    4: {"x": 50, "y": 50, "type": "service", "turnout_time": 8},
-                    5: {"x": 0, "y": 100, "type": "service", "turnout_time": 6},
-                    6: {"x": 50, "y": 100, "type": "service", "turnout_time": 5}
+                    1: {"x": 0, "y": 0, "type": "cleaning", "turnout_time": 8},
+                    2: {"x": 40, "y": 0, "type": "cleaning", "turnout_time": 9},
+                    3: {"x": 0, "y": 60, "type": "service", "turnout_time": 5},
+                    4: {"x": 40, "y": 60, "type": "service", "turnout_time": 5},
+                    5: {"x": 80, "y": 60, "type": "service", "turnout_time": 6},
+                    6: {"x": 0, "y": 110, "type": "service", "turnout_time": 6},
                 },
                 "shunting_tracks": ["TRACK_A", "TRACK_B"],
-                "turnout_points": ["POINT_1", "POINT_2"]
-            }
+                "turnout_points": ["POINT_1", "POINT_2"],
+            },
+            "Petta Terminal": {
+                "location_type": LocationType.TERMINAL_YARD.value,
+                "supports_heavy_maintenance": False,
+                "supports_cleaning": False,
+                "can_start_service": True,
+                "service_bay_capacity": 4,
+                "maintenance_bay_capacity": 0,
+                "standby_bay_capacity": 1,
+                "total_bays": 5,
+                "maintenance_bays": [],  # no maintenance at terminal
+                "cleaning_bays": [1],
+                "service_bays": [2, 3, 4, 5],
+                "standby_bays": [5],
+                "bay_positions": {
+                    1: {"x": 0, "y": 0, "type": "cleaning", "turnout_time": 10},
+                    2: {"x": 30, "y": 40, "type": "service", "turnout_time": 7},
+                    3: {"x": 60, "y": 40, "type": "service", "turnout_time": 6},
+                    4: {"x": 90, "y": 40, "type": "service", "turnout_time": 6},
+                    5: {"x": 30, "y": 90, "type": "service", "turnout_time": 5},
+                },
+                "shunting_tracks": ["TRACK_A"],
+                "turnout_points": ["POINT_1"],
+            },
         }
+
+        # Configuration knobs
+        self.dead_km_weight = 0.1  # penalty weight per km (higher pushes to nearer stabling)
+        self.min_standby_muttom = 2  # mandatory standby capacity at Muttom
     
     async def optimize_stabling_geometry(self, trainsets: List[Dict[str, Any]], 
                                        induction_decisions: List[Dict[str, Any]]) -> Dict[str, Any]:
@@ -65,6 +131,7 @@ class StablingGeometryOptimizer:
             optimized_layout = {}
             total_shunting_time = 0
             total_turnout_time = 0
+            maintenance_queue_all: List[Dict[str, Any]] = []
             
             for depot_name, depot_trainsets in depot_assignments.items():
                 if depot_name not in self.depot_layouts:
@@ -80,6 +147,7 @@ class StablingGeometryOptimizer:
                 optimized_layout[depot_name] = depot_optimization
                 total_shunting_time += depot_optimization["total_shunting_time"]
                 total_turnout_time += depot_optimization["total_turnout_time"]
+                maintenance_queue_all.extend(depot_optimization.get("maintenance_queue", []))
                 
                 # Collect unassigned trainsets from this depot
                 if "unassigned" in depot_optimization:
@@ -101,6 +169,7 @@ class StablingGeometryOptimizer:
                 for layout in optimized_layout.values()
             )
             total_requested = sum(len(trainsets) for trainsets in depot_assignments.values())
+            total_unassigned_capacity = len([u for u in unassigned_trainsets if u.get("status") == "UNASSIGNED_CAPACITY_LIMIT"])
             
             result = {
                 "optimized_layout": optimized_layout,
@@ -113,7 +182,18 @@ class StablingGeometryOptimizer:
                     "total_trainsets_assigned": total_assigned,
                     "total_trainsets_requested": total_requested,
                     "capacity_utilization": round(total_assigned / total_capacity * 100, 2) if total_capacity > 0 else 0.0
-                }
+                },
+                "capacity_summary": {
+                    "service_assigned": sum(len(layout.get("service_assignments", {})) for layout in optimized_layout.values()),
+                    "service_capacity": sum(len(self.depot_layouts[name]["service_bays"]) for name in depot_assignments.keys() if name in self.depot_layouts),
+                    "maintenance_assigned": sum(len(layout.get("maintenance_assignments", {})) for layout in optimized_layout.values()),
+                    "maintenance_capacity": sum(len(self.depot_layouts[name]["maintenance_bays"]) for name in depot_assignments.keys() if name in self.depot_layouts),
+                    "total_assigned": total_assigned,
+                    "total_capacity": total_capacity,
+                    "unassigned_due_to_capacity": total_unassigned_capacity
+                },
+                "unassigned_trainsets": unassigned_trainsets,
+                "maintenance_queue": maintenance_queue_all,
             }
             
             # Add unassigned trainsets if any and set capacity warning flag
@@ -151,6 +231,13 @@ class StablingGeometryOptimizer:
         
         # Count eligible (passed Tier 1 filters)
         eligible_count = actual_induct + actual_standby
+
+        # Standby at Muttom
+        standby_at_muttom = sum(
+            1 for t in trainsets
+            if t.get("induction_decision", {}).get("decision") == "STANDBY"
+            and t.get("target_depot") == "Muttom Depot"
+        )
         
         # Get fleet requirements
         required_service_trains = fleet_req.get("required_service_trains", 0) if fleet_req else 0
@@ -170,7 +257,8 @@ class StablingGeometryOptimizer:
             actual_standby_count=actual_standby,
             maintenance_count=maintenance_count,
             service_shortfall=service_shortfall,
-            compliance_rate=round(compliance_rate, 3)
+            compliance_rate=round(compliance_rate, 3),
+            standby_at_muttom=standby_at_muttom,
         )
     
     def _generate_depot_allocation(self, depot_assignments: Dict[str, List[Dict[str, Any]]],
@@ -215,7 +303,11 @@ class StablingGeometryOptimizer:
                 service_bay_capacity=service_bay_capacity,
                 maintenance_bay_capacity=maintenance_bay_capacity,
                 total_bay_capacity=total_bay_capacity,
-                capacity_warning=capacity_warning
+                capacity_warning=capacity_warning,
+                location_type=depot_layout.get("location_type"),
+                supports_heavy_maintenance=depot_layout.get("supports_heavy_maintenance"),
+                supports_cleaning=depot_layout.get("supports_cleaning"),
+                can_start_service=depot_layout.get("can_start_service"),
             ))
         
         return allocations
@@ -251,67 +343,96 @@ class StablingGeometryOptimizer:
             
             # Process all bays in depot
             for bay_id in range(1, depot_layout["total_bays"] + 1):
-                trainset_id = bay_to_trainset.get(bay_id)
-                bay_info = depot_layout["bay_positions"].get(bay_id, {})
-                
-                # Determine role based on bay type and decision
-                role = "EMPTY"
-                if trainset_id:
-                    decision = decision_map.get(trainset_id, {})
-                    if isinstance(decision, dict):
-                        decision_type = decision.get("decision", "STANDBY")
-                    else:
-                        decision_type = getattr(decision, "decision", "STANDBY")
+                    trainset_id = bay_to_trainset.get(bay_id)
+                    bay_info = depot_layout["bay_positions"].get(bay_id, {})
                     
-                    # Map decision to role
-                    if decision_type == "INDUCT":
-                        role = "SERVICE"
-                    elif decision_type == "MAINTENANCE":
-                        role = "MAINTENANCE"
-                    else:
-                        role = "STANDBY"
-                
-                # Get turnout time and distance
-                turnout_time = bay_info.get("turnout_time") if trainset_id else None
-                distance_to_exit = None
-                if bay_info.get("x") is not None and bay_info.get("y") is not None:
-                    # Calculate distance to exit (assume exit is at y=0, x=0)
-                    distance_to_exit = int(math.sqrt(bay_info["x"]**2 + bay_info["y"]**2))
-                
-                # Generate notes
-                notes = None
-                if trainset_id:
-                    trainset = trainset_map.get(trainset_id, {})
-                    note_parts = []
+                    # Determine role based on bay type and decision
+                    role = "EMPTY"
+                    reason_code = None
+                    dead_in = None
+                    dead_out = None
+                    first_departure = None
+                    if trainset_id:
+                        decision = decision_map.get(trainset_id, {})
+                        if isinstance(decision, dict):
+                            decision_type = decision.get("decision", "STANDBY")
+                            reason_code = decision.get("reason_code")
+                            placement_reason_code = decision.get("placement_reason_code") or reason_code
+                            placement_reason_text = decision.get("placement_reason_text")
+                        else:
+                            decision_type = getattr(decision, "decision", "STANDBY")
+                            reason_code = getattr(decision, "reason_code", None)
+                            placement_reason_code = getattr(decision, "placement_reason_code", None) or reason_code
+                            placement_reason_text = getattr(decision, "placement_reason_text", None)
+                        
+                        # Map decision to role
+                        if decision_type == "INDUCT":
+                            role = "SERVICE"
+                        elif decision_type == "MAINTENANCE":
+                            role = "MAINTENANCE"
+                        else:
+                            role = "STANDBY"
+
+                        ts_obj = trainset_map.get(trainset_id, {})
+                        dead_in = ts_obj.get("dead_km_in")
+                        dead_out = ts_obj.get("dead_km_out")
+                        first_departure = ts_obj.get("first_departure_station")
+                        if not reason_code:
+                            reason_code = ts_obj.get("reason_code")
+                        if not placement_reason_code:
+                            placement_reason_code = ts_obj.get("placement_reason_code") or reason_code
+                        if not placement_reason_text:
+                            placement_reason_text = ts_obj.get("placement_reason_text")
                     
-                    # Branding info
-                    branding = trainset.get("branding", {})
-                    if isinstance(branding, dict) and branding.get("current_advertiser"):
-                        note_parts.append(f"Active wrap: {branding.get('current_advertiser')}")
+                    # Get turnout time and distance
+                    turnout_time = bay_info.get("turnout_time") if trainset_id else None
+                    distance_to_exit = None
+                    if bay_info.get("x") is not None and bay_info.get("y") is not None:
+                        # Calculate distance to exit (assume exit is at y=0, x=0)
+                        distance_to_exit = int(math.sqrt(bay_info["x"]**2 + bay_info["y"]**2))
                     
-                    # Job cards
-                    job_cards = trainset.get("job_cards", {})
-                    if isinstance(job_cards, dict):
-                        open_cards = job_cards.get("open_cards", 0)
-                        if open_cards > 0:
-                            note_parts.append(f"{open_cards} open job cards")
+                    # Generate notes
+                    notes = None
+                    if trainset_id:
+                        trainset = trainset_map.get(trainset_id, {})
+                        note_parts = []
+                        
+                        # Branding info
+                        branding = trainset.get("branding", {})
+                        if isinstance(branding, dict) and branding.get("current_advertiser"):
+                            note_parts.append(f"Active wrap: {branding.get('current_advertiser')}")
+                        
+                        # Job cards
+                        job_cards = trainset.get("job_cards", {})
+                        if isinstance(job_cards, dict):
+                            open_cards = job_cards.get("open_cards", 0)
+                            if open_cards > 0:
+                                note_parts.append(f"{open_cards} open job cards")
+                        
+                        # Mileage
+                        mileage = trainset.get("current_mileage", 0)
+                        if mileage > 40000:
+                            note_parts.append(f"High mileage: {int(mileage)} km")
+                        
+                        if note_parts:
+                            notes = "; ".join(note_parts)
                     
-                    # Mileage
-                    mileage = trainset.get("current_mileage", 0)
-                    if mileage > 40000:
-                        note_parts.append(f"High mileage: {int(mileage)} km")
-                    
-                    if note_parts:
-                        notes = "; ".join(note_parts)
-                
-                depot_bays.append(BayAssignment(
-                    bay_id=bay_id,
-                    role=role,
-                    trainset_id=trainset_id,
-                    turnout_time_min=turnout_time,
-                    distance_to_exit_m=distance_to_exit,
-                    notes=notes
-                ))
+                    depot_bays.append(BayAssignment(
+                        bay_id=bay_id,
+                        role=role,
+                        trainset_id=trainset_id,
+                        turnout_time_min=turnout_time,
+                        distance_to_exit_m=distance_to_exit,
+                        notes=notes,
+                        reason_code=reason_code,
+                        dead_km_in=dead_in,
+                        dead_km_out=dead_out,
+                        first_departure_station=first_departure,
+                        stabled_at=depot_name,
+                        placement_reason_code=placement_reason_code,
+                        placement_reason_text=placement_reason_text,
+                        dead_km={"in": dead_in or 0.0, "out": dead_out or 0.0, "total": round((dead_in or 0.0) + (dead_out or 0.0), 2)} if trainset_id else None
+                    ))
             
             bay_layout[depot_name] = depot_bays
         
@@ -392,7 +513,36 @@ class StablingGeometryOptimizer:
             
             efficiency_improvement = efficiency_metrics.get("overall_efficiency", 0.0) * 100
             energy_savings = efficiency_metrics.get("energy_savings", 0.0)
+
+            # Compute depot usage summary
+            depot_usage = {
+                "muttom": {
+                    "service": next((d.service_trains for d in depot_allocation if d.depot_name == "Muttom Depot"), 0),
+                    "standby": next((d.standby_trains for d in depot_allocation if d.depot_name == "Muttom Depot"), 0),
+                    "maintenance": next((d.maintenance_trains for d in depot_allocation if d.depot_name == "Muttom Depot"), 0),
+                },
+                "aluva": {
+                    "service": next((d.service_trains for d in depot_allocation if d.depot_name == "Aluva Terminal"), 0),
+                    "standby": next((d.standby_trains for d in depot_allocation if d.depot_name == "Aluva Terminal"), 0),
+                },
+                "petta": {
+                    "service": next((d.service_trains for d in depot_allocation if d.depot_name == "Petta Terminal"), 0),
+                    "standby": next((d.standby_trains for d in depot_allocation if d.depot_name == "Petta Terminal"), 0),
+                },
+            }
+
+            # Generate shunting operations ordered
+            shunting_ops = await self.get_shunting_schedule(optimized_layout)
             
+            # Shunting feasibility
+            shunting_ops = await self.get_shunting_schedule(optimized_layout)
+            required_minutes = sum(op.get("estimated_time", 0) for op in shunting_ops)
+            available_minutes = 120  # 21:00–23:00
+            buffer_minutes = available_minutes - required_minutes
+            feasible = buffer_minutes >= 0
+            if not feasible:
+                warnings.append(f"Shunting schedule exceeds available night window by {abs(buffer_minutes)} minutes.")
+
             optimization_kpis = OptimizationKPIs(
                 optimized_positions=optimized_positions,
                 total_shunting_time_min=total_shunting_time,
@@ -408,7 +558,18 @@ class StablingGeometryOptimizer:
                 bay_layout=bay_layout,
                 optimization_kpis=optimization_kpis,
                 warnings=warnings,
-                optimization_timestamp=standard_result.get("optimization_timestamp", datetime.now().isoformat())
+                optimization_timestamp=standard_result.get("optimization_timestamp", datetime.now().isoformat()),
+                depot_usage=depot_usage,
+                shunting_operations=shunting_ops,
+                capacity_summary=standard_result.get("capacity_summary"),
+                unassigned_trainsets=standard_result.get("unassigned_trainsets"),
+                maintenance_queue=standard_result.get("maintenance_queue"),
+                shunting_window={
+                    "available_minutes": available_minutes,
+                    "required_minutes": required_minutes,
+                    "buffer_minutes": buffer_minutes,
+                    "feasible": feasible
+                },
             )
             
         except Exception as e:
@@ -440,37 +601,200 @@ class StablingGeometryOptimizer:
         depot_groups = {}
         unassigned_trainsets = []
         
+        standby_muttom_count = 0
+
         for trainset in trainsets:
             current_loc = trainset.get("current_location") or {}
-            depot = current_loc.get("depot", "Aluva")
-            
-            # Check if depot is known
-            if depot not in self.depot_layouts:
+            current_depot = current_loc.get("depot", "Muttom Depot")
+            decision = next((d for d in decisions if d.get("trainset_id") == trainset.get("trainset_id")), None) or {}
+
+            # Derive maintenance severity
+            severity = self._derive_maintenance_severity(trainset, decision)
+            decision["maintenance_severity"] = decision.get("maintenance_severity", severity.value if hasattr(severity, "value") else str(severity))
+
+            # Choose target location based on decision, severity and standby policy
+            target_depot = self._choose_location_for_trainset(
+                trainset=trainset,
+                decision=decision,
+                current_depot=current_depot,
+                standby_muttom_count=standby_muttom_count,
+            )
+
+            if target_depot == "Muttom Depot" and decision.get("decision") == "STANDBY":
+                standby_muttom_count += 1
+
+            if target_depot not in self.depot_layouts:
                 trainset_id = trainset.get("trainset_id", "UNKNOWN")
                 if settings.warn_on_unknown_depot:
-                    logger.warning(f"Trainset {trainset_id} has unknown depot '{depot}', marking as unassigned")
+                    logger.warning(f"Trainset {trainset_id} has unknown depot '{target_depot}', marking as unassigned")
                 unassigned_trainsets.append({
                     "trainset_id": trainset_id,
                     "reason": "unknown_depot",
-                    "depot": depot,
-                    "message": f"Depot '{depot}' is not in known depot layouts"
+                    "depot": target_depot,
+                    "message": f"Depot '{target_depot}' is not in known depot layouts"
                 })
                 continue
-            
-            if depot not in depot_groups:
-                depot_groups[depot] = []
-            
-            # Add decision information
-            decision = next((d for d in decisions if d.get("trainset_id") == trainset.get("trainset_id")), None)
-            # Ensure dict to avoid NoneType errors downstream
-            trainset["induction_decision"] = decision or {}
-            depot_groups[depot].append(trainset)
+
+            if target_depot not in depot_groups:
+                depot_groups[target_depot] = []
+
+            # Compute dead-km metrics
+            dead_km_in, dead_km_out, first_departure = self._compute_dead_km(
+                current_depot=current_depot,
+                target_depot=target_depot,
+                decision=decision,
+            )
+
+            # Annotate trainset for downstream bay layout
+            trainset["induction_decision"] = decision
+            trainset["target_depot"] = target_depot
+            trainset["dead_km_in"] = dead_km_in
+            trainset["dead_km_out"] = dead_km_out
+            trainset["first_departure_station"] = first_departure
+            trainset["reason_code"] = self._derive_reason_code(decision, target_depot, dead_km_in, dead_km_out)
+            trainset["placement_reason_code"] = trainset["reason_code"]
+            trainset["placement_reason_text"] = self._reason_text(trainset["placement_reason_code"])
+
+            depot_groups[target_depot].append(trainset)
         
         if unassigned_trainsets:
             unknown_depots = set(ts["depot"] for ts in unassigned_trainsets)
             logger.warning(f"Found {len(unassigned_trainsets)} trainsets with unknown depots: {unknown_depots}")
         
         return depot_groups, unassigned_trainsets
+
+    def _derive_maintenance_severity(self, trainset: Dict[str, Any], decision: Dict[str, Any]) -> MaintenanceSeverity:
+        """Derive maintenance severity from decision or trainset/job-card hints"""
+        if decision.get("maintenance_severity"):
+            try:
+                return MaintenanceSeverity(decision["maintenance_severity"])
+            except Exception:
+                pass
+
+        if trainset.get("maintenance_severity"):
+            try:
+                return MaintenanceSeverity(trainset["maintenance_severity"])
+            except Exception:
+                pass
+
+        job_cards = trainset.get("job_cards", {}) or {}
+        if job_cards.get("critical_cards", 0) and job_cards.get("critical_cards", 0) > 0:
+            return MaintenanceSeverity.HEAVY
+        if job_cards.get("open_cards", 0) and job_cards.get("open_cards", 0) > 0:
+            return MaintenanceSeverity.LIGHT
+        return MaintenanceSeverity.NONE
+
+    def _compute_dead_km(self, current_depot: str, target_depot: str, decision: Dict[str, Any]) -> Tuple[float, float, str]:
+        """Estimate dead kilometres in/out using simple Euclidean distances between location coordinates"""
+        coords = self.location_coords
+        cur = coords.get(current_depot, (0, 0))
+        tgt = coords.get(target_depot, (0, 0))
+
+        def _dist(a, b):
+            return round(math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) / 1000, 2)  # km
+
+        dead_in = _dist(cur, tgt)
+
+        # First departure station: prefer explicit field; fallback to target depot
+        decision_type = decision.get("decision", "STANDBY")
+        first_departure = decision.get("first_departure_station") or target_depot
+
+        # Compute dead out using matrix; fallback to coordinate distance
+        def _matrix_distance(a_name: str, b_name: str) -> float:
+            if (a_name, b_name) in self.distance_matrix:
+                return self.distance_matrix[(a_name, b_name)]
+            if (b_name, a_name) in self.distance_matrix:
+                return self.distance_matrix[(b_name, a_name)]
+            a = self.location_coords.get(a_name, (0, 0))
+            b = self.location_coords.get(b_name, (0, 0))
+            return round(math.sqrt((a[0] - b[0]) ** 2 + (a[1] - b[1]) ** 2) / 1000, 2)
+
+        dead_out = _matrix_distance(target_depot, first_departure)
+
+        return dead_in, dead_out, first_departure
+
+    def _choose_location_for_trainset(
+        self,
+        trainset: Dict[str, Any],
+        decision: Dict[str, Any],
+        current_depot: str,
+        standby_muttom_count: int,
+    ) -> str:
+        """Choose target location based on capability, severity, and dead-km"""
+        decision_type = decision.get("decision", "STANDBY")
+        severity = str(decision.get("maintenance_severity", "NONE")).upper()
+
+        # Heavy maintenance -> Muttom Depot mandatory
+        if decision_type == "MAINTENANCE" and severity == MaintenanceSeverity.HEAVY.value:
+            return "Muttom Depot"
+
+        # Light maintenance: prefer depot but allow terminals if needed
+        if decision_type == "MAINTENANCE" and severity == MaintenanceSeverity.LIGHT.value:
+            return "Muttom Depot"
+
+        # Standby: ensure minimum standby at Muttom
+        if decision_type == "STANDBY" and standby_muttom_count < self.min_standby_muttom:
+            return "Muttom Depot"
+
+        # For service/standby choose nearest terminal capable of start_service
+        candidates = []
+        for loc, layout in self.depot_layouts.items():
+            if decision_type == "MAINTENANCE" and layout.get("supports_heavy_maintenance") is False:
+                continue
+            if decision_type in ("INDUCT", "SERVICE") and not layout.get("can_start_service", True):
+                continue
+            if layout.get("location_type") == LocationType.TERMINAL_YARD.value or layout.get("location_type") == LocationType.FULL_DEPOT.value:
+                candidates.append(loc)
+
+        if not candidates:
+            return "Muttom Depot"
+
+        # Pick closest by dead km
+        cur_coord = self.location_coords.get(current_depot, (0, 0))
+        best_loc = None
+        best_dist = float("inf")
+        for loc in candidates:
+            dist = math.sqrt((self.location_coords.get(loc, (0, 0))[0] - cur_coord[0]) ** 2 +
+                             (self.location_coords.get(loc, (0, 0))[1] - cur_coord[1]) ** 2)
+            weighted = dist * (1 + self.dead_km_weight)
+            if weighted < best_dist:
+                best_dist = weighted
+                best_loc = loc
+
+        return best_loc or "Muttom Depot"
+
+    def _derive_reason_code(self, decision: Dict[str, Any], depot: str, dead_in: float, dead_out: float) -> str:
+        """Provide placement rationale"""
+        decision_type = decision.get("decision", "STANDBY")
+        severity = str(decision.get("maintenance_severity", "NONE")).upper()
+        if decision_type == "MAINTENANCE" and severity == MaintenanceSeverity.HEAVY.value:
+            return "MAINT_DEPOT"
+        if decision_type == "MAINTENANCE" and depot == "Muttom Depot":
+            return "MAINT_LIGHT_DEPOT"
+        if decision_type == "STANDBY" and depot == "Muttom Depot":
+            return "RESILIENCE_STANDBY"
+        if decision_type == "INDUCT":
+            # If branding exists, treat as wrap SLA
+            if decision.get("branding", {}).get("current_advertiser"):
+                return "WRAP_SLA"
+        if dead_in + dead_out < 0.1:
+            return "LOCAL_STABLING"
+        return "DEADKM_MIN"
+
+    def _reason_text(self, code: Optional[str]) -> Optional[str]:
+        if not code:
+            return None
+        mapping = {
+            "MAINT_DEPOT": "Heavy maintenance routed to Muttom depot",
+            "MAINT_LIGHT_DEPOT": "Light maintenance kept at depot",
+            "RESILIENCE_STANDBY": "Standby kept at Muttom for rescue capacity",
+            "LOCAL_STABLING": "Stabled locally to minimize dead-km",
+            "DEADKM_MIN": "Chosen to minimize dead-kilometers",
+            "WRAP_SLA": "Placed to honour branding/WRAP SLA",
+            "MUTTOM_STANDBY_BUFFER": "Meets mandatory standby buffer at Muttom",
+            "DEFAULT": "Default placement",
+        }
+        return mapping.get(code, code)
     
     async def _optimize_depot_layout(self, depot_name: str, trainsets: List[Dict[str, Any]]) -> Dict[str, Any]:
         """Optimize bay assignments for a specific depot with conflict-free assignment"""
@@ -478,24 +802,114 @@ class StablingGeometryOptimizer:
         bay_assignments = {}
         used_bays: Set[int] = set()
         unassigned_trainsets = []
+        maintenance_queue: List[Dict[str, Any]] = []
         
         # Separate trainsets by decision type
         induct_trainsets = [t for t in trainsets if t.get("induction_decision", {}).get("decision") == "INDUCT"]
         maintenance_trainsets = [t for t in trainsets if t.get("induction_decision", {}).get("decision") == "MAINTENANCE"]
         standby_trainsets = [t for t in trainsets if t.get("induction_decision", {}).get("decision") == "STANDBY"]
+
+        # Enforce capability: terminals cannot take maintenance, heavy jobs only depot
+        if depot_layout.get("location_type") == LocationType.TERMINAL_YARD.value:
+            if maintenance_trainsets:
+                for t in maintenance_trainsets:
+                    unassigned_trainsets.append({
+                        "trainset_id": t.get("trainset_id", "UNKNOWN"),
+                        "role": "MAINTENANCE",
+                        "status": "UNASSIGNED_CAPACITY_LIMIT",
+                        "reason": "no_maintenance_at_terminal",
+                        "depot": depot_name,
+                        "message": "Terminal yards do not support maintenance"
+                    })
+                maintenance_trainsets = []
+
+        # Enforce heavy maintenance to depot only
+        heavy_blocked = []
+        for t in maintenance_trainsets:
+            sev = t.get("induction_decision", {}).get("maintenance_severity", "NONE")
+            if str(sev).upper() == MaintenanceSeverity.HEAVY.value and depot_layout.get("location_type") != LocationType.FULL_DEPOT.value:
+                heavy_blocked.append(t)
+        if heavy_blocked:
+            for t in heavy_blocked:
+                maintenance_trainsets.remove(t)
+                unassigned_trainsets.append({
+                    "trainset_id": t.get("trainset_id", "UNKNOWN"),
+                    "role": "MAINTENANCE",
+                    "status": "UNASSIGNED_CAPACITY_LIMIT",
+                    "reason": "heavy_needs_depot",
+                    "depot": depot_name,
+                    "message": "Heavy maintenance must be routed to Muttom Depot"
+                })
         
-        # Assign bays based on priority and optimization (service > maintenance > standby)
-        # Each function updates used_bays to prevent conflicts
+        # Capacity-aware assignment
+        service_bays = [b for b in depot_layout.get("service_bays", []) if b not in used_bays]
+        maintenance_bays = [b for b in depot_layout.get("maintenance_bays", []) if b not in used_bays]
+        total_bays_available = depot_layout.get("total_bays", 0) - len(used_bays)
+
+        # Service assignment with cap
+        if len(induct_trainsets) > len(service_bays):
+            overflow = induct_trainsets[len(service_bays):]
+            for t in overflow:
+                unassigned_trainsets.append({
+                    "trainset_id": t.get("trainset_id", "UNKNOWN"),
+                    "role": "SERVICE",
+                    "status": "UNASSIGNED_CAPACITY_LIMIT",
+                    "reason": "Depot capacity exceeded",
+                    "depot": depot_name
+                })
+            induct_trainsets = induct_trainsets[:len(service_bays)]
         service_assignments, service_unassigned = self._assign_service_bays(induct_trainsets, depot_layout, used_bays)
         bay_assignments.update(service_assignments)
         used_bays.update(service_assignments.values())
         unassigned_trainsets.extend(service_unassigned)
-        
+
+        # Maintenance queue with prioritization
+        def maint_sort_key(t: Dict[str, Any]):
+            sev = str(t.get("induction_decision", {}).get("maintenance_severity", "NONE")).upper()
+            sev_rank = 2 if sev == MaintenanceSeverity.HEAVY.value else 1 if sev == MaintenanceSeverity.LIGHT.value else 0
+            risk = t.get("induction_decision", {}).get("risk_score", 0) or 0
+            critical = (t.get("job_cards", {}) or {}).get("critical_cards", 0) or 0
+            return (-sev_rank, -(risk), -critical)
+
+        maintenance_trainsets = sorted(maintenance_trainsets, key=maint_sort_key)
+        if len(maintenance_trainsets) > len(maintenance_bays):
+            overflow = maintenance_trainsets[len(maintenance_bays):]
+            for idx, t in enumerate(overflow, start=1):
+                maintenance_queue.append({
+                    "trainset_id": t.get("trainset_id", "UNKNOWN"),
+                    "severity": t.get("induction_decision", {}).get("maintenance_severity", "NONE"),
+                    "risk": t.get("induction_decision", {}).get("risk_score", 0),
+                    "queue_position": idx,
+                    "reason": "No bay capacity"
+                })
+                unassigned_trainsets.append({
+                    "trainset_id": t.get("trainset_id", "UNKNOWN"),
+                    "role": "MAINTENANCE",
+                    "status": "UNASSIGNED_CAPACITY_LIMIT",
+                    "reason": "Depot capacity exceeded",
+                    "depot": depot_name
+                })
+            maintenance_trainsets = maintenance_trainsets[:len(maintenance_bays)]
+
         maintenance_assignments, maintenance_unassigned = self._assign_maintenance_bays(maintenance_trainsets, depot_layout, used_bays)
         bay_assignments.update(maintenance_assignments)
         used_bays.update(maintenance_assignments.values())
         unassigned_trainsets.extend(maintenance_unassigned)
-        
+
+        # Standby assignment respecting remaining total capacity
+        remaining_bays = [b for b in range(1, depot_layout.get("total_bays", 0) + 1) if b not in used_bays]
+        if len(standby_trainsets) > len(remaining_bays):
+            overflow = standby_trainsets[len(remaining_bays):]
+            for t in overflow:
+                unassigned_trainsets.append({
+                    "trainset_id": t.get("trainset_id", "UNKNOWN"),
+                    "role": "STANDBY",
+                    "status": "UNASSIGNED_CAPACITY_LIMIT",
+                    "reason": "Depot capacity exceeded",
+                    "depot": depot_name
+                })
+            standby_trainsets = standby_trainsets[:len(remaining_bays)]
+
         standby_assignments, standby_unassigned = self._assign_standby_bays(standby_trainsets, depot_layout, used_bays)
         bay_assignments.update(standby_assignments)
         used_bays.update(standby_assignments.values())
@@ -532,10 +946,14 @@ class StablingGeometryOptimizer:
         result = {
             "depot": depot_name,
             "bay_assignments": bay_assignments,
+            "service_assignments": service_assignments,
+            "maintenance_assignments": maintenance_assignments,
+            "standby_assignments": standby_assignments,
             "shunting_operations": shunting_operations,
             "total_shunting_time": total_shunting_time,
             "total_turnout_time": total_turnout_time,
-            "efficiency_score": self._calculate_depot_efficiency(bay_assignments, depot_layout)
+            "efficiency_score": self._calculate_depot_efficiency(bay_assignments, depot_layout),
+            "maintenance_queue": maintenance_queue,
         }
     
         if unassigned_trainsets:

@@ -1,0 +1,3161 @@
+{
+  "simulation_id": "3b7e6192-4032-4541-86d0-4a48e37c8153",
+  "timestamp": "2025-12-08T09:33:44.505750",
+  "baseline": {
+    "num_inducted_trains": 13,
+    "num_standby_trains": 6,
+    "num_maintenance_trains": 6,
+    "total_shunting_time": 142,
+    "total_turnout_time": 111,
+    "num_shunt_ops": 10,
+    "num_unassigned": 13,
+    "efficiency_improvement": 38.3,
+    "overall_efficiency": 0.383
+  },
+  "scenario": {
+    "num_inducted_trains": 13,
+    "num_standby_trains": 6,
+    "num_maintenance_trains": 6,
+    "total_shunting_time": 142,
+    "total_turnout_time": 111,
+    "num_shunt_ops": 10,
+    "num_unassigned": 13,
+    "efficiency_improvement": 38.3,
+    "overall_efficiency": 0.383
+  },
+  "deltas": {
+    "num_inducted_trains": 0,
+    "num_standby_trains": 0,
+    "num_maintenance_trains": 0,
+    "total_shunting_time": 0,
+    "total_turnout_time": 0,
+    "num_shunt_ops": 0,
+    "num_unassigned": 0,
+    "efficiency_improvement": 0.0
+  },
+  "explain_log": [
+    "No significant changes detected between baseline and scenario"
+  ],
+  "results": [
+    {
+      "type": "baseline",
+      "kpis": {
+        "num_inducted_trains": 13,
+        "num_standby_trains": 6,
+        "num_maintenance_trains": 6,
+        "total_shunting_time": 142,
+        "total_turnout_time": 111,
+        "num_shunt_ops": 10,
+        "num_unassigned": 13,
+        "efficiency_improvement": 38.3,
+        "overall_efficiency": 0.383
+      },
+      "decisions": [
+        {
+          "trainset_id": "T-015",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "High branding obligation - wrapped train must enter service",
+            "No minor defects - optimal condition",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 1.0,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [
+            "High mileage - lower priority for service"
+          ],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: INDUCT. High branding obligation - wrapped train must enter service. No minor defects - optimal condition. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 1.00",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-013",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "High branding obligation - wrapped train must enter service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.99,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [
+            "High mileage - lower priority for service"
+          ],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: INDUCT. High branding obligation - wrapped train must enter service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.99",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-014",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "High branding obligation - wrapped train must enter service",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.98,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. High branding obligation - wrapped train must enter service. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.98",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-002",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "No minor defects - optimal condition",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.97,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. No minor defects - optimal condition. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.97",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-006",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "No minor defects - optimal condition",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.97,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. No minor defects - optimal condition. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.97",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-012",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.96,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 1.0,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.96",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-001",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Moderate mileage - suitable for service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Moderate mileage - suitable for service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-003",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-005",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Moderate mileage - suitable for service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Moderate mileage - suitable for service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-010",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Moderate mileage - suitable for service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Moderate mileage - suitable for service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-016",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "High branding obligation - wrapped train must enter service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [
+            "High mileage - lower priority for service"
+          ],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: INDUCT. High branding obligation - wrapped train must enter service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-007",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Branding obligation - wrapped train",
+            "No minor defects - optimal condition",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.9400000000000001,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 1.0,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Branding obligation - wrapped train. No minor defects - optimal condition. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.94",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-011",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Branding obligation - wrapped train",
+            "No minor defects - optimal condition",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.9400000000000001,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Branding obligation - wrapped train. No minor defects - optimal condition. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.94",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-009",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.635,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.64",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-017",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.635,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.64",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-018",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.635,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.64",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-019",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.6029370000000001,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.60",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-020",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.602583,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.60",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-008",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.600313,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.60",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-004",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Mandatory branding commitment - high priority ad-wrap",
+            "No minor defects - optimal condition for service"
+          ],
+          "top_risks": [
+            "High mileage - lower priority for service"
+          ],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. Confidence: 100%. Score: 0.00",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-021",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "1 critical job cards open"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Branding obligation - medium priority wrapped train"
+          ],
+          "top_risks": [
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "Open critical job-card"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 1 critical job cards open. Confidence: 100%. Score: 0.00. Violations: Open critical job-card",
+          "maintenance_severity": "HEAVY"
+        },
+        {
+          "trainset_id": "T-022",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "3 critical job cards open",
+            "Expired certificates: signalling"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Mandatory branding commitment - high priority ad-wrap"
+          ],
+          "top_risks": [
+            "signalling certificate expired - safety critical failure",
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "signalling certificate expired",
+            "Open critical job-card"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 3 critical job cards open. Expired certificates: signalling. Confidence: 100%. Score: 0.00. Violations: signalling certificate expired, Open critical job-card",
+          "maintenance_severity": "HEAVY"
+        },
+        {
+          "trainset_id": "T-023",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "3 critical job cards open",
+            "Expired certificates: rolling_stock"
+          ],
+          "score": 0.0,
+          "top_reasons": [],
+          "top_risks": [
+            "rolling_stock certificate expired - safety critical failure",
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "rolling_stock certificate expired",
+            "Open critical job-card"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 3 critical job cards open. Expired certificates: rolling_stock. Confidence: 100%. Score: 0.00. Violations: rolling_stock certificate expired, Open critical job-card",
+          "maintenance_severity": "HEAVY"
+        },
+        {
+          "trainset_id": "T-024",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "2 critical job cards open"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Branding commitment - low priority wrapped train"
+          ],
+          "top_risks": [
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "Open critical job-card",
+            "Mileage limit exceeded"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 2 critical job cards open. Confidence: 100%. Score: 0.00. Violations: Open critical job-card, Mileage limit exceeded",
+          "maintenance_severity": "HEAVY"
+        },
+        {
+          "trainset_id": "T-025",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "2 critical job cards open"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Mandatory branding commitment - high priority ad-wrap"
+          ],
+          "top_risks": [
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "Open critical job-card"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 2 critical job cards open. Confidence: 100%. Score: 0.00. Violations: Open critical job-card",
+          "maintenance_severity": "HEAVY"
+        }
+      ],
+      "stabling_geometry": {
+        "optimized_layout": {
+          "Muttom Depot": {
+            "depot": "Muttom Depot",
+            "bay_assignments": {
+              "T-001": 9,
+              "T-002": 10,
+              "T-003": 7,
+              "T-005": 8,
+              "T-006": 11,
+              "T-007": 12,
+              "T-022": 1,
+              "T-023": 2,
+              "T-024": 3,
+              "T-025": 4,
+              "T-008": 5,
+              "T-009": 6
+            },
+            "service_assignments": {
+              "T-001": 9,
+              "T-002": 10,
+              "T-003": 7,
+              "T-005": 8,
+              "T-006": 11,
+              "T-007": 12
+            },
+            "maintenance_assignments": {
+              "T-022": 1,
+              "T-023": 2,
+              "T-024": 3,
+              "T-025": 4
+            },
+            "standby_assignments": {
+              "T-008": 5,
+              "T-009": 6
+            },
+            "shunting_operations": [
+              {
+                "trainset_id": "T-001",
+                "from_bay": 2,
+                "to_bay": 9,
+                "distance": 89.44271909999159,
+                "estimated_time": 15,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-002",
+                "from_bay": 5,
+                "to_bay": 10,
+                "distance": 126.49110640673517,
+                "estimated_time": 19,
+                "complexity": "HIGH"
+              },
+              {
+                "trainset_id": "T-003",
+                "from_bay": 2,
+                "to_bay": 7,
+                "distance": 89.44271909999159,
+                "estimated_time": 15,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-005",
+                "from_bay": 5,
+                "to_bay": 8,
+                "distance": 56.568542494923804,
+                "estimated_time": 11,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-006",
+                "from_bay": 3,
+                "to_bay": 11,
+                "distance": 144.22205101855957,
+                "estimated_time": 21,
+                "complexity": "HIGH"
+              },
+              {
+                "trainset_id": "T-007",
+                "from_bay": 7,
+                "to_bay": 12,
+                "distance": 56.568542494923804,
+                "estimated_time": 12,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-009",
+                "from_bay": 4,
+                "to_bay": 6,
+                "distance": 89.44271909999159,
+                "estimated_time": 14,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-023",
+                "from_bay": 6,
+                "to_bay": 2,
+                "distance": 40.0,
+                "estimated_time": 11,
+                "complexity": "LOW"
+              },
+              {
+                "trainset_id": "T-024",
+                "from_bay": 4,
+                "to_bay": 3,
+                "distance": 40.0,
+                "estimated_time": 10,
+                "complexity": "LOW"
+              },
+              {
+                "trainset_id": "T-025",
+                "from_bay": 2,
+                "to_bay": 4,
+                "distance": 80.0,
+                "estimated_time": 14,
+                "complexity": "MEDIUM"
+              }
+            ],
+            "total_shunting_time": 142,
+            "total_turnout_time": 111,
+            "efficiency_score": 0.537,
+            "maintenance_queue": [
+              {
+                "trainset_id": "T-021",
+                "severity": "HEAVY",
+                "risk": 0,
+                "queue_position": 1,
+                "reason": "No bay capacity"
+              },
+              {
+                "trainset_id": "T-004",
+                "severity": "NONE",
+                "risk": 0,
+                "queue_position": 2,
+                "reason": "No bay capacity"
+              }
+            ],
+            "unassigned": [
+              {
+                "trainset_id": "T-010",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-011",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-012",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-013",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-014",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-015",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-016",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-021",
+                "role": "MAINTENANCE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-004",
+                "role": "MAINTENANCE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-017",
+                "role": "STANDBY",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-018",
+                "role": "STANDBY",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-019",
+                "role": "STANDBY",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-020",
+                "role": "STANDBY",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              }
+            ]
+          }
+        },
+        "efficiency_metrics": {
+          "overall_efficiency": 0.383,
+          "shunting_efficiency": -0.183,
+          "energy_savings": 71.0,
+          "time_savings": 33.3,
+          "depot_scores": {
+            "Muttom Depot": 0.537
+          }
+        },
+        "total_shunting_time": 142,
+        "total_turnout_time": 111,
+        "optimization_timestamp": "2025-12-08T15:03:44.394361",
+        "capacity_stats": {
+          "total_bays_available": 12,
+          "total_trainsets_assigned": 12,
+          "total_trainsets_requested": 25,
+          "capacity_utilization": 100.0
+        },
+        "capacity_summary": {
+          "service_assigned": 6,
+          "service_capacity": 6,
+          "maintenance_assigned": 4,
+          "maintenance_capacity": 4,
+          "total_assigned": 12,
+          "total_capacity": 12,
+          "unassigned_due_to_capacity": 13
+        },
+        "unassigned_trainsets": [
+          {
+            "trainset_id": "T-010",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-011",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-012",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-013",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-014",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-015",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-016",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-021",
+            "role": "MAINTENANCE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-004",
+            "role": "MAINTENANCE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-017",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-018",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-019",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-020",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          }
+        ],
+        "maintenance_queue": [
+          {
+            "trainset_id": "T-021",
+            "severity": "HEAVY",
+            "risk": 0,
+            "queue_position": 1,
+            "reason": "No bay capacity"
+          },
+          {
+            "trainset_id": "T-004",
+            "severity": "NONE",
+            "risk": 0,
+            "queue_position": 2,
+            "reason": "No bay capacity"
+          }
+        ],
+        "unassigned": [
+          {
+            "trainset_id": "T-010",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-011",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-012",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-013",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-014",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-015",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-016",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-021",
+            "role": "MAINTENANCE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-004",
+            "role": "MAINTENANCE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-017",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-018",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-019",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-020",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          }
+        ],
+        "capacity_warning": true,
+        "capacity_warning_message": "Capacity exceeded: 13 trainsets could not be assigned bays. Requested: 25, Available: 12, Assigned: 12"
+      }
+    },
+    {
+      "type": "scenario",
+      "kpis": {
+        "num_inducted_trains": 13,
+        "num_standby_trains": 6,
+        "num_maintenance_trains": 6,
+        "total_shunting_time": 142,
+        "total_turnout_time": 111,
+        "num_shunt_ops": 10,
+        "num_unassigned": 13,
+        "efficiency_improvement": 38.3,
+        "overall_efficiency": 0.383
+      },
+      "decisions": [
+        {
+          "trainset_id": "T-015",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "High branding obligation - wrapped train must enter service",
+            "No minor defects - optimal condition",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 1.0,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [
+            "High mileage - lower priority for service"
+          ],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: INDUCT. High branding obligation - wrapped train must enter service. No minor defects - optimal condition. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 1.00",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-013",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "High branding obligation - wrapped train must enter service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.99,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [
+            "High mileage - lower priority for service"
+          ],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: INDUCT. High branding obligation - wrapped train must enter service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.99",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-014",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "High branding obligation - wrapped train must enter service",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.98,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. High branding obligation - wrapped train must enter service. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.98",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-002",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "No minor defects - optimal condition",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.97,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. No minor defects - optimal condition. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.97",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-006",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "No minor defects - optimal condition",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.97,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. No minor defects - optimal condition. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.97",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-012",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.96,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 1.0,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.96",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-001",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Moderate mileage - suitable for service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Moderate mileage - suitable for service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-003",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-005",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Moderate mileage - suitable for service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Moderate mileage - suitable for service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-010",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Medium branding obligation - wrapped train",
+            "Moderate mileage - suitable for service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: INDUCT. Medium branding obligation - wrapped train. Moderate mileage - suitable for service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-016",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "High branding obligation - wrapped train must enter service",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.95,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [
+            "High mileage - lower priority for service"
+          ],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: INDUCT. High branding obligation - wrapped train must enter service. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.95",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-007",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Branding obligation - wrapped train",
+            "No minor defects - optimal condition",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.9400000000000001,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 1.0,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Branding obligation - wrapped train. No minor defects - optimal condition. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.94",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-011",
+          "decision": "INDUCT",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Branding obligation - wrapped train",
+            "No minor defects - optimal condition",
+            "Low mileage - good for fleet balancing",
+            "No cleaning required - ready for service",
+            "No shunting complexity - easy deployment",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.9400000000000001,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: INDUCT. Branding obligation - wrapped train. No minor defects - optimal condition. Low mileage - good for fleet balancing. No cleaning required - ready for service. No shunting complexity - easy deployment. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 100%. Score: 0.94",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-009",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.635,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.64",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-017",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.635,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.64",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-018",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.635,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.8,
+              "impact": "positive"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.64",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-019",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.6029370000000001,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.60",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-020",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.602583,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.60",
+          "maintenance_severity": "LIGHT"
+        },
+        {
+          "trainset_id": "T-008",
+          "decision": "STANDBY",
+          "confidence_score": 0.7,
+          "reasons": [
+            "Standby - lower tiered score than inducted trainsets",
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "score": 0.600313,
+          "top_reasons": [
+            "Safety compliance verified - all certificates valid",
+            "All department certificates valid and current",
+            "No critical job cards pending"
+          ],
+          "top_risks": [],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.5,
+              "impact": "neutral"
+            }
+          ],
+          "explain": "Decision: STANDBY. Standby - lower tiered score than inducted trainsets. Safety compliance verified - all certificates valid. All department certificates valid and current. No critical job cards pending. Confidence: 70%. Score: 0.60",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-004",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Mandatory branding commitment - high priority ad-wrap",
+            "No minor defects - optimal condition for service"
+          ],
+          "top_risks": [
+            "High mileage - lower priority for service"
+          ],
+          "violations": [],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. Confidence: 100%. Score: 0.00",
+          "maintenance_severity": "NONE"
+        },
+        {
+          "trainset_id": "T-021",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "1 critical job cards open"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Branding obligation - medium priority wrapped train"
+          ],
+          "top_risks": [
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "Open critical job-card"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.8,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 1 critical job cards open. Confidence: 100%. Score: 0.00. Violations: Open critical job-card",
+          "maintenance_severity": "HEAVY"
+        },
+        {
+          "trainset_id": "T-022",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "3 critical job cards open",
+            "Expired certificates: signalling"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Mandatory branding commitment - high priority ad-wrap"
+          ],
+          "top_risks": [
+            "signalling certificate expired - safety critical failure",
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "signalling certificate expired",
+            "Open critical job-card"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 3 critical job cards open. Expired certificates: signalling. Confidence: 100%. Score: 0.00. Violations: signalling certificate expired, Open critical job-card",
+          "maintenance_severity": "HEAVY"
+        },
+        {
+          "trainset_id": "T-023",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "3 critical job cards open",
+            "Expired certificates: rolling_stock"
+          ],
+          "score": 0.0,
+          "top_reasons": [],
+          "top_risks": [
+            "rolling_stock certificate expired - safety critical failure",
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "rolling_stock certificate expired",
+            "Open critical job-card"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.6,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 3 critical job cards open. Expired certificates: rolling_stock. Confidence: 100%. Score: 0.00. Violations: rolling_stock certificate expired, Open critical job-card",
+          "maintenance_severity": "HEAVY"
+        },
+        {
+          "trainset_id": "T-024",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "2 critical job cards open"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Branding commitment - low priority wrapped train"
+          ],
+          "top_risks": [
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "Open critical job-card",
+            "Mileage limit exceeded"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 0.6,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 2 critical job cards open. Confidence: 100%. Score: 0.00. Violations: Open critical job-card, Mileage limit exceeded",
+          "maintenance_severity": "HEAVY"
+        },
+        {
+          "trainset_id": "T-025",
+          "decision": "MAINTENANCE",
+          "confidence_score": 1.0,
+          "reasons": [
+            "Critical failure detected - requires maintenance",
+            "2 critical job cards open"
+          ],
+          "score": 0.0,
+          "top_reasons": [
+            "Mandatory branding commitment - high priority ad-wrap"
+          ],
+          "top_risks": [
+            "Open critical job-card - safety compliance failure",
+            "High mileage - lower priority for service"
+          ],
+          "violations": [
+            "Open critical job-card"
+          ],
+          "shap_values": [
+            {
+              "name": "Safety Compliance",
+              "value": 0.0,
+              "impact": "negative"
+            },
+            {
+              "name": "Branding Obligation",
+              "value": 1.0,
+              "impact": "positive"
+            },
+            {
+              "name": "Defect Impact",
+              "value": 0.30000000000000004,
+              "impact": "negative"
+            },
+            {
+              "name": "Mileage Optimization",
+              "value": 0.3,
+              "impact": "negative"
+            }
+          ],
+          "explain": "Decision: MAINTENANCE. Critical failure detected - requires maintenance. 2 critical job cards open. Confidence: 100%. Score: 0.00. Violations: Open critical job-card",
+          "maintenance_severity": "HEAVY"
+        }
+      ],
+      "stabling_geometry": {
+        "optimized_layout": {
+          "Muttom Depot": {
+            "depot": "Muttom Depot",
+            "bay_assignments": {
+              "T-001": 9,
+              "T-002": 10,
+              "T-003": 7,
+              "T-005": 8,
+              "T-006": 11,
+              "T-007": 12,
+              "T-022": 1,
+              "T-023": 2,
+              "T-024": 3,
+              "T-025": 4,
+              "T-008": 5,
+              "T-009": 6
+            },
+            "service_assignments": {
+              "T-001": 9,
+              "T-002": 10,
+              "T-003": 7,
+              "T-005": 8,
+              "T-006": 11,
+              "T-007": 12
+            },
+            "maintenance_assignments": {
+              "T-022": 1,
+              "T-023": 2,
+              "T-024": 3,
+              "T-025": 4
+            },
+            "standby_assignments": {
+              "T-008": 5,
+              "T-009": 6
+            },
+            "shunting_operations": [
+              {
+                "trainset_id": "T-001",
+                "from_bay": 2,
+                "to_bay": 9,
+                "distance": 89.44271909999159,
+                "estimated_time": 15,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-002",
+                "from_bay": 5,
+                "to_bay": 10,
+                "distance": 126.49110640673517,
+                "estimated_time": 19,
+                "complexity": "HIGH"
+              },
+              {
+                "trainset_id": "T-003",
+                "from_bay": 2,
+                "to_bay": 7,
+                "distance": 89.44271909999159,
+                "estimated_time": 15,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-005",
+                "from_bay": 5,
+                "to_bay": 8,
+                "distance": 56.568542494923804,
+                "estimated_time": 11,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-006",
+                "from_bay": 3,
+                "to_bay": 11,
+                "distance": 144.22205101855957,
+                "estimated_time": 21,
+                "complexity": "HIGH"
+              },
+              {
+                "trainset_id": "T-007",
+                "from_bay": 7,
+                "to_bay": 12,
+                "distance": 56.568542494923804,
+                "estimated_time": 12,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-009",
+                "from_bay": 4,
+                "to_bay": 6,
+                "distance": 89.44271909999159,
+                "estimated_time": 14,
+                "complexity": "MEDIUM"
+              },
+              {
+                "trainset_id": "T-023",
+                "from_bay": 6,
+                "to_bay": 2,
+                "distance": 40.0,
+                "estimated_time": 11,
+                "complexity": "LOW"
+              },
+              {
+                "trainset_id": "T-024",
+                "from_bay": 4,
+                "to_bay": 3,
+                "distance": 40.0,
+                "estimated_time": 10,
+                "complexity": "LOW"
+              },
+              {
+                "trainset_id": "T-025",
+                "from_bay": 2,
+                "to_bay": 4,
+                "distance": 80.0,
+                "estimated_time": 14,
+                "complexity": "MEDIUM"
+              }
+            ],
+            "total_shunting_time": 142,
+            "total_turnout_time": 111,
+            "efficiency_score": 0.537,
+            "maintenance_queue": [
+              {
+                "trainset_id": "T-021",
+                "severity": "HEAVY",
+                "risk": 0,
+                "queue_position": 1,
+                "reason": "No bay capacity"
+              },
+              {
+                "trainset_id": "T-004",
+                "severity": "NONE",
+                "risk": 0,
+                "queue_position": 2,
+                "reason": "No bay capacity"
+              }
+            ],
+            "unassigned": [
+              {
+                "trainset_id": "T-010",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-011",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-012",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-013",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-014",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-015",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-016",
+                "role": "SERVICE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-021",
+                "role": "MAINTENANCE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-004",
+                "role": "MAINTENANCE",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-017",
+                "role": "STANDBY",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-018",
+                "role": "STANDBY",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-019",
+                "role": "STANDBY",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              },
+              {
+                "trainset_id": "T-020",
+                "role": "STANDBY",
+                "status": "UNASSIGNED_CAPACITY_LIMIT",
+                "reason": "Depot capacity exceeded",
+                "depot": "Muttom Depot"
+              }
+            ]
+          }
+        },
+        "efficiency_metrics": {
+          "overall_efficiency": 0.383,
+          "shunting_efficiency": -0.183,
+          "energy_savings": 71.0,
+          "time_savings": 33.3,
+          "depot_scores": {
+            "Muttom Depot": 0.537
+          }
+        },
+        "total_shunting_time": 142,
+        "total_turnout_time": 111,
+        "optimization_timestamp": "2025-12-08T15:03:44.500416",
+        "capacity_stats": {
+          "total_bays_available": 12,
+          "total_trainsets_assigned": 12,
+          "total_trainsets_requested": 25,
+          "capacity_utilization": 100.0
+        },
+        "capacity_summary": {
+          "service_assigned": 6,
+          "service_capacity": 6,
+          "maintenance_assigned": 4,
+          "maintenance_capacity": 4,
+          "total_assigned": 12,
+          "total_capacity": 12,
+          "unassigned_due_to_capacity": 13
+        },
+        "unassigned_trainsets": [
+          {
+            "trainset_id": "T-010",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-011",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-012",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-013",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-014",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-015",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-016",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-021",
+            "role": "MAINTENANCE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-004",
+            "role": "MAINTENANCE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-017",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-018",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-019",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-020",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          }
+        ],
+        "maintenance_queue": [
+          {
+            "trainset_id": "T-021",
+            "severity": "HEAVY",
+            "risk": 0,
+            "queue_position": 1,
+            "reason": "No bay capacity"
+          },
+          {
+            "trainset_id": "T-004",
+            "severity": "NONE",
+            "risk": 0,
+            "queue_position": 2,
+            "reason": "No bay capacity"
+          }
+        ],
+        "unassigned": [
+          {
+            "trainset_id": "T-010",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-011",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-012",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-013",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-014",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-015",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-016",
+            "role": "SERVICE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-021",
+            "role": "MAINTENANCE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-004",
+            "role": "MAINTENANCE",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-017",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-018",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-019",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          },
+          {
+            "trainset_id": "T-020",
+            "role": "STANDBY",
+            "status": "UNASSIGNED_CAPACITY_LIMIT",
+            "reason": "Depot capacity exceeded",
+            "depot": "Muttom Depot"
+          }
+        ],
+        "capacity_warning": true,
+        "capacity_warning_message": "Capacity exceeded: 13 trainsets could not be assigned bays. Requested: 25, Available: 12, Assigned: 12"
+      }
+    }
+  ]
+}
