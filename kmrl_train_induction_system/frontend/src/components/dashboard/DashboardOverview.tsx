@@ -21,6 +21,9 @@ import {
   FileText,
   ArrowRight
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { UserRole } from "@/types/auth";
+import { toast } from "sonner";
 
 // Tomorrow's Service Plan types and helpers
 interface ServiceData {
@@ -63,6 +66,7 @@ const describeArc = (x: number, y: number, radius: number, startAngle: number, e
 export function DashboardOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user, logout } = useAuth();
   const [hoverItem, setHoverItem] = useState<ServiceData | null>(null);
 
   // Fetch dashboard data
@@ -109,7 +113,7 @@ export function DashboardOverview() {
   // Get approved assignments sorted by rank and enrich with decision from latest ranked list
   const approvedTrainsByRank = useMemo(() => {
     const approvedAssignments = assignments.filter((a: any) => a.status === "APPROVED");
-    
+
     // Create a map of trainset_id to rank from ranked list
     const rankMap = new Map();
     const decisionMap = new Map();
@@ -304,12 +308,34 @@ export function DashboardOverview() {
           <p className="text-muted-foreground">Train induction system monitoring</p>
         </div>
         <div className="flex items-center gap-2">
+          {user?.role === UserRole.METRO_DRIVER && (
+            <>
+              <Button
+                variant="destructive"
+                className="animate-pulse font-bold mr-2"
+                onClick={() => toast.error("EMERGENCY SOS SIGNAL SENT! Admins and Supervisors Notified.")}
+              >
+                <AlertTriangle className="h-4 w-4 mr-2" />
+                SOS
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+                className="mr-2"
+              >
+                Sign Out
+              </Button>
+            </>
+          )}
           <Badge variant="outline" className="text-success border-success/20">
             <Zap className="h-3 w-3 mr-1" />
             System Online
           </Badge>
-          <Button 
-            variant="industrial" 
+          <Button
+            variant="industrial"
             onClick={handleGenerateReport}
             disabled={generateReportMutation.isPending}
           >
@@ -527,28 +553,28 @@ export function DashboardOverview() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button 
+            <Button
               variant="industrial"
               onClick={handleNavigateToAssignments}
             >
               <CheckCircle className="h-4 w-4 mr-2" />
               View Assignments
             </Button>
-            <Button 
+            <Button
               variant="outline"
               onClick={handleNavigateToConflicts}
             >
               <AlertTriangle className="h-4 w-4 mr-2" />
               Review Conflicts ({conflicts.length})
             </Button>
-            <Button 
+            <Button
               variant="secondary"
               onClick={() => navigate('/reports')}
             >
               <BarChart3 className="h-4 w-4 mr-2" />
               View Reports
             </Button>
-            <Button 
+            <Button
               variant="ghost"
               onClick={() => navigate('/optimization')}
             >

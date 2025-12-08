@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Star, Train } from "lucide-react";
+import { Star, Train, LogOut } from "lucide-react";
 import api from '../services/api';
 import { toast } from "sonner";
+import { useAuth } from '../contexts/AuthContext';
 
 interface Trainset {
     trainset_id: string;
@@ -18,6 +20,9 @@ const PassengerDashboard = () => {
     const [comment, setComment] = useState('');
     const [loading, setLoading] = useState(false);
 
+    const { logout } = useAuth();
+    const navigate = useNavigate();
+
     useEffect(() => {
         fetchTrainsets();
     }, []);
@@ -28,6 +33,17 @@ const PassengerDashboard = () => {
             setTrainsets(response.data);
         } catch (error) {
             console.error('Error fetching trainsets:', error);
+        }
+    };
+
+    const handleLogout = async () => {
+        try {
+            await logout();
+            navigate('/login');
+            toast.success("Signed out successfully");
+        } catch (error) {
+            console.error('Logout error:', error);
+            toast.error("Failed to sign out");
         }
     };
 
@@ -58,9 +74,19 @@ const PassengerDashboard = () => {
 
     return (
         <div className="max-w-4xl mx-auto p-6 space-y-8">
-            <div className="text-center">
-                <h1 className="text-3xl font-bold text-white mb-2">Passenger Feedback</h1>
-                <p className="text-gray-400">Help us improve your journey</p>
+            <div className="flex justify-between items-center">
+                <div>
+                    <h1 className="text-3xl font-bold text-white mb-2">Passenger Feedback</h1>
+                    <p className="text-gray-400">Help us improve your journey</p>
+                </div>
+                <Button
+                    variant="destructive"
+                    onClick={handleLogout}
+                    className="flex items-center gap-2"
+                >
+                    <LogOut className="h-4 w-4" />
+                    Sign Out
+                </Button>
             </div>
 
             <Card className="bg-gray-800 border-gray-700">
@@ -79,8 +105,8 @@ const PassengerDashboard = () => {
                                         key={train.trainset_id}
                                         onClick={() => setSelectedTrain(train.trainset_id)}
                                         className={`cursor-pointer p-4 rounded-lg border-2 transition-all ${selectedTrain === train.trainset_id
-                                                ? "border-blue-500 bg-blue-900/20"
-                                                : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
+                                            ? "border-blue-500 bg-blue-900/20"
+                                            : "border-gray-700 bg-gray-900/50 hover:border-gray-600"
                                             }`}
                                     >
                                         <Train className="h-6 w-6 text-gray-400 mb-2" />

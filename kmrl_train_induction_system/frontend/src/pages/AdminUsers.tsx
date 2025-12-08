@@ -16,7 +16,7 @@ const AdminUsers = () => {
 
     const fetchPendingUsers = async () => {
         try {
-            const response = await api.get('/users/pending');
+            const response = await api.get('/v1/users/pending');
             setPendingUsers(response.data);
         } catch (error) {
             console.error('Error fetching pending users:', error);
@@ -28,7 +28,7 @@ const AdminUsers = () => {
 
     const handleApprove = async (userId: string) => {
         try {
-            await api.post(`/users/${userId}/approve`);
+            await api.post(`/v1/users/${userId}/approve`);
             toast.success("User approved successfully");
             setPendingUsers(pendingUsers.filter(u => u.id !== userId));
         } catch (error) {
@@ -41,7 +41,7 @@ const AdminUsers = () => {
         if (!window.confirm("Are you sure you want to reject and delete this user?")) return;
 
         try {
-            await api.post(`/users/${userId}/reject`);
+            await api.post(`/v1/users/${userId}/reject`);
             toast.success("User rejected successfully");
             setPendingUsers(pendingUsers.filter(u => u.id !== userId));
         } catch (error) {

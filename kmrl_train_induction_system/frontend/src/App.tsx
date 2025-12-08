@@ -157,7 +157,7 @@ const AppRoutes = () => (
       path="/supervisor"
       element={
         <ProtectedRoute allowedRoles={[UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR]}>
-          {withDashboardLayout(<SupervisorDashboard />)}
+          {withDashboardLayout(<Dashboard />)}
         </ProtectedRoute>
       }
     />
@@ -167,7 +167,7 @@ const AppRoutes = () => (
       path="/driver"
       element={
         <ProtectedRoute allowedRoles={[UserRole.METRO_DRIVER]}>
-          {withDashboardLayout(<DriverDashboard />)}
+          <Dashboard />
         </ProtectedRoute>
       }
     />
