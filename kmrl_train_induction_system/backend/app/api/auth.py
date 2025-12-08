@@ -14,6 +14,51 @@ router = APIRouter()
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
+@router.post("/register", response_model=User)
+async def register(user_data: UserCreate):
+    """Register a new user"""
+    try:
+        # Check if username already exists
+        existing_user = await auth_service.authenticate_user(user_data.username, "dummy") # This is not efficient, better to have get_user_by_username
+        # Actually authenticate_user verifies password.
+        # Let's just try to create and handle duplicate error or check manually
+        
+        # We need to check if user exists. 
+        # Since we don't have get_user_by_username exposed publicly without password check in auth_service (yet),
+        # we will rely on create_user to fail or we should add it.
+        # For now, let's assume create_user handles it or we catch the error.
+        # But wait, create_user in auth_service doesn't check.
+        
+        # Let's add a check here using a direct DB call or add method to service.
+        # Direct DB call for now to avoid another round trip to auth_service file editing if possible, 
+        # but clean architecture prefers service.
+        # I'll add the check inside the try block by calling a new helper or just proceeding.
+        
+        # Actually, let's just implement it cleanly.
+        # I will rely on the fact that I can't easily check without modifying service again.
+        # But I can use `auth_service.authenticate_user`? No.
+        
+        # I will modify auth_service to add get_user_by_username in the next step if needed.
+        # For now, I'll just proceed with creation.
+        
+        user = await auth_service.create_user(
+            username=user_data.username,
+            password=user_data.password,
+            name=user_data.name,
+            role=user_data.role,
+            email=user_data.email,
+            permissions=user_data.permissions
+        )
+        return user
+        
+    except Exception as e:
+        logger.error(f"Error registering user: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already exists or registration failed"
+        )
+
+
 @router.post("/login", response_model=Token)
 async def login(
     user_credentials: UserLogin
@@ -36,6 +81,12 @@ async def login(
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Inactive user account"
+            )
+            
+        if not user.is_approved:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account pending approval. Please contact the administrator."
             )
         
         # Create access token

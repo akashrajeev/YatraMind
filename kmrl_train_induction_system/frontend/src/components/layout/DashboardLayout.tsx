@@ -40,7 +40,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="min-h-screen flex w-full bg-background h-screen">
         
         <AppSidebar />
         
@@ -72,14 +72,14 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                   size="icon"
                   onClick={() => navigate("/settings")}
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-5 w-5" />
                 </Button>
 
                 {/* User Menu */}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="border-2 border-primary">
-                      <User className="h-4 w-4" />
+                      <User className="h-5 w-5" />
                     </Button>
                   </DropdownMenuTrigger>
 
@@ -105,7 +105,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       onClick={handleLogout}
                       className="cursor-pointer"
                     >
-                      <LogOut className="mr-2 h-4 w-4" />
+                      <LogOut className="mr-2 h-5 w-5" />
                       <span>Sign Out</span>
                     </DropdownMenuItem>
 

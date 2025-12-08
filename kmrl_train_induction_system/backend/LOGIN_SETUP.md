@@ -10,7 +10,7 @@ The following users have been configured:
 1. **adithkp** - Password: `Adith@123`
 2. **akashrajeevkv** - Password: `Akash@123`
 3. **abindasp** - Password: `Abindas@123`
-4. **alanb** - Password: `Alan2123`
+4. **alanb** - Password: `Alan@123`
 5. **pradyodhp** - Password: `Pradyodh@123`
 6. **poojacv** - Password: `Pooja@123`
 

@@ -8,9 +8,14 @@ from pydantic import BaseModel, Field, EmailStr
 
 
 class UserRole(str, Enum):
-    SUPERVISOR = "SUPERVISOR"
+    ADMIN = "ADMIN"
+    STATION_SUPERVISOR = "STATION_SUPERVISOR"
+    METRO_DRIVER = "METRO_DRIVER"
+    PASSENGER = "PASSENGER"
+    # Legacy roles - mapped to new ones where appropriate or kept for backward compatibility
+    OPERATIONS_MANAGER = "OPERATIONS_MANAGER" # Equivalent to ADMIN
+    SUPERVISOR = "SUPERVISOR" # Equivalent to STATION_SUPERVISOR
     MAINTENANCE_ENGINEER = "MAINTENANCE_ENGINEER"
-    OPERATIONS_MANAGER = "OPERATIONS_MANAGER"
     READONLY_VIEWER = "READONLY_VIEWER"
 
 
@@ -22,6 +27,7 @@ class User(BaseModel):
     role: UserRole = Field(..., description="User role")
     permissions: List[str] = Field(default_factory=list, description="User permissions")
     is_active: bool = Field(default=True, description="Whether user account is active")
+    is_approved: bool = Field(default=False, description="Whether user account is approved by admin")
     created_at: datetime = Field(default_factory=datetime.utcnow, description="Account creation timestamp")
     updated_at: Optional[datetime] = Field(None, description="Last update timestamp")
     last_login: Optional[datetime] = Field(None, description="Last login timestamp")
@@ -33,7 +39,8 @@ class User(BaseModel):
 
 
 class UserCreate(BaseModel):
-    email: EmailStr
+    email: Optional[EmailStr] = None
+    username: str = Field(..., min_length=3, description="Username")
     password: str = Field(..., min_length=8, description="Password (minimum 8 characters)")
     name: str
     role: UserRole

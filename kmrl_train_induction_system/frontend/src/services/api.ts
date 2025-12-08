@@ -168,6 +168,13 @@ export const notificationsApi = {
 
 // Auth API
 export const authApi = {
+  register: (data: {
+    username: string;
+    password: string;
+    name: string;
+    email?: string;
+    role: string;
+  }) => api.post('/v1/auth/register', data),
   login: (credentials: { username: string; password: string }) =>
     api.post('/v1/auth/login', credentials),
   logout: () => api.post('/v1/auth/logout'),

@@ -16,6 +16,9 @@ const config: Config = {
       },
     },
     extend: {
+      spacing: {
+        "4": "0.6rem", // Override default p-4 from 1rem to 0.6rem
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",

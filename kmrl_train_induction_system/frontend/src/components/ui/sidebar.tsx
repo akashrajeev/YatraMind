@@ -33,7 +33,7 @@ const Sidebar = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "flex h-full flex-col border-r bg-card transition-all duration-300",
+        "flex h-screen flex-col border-r border-border bg-card transition-all duration-300",
         widthClass,
         className
       )}

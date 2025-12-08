@@ -4,13 +4,15 @@ from typing import Dict, Any, List, Optional
 from app.services.data_ingestion import DataIngestionService
 from app.services.mqtt_client import iot_streamer
 from app.security import require_api_key
+from app.services.auth_service import require_role
+from app.models.user import UserRole, User
 import logging
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
 @router.post("/ingest/all")
-async def ingest_all_sources(background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
+async def ingest_all_sources(background_tasks: BackgroundTasks, current_user: User = Depends(require_role(UserRole.ADMIN))):
     """Ingest data from all configured sources (Maximo, IoT, Manual, UNS)"""
     try:
         ingestion_service = DataIngestionService()
@@ -29,7 +31,7 @@ async def ingest_all_sources(background_tasks: BackgroundTasks, _auth=Depends(re
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}")
 
 @router.post("/ingest/maximo")
-async def ingest_maximo_data(background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
+async def ingest_maximo_data(background_tasks: BackgroundTasks, current_user: User = Depends(require_role(UserRole.ADMIN))):
     """Ingest job card data from IBM Maximo"""
     try:
         ingestion_service = DataIngestionService()
@@ -99,7 +101,7 @@ async def upload_timeseries(file: UploadFile = File(...)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/ingest/maximo/rest")
-async def ingest_maximo_via_rest(background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
+async def ingest_maximo_via_rest(background_tasks: BackgroundTasks, current_user: User = Depends(require_role(UserRole.ADMIN))):
     """Ingest job cards from IBM Maximo REST API (uses .env config)."""
     try:
         ingestion_service = DataIngestionService()
@@ -111,7 +113,7 @@ async def ingest_maximo_via_rest(background_tasks: BackgroundTasks, _auth=Depend
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.post("/ingest/maximo/google")
-async def ingest_maximo_from_google(sheet_url: str = Form(...), _auth=Depends(require_api_key)):
+async def ingest_maximo_from_google(sheet_url: str = Form(...), current_user: User = Depends(require_role(UserRole.ADMIN))):
     """Upload Google Sheets (published CSV/TSV) as Maximo job cards."""
     try:
         svc = DataIngestionService()
@@ -127,7 +129,7 @@ async def ingest_maximo_from_google(sheet_url: str = Form(...), _auth=Depends(re
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/ingest/iot")
-async def ingest_iot_data(background_tasks: BackgroundTasks, _auth=Depends(require_api_key)):
+async def ingest_iot_data(background_tasks: BackgroundTasks, current_user: User = Depends(require_role(UserRole.ADMIN))):
     """Ingest IoT sensor data"""
     try:
         ingestion_service = DataIngestionService()
