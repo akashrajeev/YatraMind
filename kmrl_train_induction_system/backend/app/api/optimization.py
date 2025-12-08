@@ -638,7 +638,7 @@ async def get_latest_ranked_list():
             }
         )
 
-@router.get("/stabling-geometry", response_model=StablingGeometryResponse)
+@router.get("/stabling-geometry")
 async def get_stabling_geometry_optimization():
     """Get optimized stabling geometry with rich, structured intelligence"""
     try:
@@ -684,13 +684,12 @@ async def get_stabling_geometry_optimization():
         except Exception as e:
             logger.warning(f"Could not retrieve fleet requirements: {e}")
 
-        # Generate rich stabling geometry response
         stabling_optimizer = StablingGeometryOptimizer()
-        rich_response = await stabling_optimizer.generate_rich_stabling_geometry(
+        geometry = await stabling_optimizer.optimize_stabling_geometry(
             trainsets_data, decisions, fleet_req
         )
 
-        return rich_response
+        return geometry
         
     except HTTPException:
         raise
@@ -702,7 +701,6 @@ async def get_stabling_geometry_optimization():
 async def get_shunting_schedule():
     """Get detailed shunting schedule with ordered moves and operational intelligence"""
     try:
-        # Load current trainsets
         collection = await cloud_db_manager.get_collection("trainsets")
         cursor = collection.find({})
         trainsets_data: List[Dict[str, Any]] = []
@@ -714,7 +712,6 @@ async def get_shunting_schedule():
         if not trainsets_data:
             raise HTTPException(status_code=404, detail="No trainsets found")
 
-        # Reuse latest optimization decisions (same strategy as stabling-geometry)
         decisions: Optional[List[Dict[str, Any]]] = await get_latest_decisions()
         if not decisions:
             decisions = await get_decisions_from_history()
@@ -729,97 +726,26 @@ async def get_shunting_schedule():
             )
 
         stabling_optimizer = StablingGeometryOptimizer()
-        stabling_data = await stabling_optimizer.optimize_stabling_geometry(
-            trainsets_data, decisions
-        )
+        stabling_data = await stabling_optimizer.optimize_stabling_geometry(trainsets_data, decisions)
 
-        # Generate shunting schedule
-        shunting_schedule = await stabling_optimizer.get_shunting_schedule(
-            stabling_data.get("optimized_layout", {})
-        )
-
-        # Calculate totals
-        total_time = sum(
-            op.get("estimated_time", 0)
-            for op in shunting_schedule
-            if isinstance(op.get("estimated_time"), (int, float))
-        )
-
-        # Group by depot and order by priority (service > maintenance > standby)
-        decision_map = {d.get("trainset_id"): d.get("decision") for d in decisions if isinstance(d, dict)}
-        
-        # Create trainset map for additional context
-        trainset_map = {t.get("trainset_id"): t for t in trainsets_data}
-        
-        # Enhance schedule with decision context and priority
-        enhanced_schedule = []
-        for op in shunting_schedule:
-            trainset_id = op.get("trainset_id")
-            decision = decision_map.get(trainset_id, "STANDBY")
-            trainset = trainset_map.get(trainset_id, {})
-            
-            # Determine priority (1 = highest, 3 = lowest)
-            priority = 1 if decision == "INDUCT" else 2 if decision == "MAINTENANCE" else 3
-            
-            enhanced_op = {
-                **op,
-                "priority": priority,
-                "decision": decision,
-                "trainset_mileage": trainset.get("current_mileage", 0),
-                "sequence": None  # Will be set after sorting
-            }
-            enhanced_schedule.append(enhanced_op)
-        
-        # Sort by priority, then by estimated_time (fastest first within same priority)
-        enhanced_schedule.sort(key=lambda x: (x["priority"], x.get("estimated_time", 0)))
-        
-        # Assign sequence numbers
-        for idx, op in enumerate(enhanced_schedule, 1):
-            op["sequence"] = idx
-        
-        # Group by depot for better organization
-        schedule_by_depot: Dict[str, List[Dict[str, Any]]] = {}
-        for op in enhanced_schedule:
-            depot = op.get("depot", "UNKNOWN")
-            if depot not in schedule_by_depot:
-                schedule_by_depot[depot] = []
-            schedule_by_depot[depot].append(op)
-        
-        # Calculate depot-level summaries
-        depot_summaries = {}
-        for depot, ops in schedule_by_depot.items():
-            depot_time = sum(op.get("estimated_time", 0) for op in ops)
-            depot_summaries[depot] = {
-                "total_operations": len(ops),
-                "estimated_time_min": depot_time,
-                "high_complexity": len([op for op in ops if op.get("complexity") == "HIGH"]),
-                "medium_complexity": len([op for op in ops if op.get("complexity") == "MEDIUM"]),
-                "low_complexity": len([op for op in ops if op.get("complexity") == "LOW"]),
-            }
+        operations = stabling_data.get("shunting_operations", [])
+        summary = stabling_data.get("shunting_summary", {})
 
         return {
-            "shunting_schedule": enhanced_schedule,
-            "schedule_by_depot": schedule_by_depot,
-            "depot_summaries": depot_summaries,
-            "total_operations": len(enhanced_schedule),
-            "estimated_total_time": int(total_time),
+            "shunting_schedule": operations,
+            "schedule_by_depot": {"Muttom Depot": operations},
+            "depot_summaries": {"Muttom Depot": summary},
+            "total_operations": summary.get("total_operations", 0),
+            "estimated_total_time": summary.get("total_time_min", 0),
             "crew_requirements": {
-                "high_complexity": len(
-                    [op for op in enhanced_schedule if op.get("complexity") == "HIGH"]
-                ),
-                "medium_complexity": len(
-                    [op for op in enhanced_schedule if op.get("complexity") == "MEDIUM"]
-                ),
-                "low_complexity": len(
-                    [op for op in enhanced_schedule if op.get("complexity") == "LOW"]
-                ),
+                "high_complexity": len([op for op in operations if op.get("complexity") == "HIGH"]),
+                "medium_complexity": len([op for op in operations if op.get("complexity") == "MEDIUM"]),
+                "low_complexity": len([op for op in operations if op.get("complexity") == "LOW"]),
             },
             "operational_window": {
-                "start_time": "21:00 IST",
-                "end_time": "23:00 IST",
-                "duration_minutes": 120,
-                "recommended_start": "21:00 IST",
-                "buffer_minutes": max(0, 120 - int(total_time))
+                "start_time": stabling_optimizer.operational_window["start"],
+                "end_time": stabling_optimizer.operational_window["end"],
+                "buffer_minutes": summary.get("buffer_minutes", 0),
             },
             "optimization_timestamp": datetime.now().isoformat(),
         }

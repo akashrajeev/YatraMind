@@ -61,6 +61,35 @@ const splitCommaList = (value: string) =>
     .map((token) => token.trim())
     .filter(Boolean);
 
+const SummaryTile = ({
+  label,
+  value,
+  helper,
+  tone = "default",
+}: {
+  label: string;
+  value: string | number | undefined;
+  helper?: string;
+  tone?: "default" | "warning" | "destructive" | "success";
+}) => {
+  const toneClass =
+    tone === "destructive"
+      ? "text-destructive"
+      : tone === "warning"
+        ? "text-warning"
+        : tone === "success"
+          ? "text-success"
+          : "text-foreground";
+
+  return (
+    <div className="text-center border rounded-lg p-3">
+      <div className={`text-xl font-bold ${toneClass}`}>{value ?? 0}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+      {helper && <div className="text-[11px] text-muted-foreground">{helper}</div>}
+    </div>
+  );
+};
+
 const Optimization = () => {
   const [optimizationParams, setOptimizationParams] = useState<OptimizationParamsState>({
     target_date: new Date().toISOString().split('T')[0],
@@ -82,6 +111,7 @@ const Optimization = () => {
   const [showSimulationResults, setShowSimulationResults] = useState(false);
   const [optimizationDiagnostics, setOptimizationDiagnostics] = useState<OptimizationDiagnostics | null>(null);
   const [optimizationNote, setOptimizationNote] = useState<string | null>(null);
+  const [layoutView, setLayoutView] = useState<"current" | "optimized" | "changes">("optimized");
 
   const queryClient = useQueryClient();
 
@@ -773,45 +803,61 @@ const Optimization = () => {
                   );
                 }
 
-                const fleetSummary = stablingGeometry.fleet_summary;
-                const depotAllocation = stablingGeometry.depot_allocation || [];
-                const bayLayout = stablingGeometry.bay_layout || {};
-                const kpis = stablingGeometry.optimization_kpis;
-                const warnings = stablingGeometry.warnings || [];
+                const serviceRequirement = stablingGeometry.service_requirement || {};
+                const inductionSummary = stablingGeometry.induction_summary || {};
+                const stablingSummary = stablingGeometry.stabling_summary || {};
+                const terminalAllocation = stablingGeometry.terminal_allocation || {};
+                const overflowSummary = stablingGeometry.overflow_summary || {};
+                const rolloutPlan = stablingGeometry.service_rollout_plan || [];
+                const bayDiff = (stablingGeometry.bay_diff || []).filter((b: any) => b.move_type && b.move_type !== "UNCHANGED");
+                const currentLayout = stablingGeometry.current_bay_layout?.["Muttom Depot"] || [];
+                const optimizedLayout =
+                  stablingGeometry.optimized_bay_layout?.["Muttom Depot"] ||
+                  stablingGeometry.bay_layout?.["Muttom Depot"] ||
+                  [];
+                const layout = (() => {
+                  if (layoutView === 'current') return currentLayout;
+                  if (layoutView === 'changes') return [];
+                  return optimizedLayout;
+                })();
+
+                const warnings: string[] = [];
+                if (serviceRequirement.capacity_shortfall > 0) {
+                  warnings.push(`Service capacity shortfall of ${serviceRequirement.capacity_shortfall} train(s) vs required ${serviceRequirement.required_service_trains}.`);
+                }
+                if (stablingSummary.unassigned_due_to_capacity > 0) {
+                  warnings.push(`${stablingSummary.unassigned_due_to_capacity} train(s) overflowed Muttom bay capacity.`);
+                }
+                if (stablingGeometry.shunting_summary && stablingGeometry.shunting_summary.feasible === false) {
+                  warnings.push(stablingGeometry.shunting_summary.warning || "Shunting schedule exceeds the available window.");
+                }
+                const terminalPlaced =
+                  (terminalAllocation["Aluva Terminal"]?.service_used || 0) +
+                  (terminalAllocation["Petta Terminal"]?.service_used || 0) +
+                  (terminalAllocation["Aluva Terminal"]?.standby_used || 0) +
+                  (terminalAllocation["Petta Terminal"]?.standby_used || 0);
+                if (terminalPlaced > 0) {
+                  warnings.push(`${terminalPlaced} train(s) allocated to Aluva/Petta terminal sidings.`);
+                }
+                if (overflowSummary.unassigned_after_terminals > 0) {
+                  warnings.push(`${overflowSummary.unassigned_after_terminals} train(s) still have no modeled stabling location.`);
+                }
 
                 return (
                   <div className="space-y-6">
-                    {/* Fleet Summary */}
+                    {/* Fleet / Requirement Summary */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Fleet Summary</CardTitle>
+                        <CardTitle className="text-lg">Service Requirement</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-foreground">{fleetSummary?.total_trainsets || 0}</div>
-                            <div className="text-xs text-muted-foreground">Total Trainsets</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-success">{fleetSummary?.actual_induct_count || 0}</div>
-                            <div className="text-xs text-muted-foreground">Service Trains</div>
-                            <div className="text-xs text-muted-foreground">(Req: {fleetSummary?.required_service_trains || 0})</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-warning">{fleetSummary?.actual_standby_count || 0}</div>
-                            <div className="text-xs text-muted-foreground">Standby</div>
-                            <div className="text-xs text-muted-foreground">(Buffer: {fleetSummary?.standby_buffer || 0})</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-destructive">{fleetSummary?.maintenance_count || 0}</div>
-                            <div className="text-xs text-muted-foreground">Maintenance</div>
-                          </div>
-                          <div className="text-center">
-                            <div className={`text-xl font-bold ${fleetSummary?.service_shortfall > 0 ? 'text-destructive' : 'text-success'}`}>
-                              {fleetSummary?.service_shortfall || 0}
-                            </div>
-                            <div className="text-xs text-muted-foreground">Service Shortfall</div>
-                          </div>
+                        <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+                          <SummaryTile label="Required Service" value={serviceRequirement.required_service_trains} />
+                          <SummaryTile label="Decided Service" value={serviceRequirement.decided_service_trains} />
+                          <SummaryTile label="Stabled Service" value={serviceRequirement.stabled_service_trains} />
+                          <SummaryTile label="Induction Shortfall" value={serviceRequirement.induction_shortfall} tone={serviceRequirement.induction_shortfall > 0 ? "destructive" : "success"} />
+                          <SummaryTile label="Capacity Shortfall" value={serviceRequirement.capacity_shortfall} tone={serviceRequirement.capacity_shortfall > 0 ? "destructive" : "success"} />
+                          <SummaryTile label="Effective Shortfall" value={serviceRequirement.effective_service_shortfall} tone={serviceRequirement.effective_service_shortfall > 0 ? "destructive" : "success"} />
                         </div>
                       </CardContent>
                     </Card>
@@ -841,108 +887,147 @@ const Optimization = () => {
                         <CardTitle className="text-lg">Depot Allocation</CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <div className="space-y-4">
-                          {depotAllocation.map((depot: any) => (
-                            <div key={depot.depot_name} className="border rounded-lg p-4">
-                              <div className="flex items-center justify-between mb-3">
-                                <h3 className="font-semibold text-lg">{depot.depot_name}</h3>
-                                {depot.capacity_warning && (
-                                  <Badge variant="destructive">Capacity Warning</Badge>
-                                )}
-                              </div>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                <div>
-                                  <div className="text-sm text-muted-foreground">Service</div>
-                                  <div className="text-lg font-bold text-success">{depot.service_trains}</div>
-                                  <div className="text-xs text-muted-foreground">Capacity: {depot.service_bay_capacity}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-muted-foreground">Standby</div>
-                                  <div className="text-lg font-bold text-warning">{depot.standby_trains}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-muted-foreground">Maintenance</div>
-                                  <div className="text-lg font-bold text-destructive">{depot.maintenance_trains}</div>
-                                  <div className="text-xs text-muted-foreground">Capacity: {depot.maintenance_bay_capacity}</div>
-                                </div>
-                                <div>
-                                  <div className="text-sm text-muted-foreground">Total</div>
-                                  <div className="text-lg font-bold">{depot.total_trains}</div>
-                                  <div className="text-xs text-muted-foreground">Total Capacity: {depot.total_bay_capacity}</div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <SummaryTile label="Service @ Muttom" value={stablingSummary.stabled_service_trains} helper={`Capacity: ${stablingSummary.service_bay_capacity || 6}`} />
+                          <SummaryTile label="Standby @ Muttom" value={stablingSummary.stabled_standby_trains} helper={`Capacity: ${stablingSummary.standby_bay_capacity || 2}`} tone="warning" />
+                          <SummaryTile label="Maintenance @ Muttom" value={stablingSummary.stabled_maintenance_trains} helper={`Capacity: ${stablingSummary.maintenance_bay_capacity || 4}`} tone="destructive" />
+                          <SummaryTile label="Total Stabled" value={stablingSummary.total_stabled_trains} helper={`Total Capacity: ${stablingSummary.total_bays || 12}`} />
                         </div>
                       </CardContent>
                     </Card>
 
-                    {/* Bay Layout Grid */}
-                    {Object.keys(bayLayout).length > 0 && (
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="text-lg">Bay Layout</CardTitle>
-                        </CardHeader>
-                        <CardContent>
-                          <div className="space-y-6">
-                            {Object.entries(bayLayout).map(([depotName, bays]: [string, any]) => (
-                              <div key={depotName}>
-                                <h3 className="font-semibold mb-3">{depotName}</h3>
-                                <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-2">
-                                  {bays.map((bay: any) => {
-                                    const roleColors: Record<string, string> = {
-                                      SERVICE: "bg-green-100 border-green-300 text-green-900",
-                                      STANDBY: "bg-yellow-100 border-yellow-300 text-yellow-900",
-                                      MAINTENANCE: "bg-red-100 border-red-300 text-red-900",
-                                      EMPTY: "bg-gray-100 border-gray-300 text-gray-500"
-                                    };
-                                    return (
-                                      <div
-                                        key={bay.bay_id}
-                                        className={`border rounded p-2 text-center text-xs ${roleColors[bay.role] || roleColors.EMPTY}`}
-                                        title={bay.notes || `${bay.role} - ${bay.trainset_id || 'Empty'}`}
-                                      >
-                                        <div className="font-bold">Bay {bay.bay_id}</div>
-                                        <div className="text-xs">{bay.trainset_id || 'Empty'}</div>
-                                        <div className="text-xs opacity-75">{bay.role}</div>
-                                      </div>
-                                    );
-                                  })}
+                    {/* Terminal Allocation */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="text-lg">Terminal Allocation</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {["Aluva Terminal", "Petta Terminal"].map((name) => {
+                            const terminal = terminalAllocation[name] || {};
+                            const serviceUsed = terminal.service_used || 0;
+                            const standbyUsed = terminal.standby_used || 0;
+                            const serviceCap = terminal.service_capacity || 0;
+                            const standbyCap = terminal.standby_capacity || 0;
+                            const full = serviceUsed >= serviceCap && standbyUsed >= standbyCap;
+                            return (
+                              <div key={name} className="border rounded-lg p-4 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <h3 className="font-semibold">{name}</h3>
+                                  {full && <Badge variant="secondary">Full</Badge>}
                                 </div>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                  <div>
+                                    <div className="text-muted-foreground">Service</div>
+                                    <div className="font-bold text-success">{serviceUsed} / {serviceCap}</div>
+                                  </div>
+                                  <div>
+                                    <div className="text-muted-foreground">Standby</div>
+                                    <div className="font-bold text-warning">{standbyUsed} / {standbyCap}</div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {overflowSummary.unassigned_after_terminals > 0 && (
+                          <div className="mt-3 text-sm text-destructive">
+                            {overflowSummary.unassigned_after_terminals} train(s) still unassigned after terminal capacities.
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Bay Layout Grid with view toggles */}
+                    <Card>
+                      <CardHeader className="flex flex-col gap-4">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-lg">Muttom Bay Layout</CardTitle>
+                          <div className="flex gap-2">
+                            <Button variant={layoutView === 'current' ? 'default' : 'outline'} size="sm" onClick={() => setLayoutView('current')}>Current</Button>
+                            <Button variant={layoutView === 'optimized' ? 'default' : 'outline'} size="sm" onClick={() => setLayoutView('optimized')}>Optimized</Button>
+                            <Button variant={layoutView === 'changes' ? 'default' : 'outline'} size="sm" onClick={() => setLayoutView('changes')}>Changes Only</Button>
+                          </div>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          Current shows tonight's starting point, Optimized shows the 12-bay plan, and Changes lists only moves/enters/exits that drive shunting.
+                        </p>
+                      </CardHeader>
+                      <CardContent>
+                        {layoutView === 'changes' ? (
+                          <div className="space-y-2">
+                            {bayDiff.length === 0 && (
+                              <p className="text-sm text-muted-foreground">No bay changes required.</p>
+                            )}
+                            {bayDiff.map((change: any, idx: number) => (
+                              <div key={idx} className="border rounded p-2 text-sm flex justify-between items-center">
+                                <div>
+                                  <div className="font-semibold">{change.trainset_id}</div>
+                                  <div className="text-muted-foreground text-xs">
+                                    {change.move_type} · {change.from_bay_id ? `Bay ${change.from_bay_id}` : "Yard"} ({change.from_role || 'N/A'}) → {change.to_bay_id ? `Bay ${change.to_bay_id}` : "Out"} ({change.to_role || 'N/A'})
+                                  </div>
+                                </div>
+                                <Badge variant="outline">{change.move_type}</Badge>
                               </div>
                             ))}
                           </div>
-                        </CardContent>
-                      </Card>
-                    )}
+                        ) : (
+                          <div className="grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-2">
+                            {layout.map((bay: any) => {
+                              const roleColors: Record<string, string> = {
+                                SERVICE: "bg-green-100 border-green-300 text-green-900",
+                                STANDBY: "bg-yellow-100 border-yellow-300 text-yellow-900",
+                                MAINTENANCE: "bg-red-100 border-red-300 text-red-900",
+                                EMPTY: "bg-gray-100 border-gray-300 text-gray-500"
+                              };
+                              return (
+                                <div
+                                  key={bay.bay_id}
+                                  className={`border rounded p-2 text-center text-xs ${roleColors[bay.role] || roleColors.EMPTY}`}
+                                  title={bay.notes || `${bay.role} - ${bay.trainset_id || 'Empty'}`}
+                                >
+                                  <div className="font-bold">Bay {bay.bay_id}</div>
+                                  <div className="text-xs">{bay.trainset_id || 'Empty'}</div>
+                                  <div className="text-xs opacity-75">{bay.role}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
 
-                    {/* Optimization KPIs */}
+                    {/* Service Rollout Origins */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">Optimization Performance</CardTitle>
+                        <CardTitle className="text-lg">Service Rollout Origins</CardTitle>
+                        <p className="text-sm text-muted-foreground">First wave from depot bays, second wave from terminals.</p>
                       </CardHeader>
                       <CardContent>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-foreground">{kpis?.optimized_positions || 0}</div>
-                            <div className="text-xs text-muted-foreground">Optimized Positions</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-primary">{kpis?.total_shunting_time_min || 0} min</div>
-                            <div className="text-xs text-muted-foreground">Shunting Time</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-success">{kpis?.total_turnout_time_min || 0} min</div>
-                            <div className="text-xs text-muted-foreground">Turnout Time</div>
-                          </div>
-                          <div className="text-center">
-                            <div className="text-xl font-bold text-primary">{kpis?.efficiency_improvement_pct?.toFixed(1) || 0}%</div>
-                            <div className="text-xs text-muted-foreground">Efficiency Improvement</div>
-                          </div>
-                        </div>
-                        {kpis?.energy_savings_kwh && (
-                          <div className="mt-4 text-center text-sm text-muted-foreground">
-                            Estimated Energy Savings: <span className="font-semibold">{kpis.energy_savings_kwh.toFixed(1)} kWh</span>
+                        {rolloutPlan.length === 0 ? (
+                          <p className="text-sm text-muted-foreground">No rollout data available.</p>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead>
+                                <tr className="text-left text-muted-foreground">
+                                  <th className="py-2">Train</th>
+                                  <th className="py-2">Start Location</th>
+                                  <th className="py-2">First Departure</th>
+                                  <th className="py-2">Turnout (min)</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {rolloutPlan.map((r: any) => (
+                                  <tr key={`${r.trainset_id}-${r.start_location}`} className="border-b last:border-0">
+                                    <td className="py-2 font-semibold">{r.trainset_id}</td>
+                                    <td className="py-2">{r.start_location} {r.bay_id ? `(Bay ${r.bay_id})` : ''}</td>
+                                    <td className="py-2">{r.first_departure_station || '—'}</td>
+                                    <td className="py-2">{r.rollout_turnout_time_min ?? 0}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
                         )}
                       </CardContent>
@@ -988,10 +1073,16 @@ const Optimization = () => {
                   );
                 }
 
-                const schedule = shuntingSchedule.shunting_schedule || [];
-                const scheduleByDepot = shuntingSchedule.schedule_by_depot || {};
-                const depotSummaries = shuntingSchedule.depot_summaries || {};
-                const operationalWindow = shuntingSchedule.operational_window;
+                const operations = shuntingSchedule.shunting_schedule || shuntingSchedule.operations || [];
+                const shuntingSummary =
+                  shuntingSchedule.shunting_summary ||
+                  shuntingSchedule.depot_summaries?.["Muttom Depot"] ||
+                  {};
+                const operationalWindow = shuntingSchedule.operational_window || {
+                  start_time: "21:00",
+                  end_time: "23:00",
+                  buffer_minutes: shuntingSummary.buffer_minutes,
+                };
 
                 return (
                   <div className="space-y-6">
@@ -1001,7 +1092,7 @@ const Optimization = () => {
                         <CardContent className="pt-6">
                           <div className="text-center">
                             <div className="text-2xl font-bold text-foreground">
-                              {shuntingSchedule.total_operations || 0}
+                              {shuntingSchedule.total_operations || shuntingSummary.total_operations || operations.length || 0}
                             </div>
                             <div className="text-sm text-muted-foreground">Total Operations</div>
                           </div>
@@ -1011,7 +1102,7 @@ const Optimization = () => {
                         <CardContent className="pt-6">
                           <div className="text-center">
                             <div className="text-2xl font-bold text-primary">
-                              {shuntingSchedule.estimated_total_time || 0} min
+                              {shuntingSchedule.estimated_total_time || shuntingSummary.total_time_min || 0} min
                             </div>
                             <div className="text-sm text-muted-foreground">Estimated Time</div>
                             {operationalWindow && (
@@ -1044,100 +1135,74 @@ const Optimization = () => {
                       </Card>
                     </div>
 
-                    {/* Depot Summaries */}
-                    {Object.keys(depotSummaries).length > 0 && (
+                    {/* Ordered Schedule */}
+                    {operations.length > 0 && (
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-lg">Depot Summaries</CardTitle>
+                          <CardTitle className="text-lg">Shunting Operations</CardTitle>
+                          <p className="text-sm text-muted-foreground">
+                            Derived directly from bay changes (moves, enters, exits). Ordered by priority then time.
+                          </p>
                         </CardHeader>
                         <CardContent>
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {Object.entries(depotSummaries).map(([depot, summary]: [string, any]) => (
-                              <div key={depot} className="border rounded-lg p-4">
-                                <h3 className="font-semibold mb-2">{depot}</h3>
-                                <div className="grid grid-cols-2 gap-2 text-sm">
-                                  <div>
-                                    <span className="text-muted-foreground">Operations:</span>
-                                    <span className="ml-2 font-semibold">{summary.total_operations}</span>
+                          <div className="space-y-2">
+                            {operations.map((op: any) => {
+                              const complexityColors: Record<string, string> = {
+                                HIGH: "border-red-300 bg-red-50",
+                                MEDIUM: "border-yellow-300 bg-yellow-50",
+                                LOW: "border-green-300 bg-green-50"
+                              };
+                              return (
+                                <div
+                                  key={op.sequence}
+                                  className={`border rounded-lg p-3 flex items-center justify-between ${complexityColors[op.complexity] || complexityColors.LOW}`}
+                                >
+                                  <div className="flex items-center gap-3">
+                                    <div className="font-bold text-lg w-8">#{op.sequence}</div>
+                                    <div>
+                                      <div className="font-semibold">{op.trainset_id}</div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {op.from_bay_id ? `Bay ${op.from_bay_id}` : "Yard"} → {op.to_bay_id ? `Bay ${op.to_bay_id}` : "Out"}
+                                      </div>
+                                    </div>
                                   </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Time:</span>
-                                    <span className="ml-2 font-semibold">{summary.estimated_time_min} min</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">High:</span>
-                                    <span className="ml-2 font-semibold text-destructive">{summary.high_complexity}</span>
-                                  </div>
-                                  <div>
-                                    <span className="text-muted-foreground">Medium:</span>
-                                    <span className="ml-2 font-semibold text-warning">{summary.medium_complexity}</span>
+                                  <div className="text-right">
+                                    <div className="font-semibold">{op.estimated_time_min} min</div>
+                                    <div className="text-xs text-muted-foreground">{op.complexity}</div>
+                                    <div className="text-xs text-muted-foreground">Priority {op.priority}</div>
                                   </div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </CardContent>
                       </Card>
                     )}
 
-                    {/* Ordered Schedule by Depot */}
-                    {Object.keys(scheduleByDepot).length > 0 && (
+                    {/* Terminal Operations Summary */}
+                    {stablingGeometry?.terminal_allocation && (
                       <Card>
                         <CardHeader>
-                          <CardTitle className="text-lg">Ordered Shunting Schedule</CardTitle>
+                          <CardTitle className="text-lg">Terminal Operations (Conceptual)</CardTitle>
                           <p className="text-sm text-muted-foreground">
-                            Operations ordered by priority (Service → Maintenance → Standby) and time
+                            Additional terminal preparation time is not counted in the depot (Muttom) shunting window.
                           </p>
                         </CardHeader>
                         <CardContent>
-                          <div className="space-y-6">
-                            {Object.entries(scheduleByDepot).map(([depot, ops]: [string, any]) => (
-                              <div key={depot}>
-                                <h3 className="font-semibold text-lg mb-3">{depot}</h3>
-                                <div className="space-y-2">
-                                  {ops.map((op: any) => {
-                                    const complexityColors: Record<string, string> = {
-                                      HIGH: "border-red-300 bg-red-50",
-                                      MEDIUM: "border-yellow-300 bg-yellow-50",
-                                      LOW: "border-green-300 bg-green-50"
-                                    };
-                                    const decisionColors: Record<string, string> = {
-                                      INDUCT: "text-green-600",
-                                      MAINTENANCE: "text-red-600",
-                                      STANDBY: "text-yellow-600"
-                                    };
-                                    return (
-                                      <div
-                                        key={op.sequence}
-                                        className={`border rounded-lg p-3 ${complexityColors[op.complexity] || complexityColors.LOW}`}
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="flex items-center gap-3">
-                                            <div className="font-bold text-lg w-8">#{op.sequence}</div>
-                                            <div>
-                                              <div className="font-semibold">{op.trainset_id}</div>
-                                              <div className="text-sm text-muted-foreground">{op.operation}</div>
-                                            </div>
-                                          </div>
-                                          <div className="text-right">
-                                            <div className="font-semibold">{op.estimated_time} min</div>
-                                            <div className={`text-xs font-medium ${decisionColors[op.decision] || ''}`}>
-                                              {op.decision}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">{op.complexity}</div>
-                                          </div>
-                                        </div>
-                                        {op.crew_required && (
-                                          <div className="mt-2 text-xs text-muted-foreground">
-                                            Crew: {op.crew_required}
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {["Aluva Terminal", "Petta Terminal"].map((name) => {
+                              const t = stablingGeometry.terminal_allocation?.[name] || {};
+                              const exitTime = 7;
+                              const prepTime = (t.service_used || 0) * exitTime;
+                              return (
+                                <div key={name} className="border rounded-lg p-4 space-y-1 text-sm">
+                                  <div className="font-semibold">{name}</div>
+                                  <div>Service Rakes Stabled: {t.service_used || 0}</div>
+                                  <div>Standby Rakes Stabled: {t.standby_used || 0}</div>
+                                  <div>Estimated Terminal Prep Time: {prepTime} min</div>
                                 </div>
-                              </div>
-                            ))}
+                              );
+                            })}
                           </div>
                         </CardContent>
                       </Card>
@@ -1158,8 +1223,8 @@ const Optimization = () => {
                               </div>
                               <div>
                                 <span className="text-muted-foreground">Buffer:</span>
-                                <span className={`ml-2 font-semibold ${operationalWindow.buffer_minutes < 30 ? 'text-destructive' : 'text-success'}`}>
-                                  {operationalWindow.buffer_minutes} minutes
+                                <span className={`ml-2 font-semibold ${((operationalWindow.buffer_minutes ?? 0) < 0) ? 'text-destructive' : 'text-success'}`}>
+                                  {operationalWindow.buffer_minutes ?? 0} minutes
                                 </span>
                               </div>
                             </div>
