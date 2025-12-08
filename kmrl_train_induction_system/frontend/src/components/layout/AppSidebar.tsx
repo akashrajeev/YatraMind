@@ -130,7 +130,7 @@ export function AppSidebar() {
                         isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
                       }`}
                     >
-                      <item.icon className={isCollapsed ? "!h-4 !w-4 flex-shrink-0" : "h-4 w-4 flex-shrink-0"} />
+                      <item.icon className={isCollapsed ? "!h-5 !w-5 flex-shrink-0" : "h-5 w-5 flex-shrink-0"} />
                       {!isCollapsed && (
                         <>
                           <span>{item.title}</span>
@@ -165,7 +165,7 @@ export function AppSidebar() {
                         isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
                       }`}
                     >
-                      <item.icon className={isCollapsed ? "!h-4 !w-4 flex-shrink-0" : "h-4 w-4 flex-shrink-0"} />
+                      <item.icon className={isCollapsed ? "!h-5 !w-5 flex-shrink-0" : "h-5 w-5 flex-shrink-0"} />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
@@ -191,7 +191,7 @@ export function AppSidebar() {
                         isCollapsed ? "h-12 w-12 px-0 justify-center" : ""
                       }`}
                     >
-                      <item.icon className={isCollapsed ? "!h-4 !w-4 flex-shrink-0" : "h-4 w-4 flex-shrink-0"} />
+                      <item.icon className={isCollapsed ? "!h-5 !w-5 flex-shrink-0" : "h-5 w-5 flex-shrink-0"} />
                       {!isCollapsed && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>

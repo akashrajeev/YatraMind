@@ -16,6 +16,8 @@ from app.models.audit import AuditLogCreate, AuditAction
 from app.models.trainset import InductionDecision
 from app.utils.cloud_database import cloud_db_manager
 from app.security import require_api_key
+from app.services.auth_service import require_role
+from app.models.user import UserRole, User
 from app.services.notification_service import NotificationService
 from app.utils.explainability import generate_maintenance_reasons
 
@@ -111,7 +113,7 @@ async def get_assignments(
     priority: Optional[int] = None,
     limit: int = Query(100, le=1000),
     offset: int = Query(0, ge=0),
-    _auth=Depends(require_api_key)
+    current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
     """Get assignments with filtering and pagination"""
     try:
@@ -346,7 +348,7 @@ async def get_assignment(
 async def create_assignment(
     assignment_data: AssignmentCreate,
     background_tasks: BackgroundTasks,
-    _auth=Depends(require_api_key)
+    current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
     """Create a new assignment"""
     try:
@@ -402,7 +404,7 @@ async def create_assignment(
 async def approve_assignments(
     approval_request: ApprovalRequest,
     background_tasks: BackgroundTasks,
-    _auth=Depends(require_api_key)
+    current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
     """Approve multiple assignments"""
     try:
@@ -471,7 +473,7 @@ async def approve_assignments(
 async def override_assignment(
     override_request: OverrideRequest,
     background_tasks: BackgroundTasks,
-    _auth=Depends(require_api_key)
+    current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
     """Override an assignment decision"""
     try:

@@ -8,7 +8,7 @@ export function StatusBar() {
     <div className="h-8 bg-muted/30 border-b border-border flex items-center justify-between px-6 text-xs">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-1">
-          <Wifi className="h-3 w-3 text-success" />
+          <Wifi className="h-4 w-4 text-success" />
           <span className="text-muted-foreground">System</span>
           <Badge variant="success" className="text-xs">
             Online
@@ -16,13 +16,13 @@ export function StatusBar() {
         </div>
         
         <div className="flex items-center gap-1">
-          <Activity className="h-3 w-3 text-primary" />
+          <Activity className="h-4 w-4 text-primary" />
           <span className="text-muted-foreground">KMRL Operations</span>
         </div>
       </div>
       
       <div className="flex items-center gap-1 text-muted-foreground">
-        <Clock className="h-3 w-3" />
+        <Clock className="h-4 w-4" />
         <span>{currentTime}</span>
       </div>
     </div>

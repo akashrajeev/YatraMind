@@ -11,46 +11,48 @@ import Trainsets from "./pages/Trainsets";
 import Optimization from "./pages/Optimization";
 import DataIngestion from "./pages/DataIngestion";
 import Login from "./pages/Login";
+import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
+import SupervisorDashboard from "./pages/SupervisorDashboard";
+import DriverDashboard from "./pages/DriverDashboard";
+import PassengerDashboard from "./pages/PassengerDashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { useAuth } from "@/contexts/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
+import { UserRole } from "./types/auth";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
+import AdminUsers from "./pages/AdminUsers";
 
 const queryClient = new QueryClient();
 
-// Protected Route Component
-const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
-  const { user, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingSpinner />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return <>{children}</>;
-};
-
-// Public Route Component (redirects to dashboard if already logged in)
+// Public Route Component
 const PublicRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, loading } = useAuth();
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-gray-900">
         <LoadingSpinner />
       </div>
     );
   }
 
   if (user) {
-    return <Navigate to="/" replace />;
+    // Redirect based on role if already logged in
+    switch (user.role) {
+      case UserRole.ADMIN:
+      case UserRole.OPERATIONS_MANAGER:
+        return <Navigate to="/admin" replace />;
+      case UserRole.STATION_SUPERVISOR:
+      case UserRole.SUPERVISOR:
+        return <Navigate to="/supervisor" replace />;
+      case UserRole.METRO_DRIVER:
+        return <Navigate to="/driver" replace />;
+      case UserRole.PASSENGER:
+        return <Navigate to="/passenger" replace />;
+      default:
+        return <Navigate to="/admin" replace />;
+    }
   }
 
   return <>{children}</>;
@@ -62,6 +64,7 @@ const withDashboardLayout = (component: React.ReactNode) => (
 
 const AppRoutes = () => (
   <Routes>
+    {/* Public Routes */}
     <Route
       path="/login"
       element={
@@ -71,17 +74,31 @@ const AppRoutes = () => (
       }
     />
     <Route
-      path="/"
+      path="/signup"
       element={
-        <ProtectedRoute>
+        <PublicRoute>
+          <Signup />
+        </PublicRoute>
+      }
+    />
+
+    {/* Admin Routes */}
+    <Route
+      path="/admin"
+      element={
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER]}>
           {withDashboardLayout(<Dashboard />)}
         </ProtectedRoute>
       }
     />
     <Route
+      path="/"
+      element={<Navigate to="/admin" replace />}
+    />
+    <Route
       path="/assignments"
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER]}>
           {withDashboardLayout(<Assignments />)}
         </ProtectedRoute>
       }
@@ -89,7 +106,7 @@ const AppRoutes = () => (
     <Route
       path="/trainsets"
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER, UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR]}>
           {withDashboardLayout(<Trainsets />)}
         </ProtectedRoute>
       }
@@ -97,7 +114,7 @@ const AppRoutes = () => (
     <Route
       path="/optimization"
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER]}>
           {withDashboardLayout(<Optimization />)}
         </ProtectedRoute>
       }
@@ -105,7 +122,7 @@ const AppRoutes = () => (
     <Route
       path="/data-ingestion"
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER]}>
           {withDashboardLayout(<DataIngestion />)}
         </ProtectedRoute>
       }
@@ -113,7 +130,7 @@ const AppRoutes = () => (
     <Route
       path="/reports"
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER, UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR]}>
           {withDashboardLayout(<Reports />)}
         </ProtectedRoute>
       }
@@ -121,11 +138,50 @@ const AppRoutes = () => (
     <Route
       path="/settings"
       element={
-        <ProtectedRoute>
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER]}>
           {withDashboardLayout(<Settings />)}
         </ProtectedRoute>
       }
     />
+    <Route
+      path="/users"
+      element={
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER]}>
+          {withDashboardLayout(<AdminUsers />)}
+        </ProtectedRoute>
+      }
+    />
+
+    {/* Supervisor Routes */}
+    <Route
+      path="/supervisor"
+      element={
+        <ProtectedRoute allowedRoles={[UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR]}>
+          {withDashboardLayout(<SupervisorDashboard />)}
+        </ProtectedRoute>
+      }
+    />
+
+    {/* Driver Routes */}
+    <Route
+      path="/driver"
+      element={
+        <ProtectedRoute allowedRoles={[UserRole.METRO_DRIVER]}>
+          {withDashboardLayout(<DriverDashboard />)}
+        </ProtectedRoute>
+      }
+    />
+
+    {/* Passenger Routes */}
+    <Route
+      path="/passenger"
+      element={
+        <ProtectedRoute allowedRoles={[UserRole.PASSENGER]}>
+          <PassengerDashboard />
+        </ProtectedRoute>
+      }
+    />
+
     <Route path="*" element={<NotFound />} />
   </Routes>
 );
@@ -133,7 +189,7 @@ const AppRoutes = () => (
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="system" storageKey="kmrl-ui-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="kmrl-ui-theme">
         <BrowserRouter>
           <AppRoutes />
           <Toaster />

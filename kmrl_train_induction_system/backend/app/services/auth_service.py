@@ -8,7 +8,7 @@ from jose import JWTError, jwt
 from fastapi import HTTPException, Depends, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
-from app.models.user import User
+from app.models.user import User, UserRole
 from app.utils.cloud_database import cloud_db_manager
 
 logger = logging.getLogger(__name__)
@@ -116,12 +116,17 @@ class AuthService:
         name: str,
         role: str,
         email: Optional[str] = None,
-        permissions: Optional[list] = None
+        permissions: Optional[list] = None,
+        is_approved: bool = False
     ) -> User:
         """Create a new user"""
         try:
             user_id = str(uuid.uuid4())
             hashed_password = self.get_password_hash(password)
+            
+            # Determine approval status
+            # Passengers are auto-approved, others require admin approval unless explicitly approved
+            final_is_approved = True if role == UserRole.PASSENGER else is_approved
             
             user = User(
                 id=user_id,
@@ -131,7 +136,8 @@ class AuthService:
                 role=role,
                 permissions=permissions or [],
                 created_at=datetime.utcnow(),
-                is_active=True
+                is_active=True,
+                is_approved=final_is_approved
             )
             
             collection = await cloud_db_manager.get_collection("users")
@@ -147,6 +153,32 @@ class AuthService:
             logger.error(f"Error creating user: {e}")
             raise HTTPException(status_code=500, detail="Failed to create user")
     
+    async def approve_user(self, user_id: str) -> bool:
+        """Approve a pending user"""
+        try:
+            collection = await cloud_db_manager.get_collection("users")
+            result = await collection.update_one(
+                {"id": user_id},
+                {"$set": {"is_approved": True, "updated_at": datetime.utcnow()}}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            logger.error(f"Error approving user: {e}")
+            return False
+
+    async def reject_user(self, user_id: str) -> bool:
+        """Reject (delete) a pending user"""
+        try:
+            collection = await cloud_db_manager.get_collection("users")
+            # Only delete if not approved yet (safety check)
+            result = await collection.delete_one(
+                {"id": user_id, "is_approved": False}
+            )
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error(f"Error rejecting user: {e}")
+            return False
+
     async def update_user_permissions(self, user_id: str, permissions: list) -> bool:
         """Update user permissions"""
         try:
@@ -164,8 +196,13 @@ class AuthService:
     
     def has_permission(self, user: User, permission: str) -> bool:
         """Check if user has a specific permission"""
-        if user.role == "OPERATIONS_MANAGER":
-            return True  # Operations manager has all permissions
+        if user.role == UserRole.ADMIN or user.role == UserRole.OPERATIONS_MANAGER:
+            return True  # Admin has all permissions
+            
+        if user.role == UserRole.STATION_SUPERVISOR or user.role == UserRole.SUPERVISOR:
+             # Supervisors have specific permissions
+             # For now, we check explicit permissions list, but we can also add role-based defaults here
+             pass
         
         return permission in user.permissions
     

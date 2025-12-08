@@ -1,45 +1,33 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@/contexts/AuthContext';
-import { Eye, EyeOff, Loader2, Lock, UserRound, CheckCircle2, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
+import { UserRole } from '../types/auth';
+import { Lock, User, AlertCircle, Briefcase } from 'lucide-react';
 
-import bg1 from '@/assets/slide1.jpg'; // Adjust path based on your folder structure
-import bg2 from '@/assets/slide2.jpg';
-import bg3 from '@/assets/slide3.jpg';
-import bg4 from '@/assets/slide4.jpg';
+// Import assets
+import slide1 from '../assets/slide1.jpg';
+import slide2 from '../assets/slide2.jpg';
+import slide3 from '../assets/slide3.jpg';
+import slide4 from '../assets/slide4.jpg';
 
-// UPDATE THE ARRAY TO USE THE VARIABLES
-const BACKGROUND_SLIDES = [
-  bg1,
-  bg2,
-  bg3,
-  bg4,
-];
-
-const Login = () => {
+const Login: React.FC = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [selectedRole, setSelectedRole] = useState<UserRole>(UserRole.ADMIN);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
-  const [showToast, setShowToast] = useState(false);
-  const [toastMessage, setToastMessage] = useState('');
-  const [toastVariant, setToastVariant] = useState<'success' | 'error'>('success');
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  const slides = [slide1, slide2, slide3, slide4];
+
   useEffect(() => {
-    BACKGROUND_SLIDES.forEach((slide) => {
-      const img = new Image();
-      img.src = slide;
-    });
-  }, []);
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentSlide((prev) => (prev + 1) % BACKGROUND_SLIDES.length);
-    }, 7000);
-    return () => clearInterval(interval);
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % slides.length);
+    }, 5000);
+    return () => clearInterval(timer);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,162 +36,164 @@ const Login = () => {
     setLoading(true);
 
     try {
-      await login(username, password);
-      setToastVariant('success');
-      setToastMessage('Logging you in...');
-      setShowToast(true);
-      setTimeout(() => {
-        setShowToast(false);
-        navigate('/');
-      }, 1000);
+      const user = await login(username, password);
+
+      // Optional: Verify role matches selected role (if strict enforcement needed)
+      // For now, we trust the backend user role, but could warn if mismatch
+      if (user.role !== selectedRole && selectedRole !== UserRole.ADMIN) {
+        // Maybe allow it but warn? Or just ignore the selector and use the real role.
+        // The user requirement says "select admin... in the login page".
+        // We'll just proceed with the actual user role from DB.
+      }
+
+      // Redirect based on role
+      switch (user.role) {
+        case UserRole.ADMIN:
+        case UserRole.OPERATIONS_MANAGER:
+          navigate('/admin');
+          break;
+        case UserRole.STATION_SUPERVISOR:
+        case UserRole.SUPERVISOR:
+          navigate('/supervisor');
+          break;
+        case UserRole.METRO_DRIVER:
+          navigate('/driver');
+          break;
+        case UserRole.PASSENGER:
+          navigate('/passenger');
+          break;
+        default:
+          navigate('/');
+      }
     } catch (err: any) {
-      const message = err?.message || 'Invalid username or password';
-      setError(message);
-      setToastVariant('error');
-      setToastMessage(message);
-      setShowToast(true);
-      setTimeout(() => setShowToast(false), 2500);
+      console.error('Login error:', err);
+      if (err.response?.status === 403) {
+        setError('Account pending approval. Please contact administrator.');
+      } else {
+        setError('Invalid username or password');
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="kmrl-login relative flex min-h-screen items-center justify-center overflow-hidden bg-slate-950 text-white">
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap');
-
-        @keyframes fadeUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-
-        .animate-fade-up {
-          animation: fadeUp 0.8s ease-out forwards;
-        }
-
-        input:-webkit-autofill,
-        input:-webkit-autofill:hover,
-        input:-webkit-autofill:focus,
-        input:-webkit-autofill:active {
-          -webkit-box-shadow: 0 0 0 30px rgba(255,255,255,0.1) inset !important;
-          -webkit-text-fill-color: white !important;
-          transition: background-color 5000s ease-in-out 0s;
-        }
-
-        .kmrl-login {
-          font-family: 'Poppins', 'Inter', sans-serif;
-        }
-      `}</style>
-
-      <div className="absolute inset-0 z-0 overflow-hidden">
-      {BACKGROUND_SLIDES.map((slide, index) => (
-  <div
-    key={slide}
-    className="absolute inset-0 h-full w-full"
-  >
-    <img
-      src={slide}
-      alt={`Metro slide ${index + 1}`}
-      className="absolute inset-0 h-full w-full object-cover"
-      style={{
-        opacity: currentSlide === index ? 1 : 0,
-        transition: 'opacity 3000ms ease-in-out', // 3 second smooth fade
-      }}
-    />
-  </div>
-))}
-        <div className="absolute inset-0 bg-black/60" />
-      </div>
-
-      <div className="relative z-10 w-full max-w-lg px-6 animate-fade-up">
-        <div className="rounded-[32px] border border-white/25 bg-white/25 p-8 shadow-2xl backdrop-blur-[22px]">
-          <div className="mb-8 text-center">
-            <h1 className="text-3xl font-semibold tracking-wide text-white">KMRL Operations</h1>
-            <p className="text-base text-white/100 mt-2">Enter your credentials to access the system</p>
+    <div className="min-h-screen flex bg-gray-900">
+      {/* Left Side - Slideshow */}
+      <div className="hidden lg:block lg:w-1/2 relative overflow-hidden">
+        {slides.map((slide, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-1000 ease-in-out ${index === currentSlide ? 'opacity-100' : 'opacity-0'
+              }`}
+          >
+            <img
+              src={slide}
+              alt={`Slide ${index + 1}`}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-black/40" />
           </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-white/100">
-                <UserRound className="h-5 w-5" />
-              </div>
-              <input
-                type="text"
-                id="username"
-                placeholder="Username"
-                autoComplete="username"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                disabled={loading}
-                className="w-full rounded-xl border border-white/50 bg-transparent py-3.5 pl-11 pr-3 text-white placeholder-white/70 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition focus:border-white/80 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                required
-                autoFocus
-              />
-            </div>
-
-            <div className="relative">
-              <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-white/100">
-                <Lock className="h-5 w-5" />
-              </div>
-              <input
-                type={showPassword ? 'text' : 'password'}
-                id="password"
-                placeholder="Password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                disabled={loading}
-                className="w-full rounded-xl border border-white/50 bg-transparent py-3.5 pl-11 pr-11 text-white placeholder-white/70 shadow-[0_8px_20px_rgba(0,0,0,0.2)] transition focus:border-white/80 focus:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/30"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword((prev) => !prev)}
-                className="absolute inset-y-0 right-0 flex items-center pr-3 text-white/70 transition hover:text-white"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
-              >
-                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-              </button>
-            </div>
-
-            {error && (
-              <div className="flex items-center gap-2 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-100">
-                <AlertCircle className="h-4 w-4" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={loading || !username || !password}
-              className="w-full rounded-2xl bg-white py-3 text-center text-base font-semibold text-slate-900 shadow-[0_15px_40px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-white/60 disabled:cursor-not-allowed disabled:opacity-100"
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin text-slate-900" />
-                  Signing in...
-                </span>
-              ) : (
-                'Sign In'
-              )}
-            </button>
-          </form>
+        ))}
+        <div className="absolute bottom-10 left-10 text-white z-10">
+          <h2 className="text-4xl font-bold mb-2">KMRL Induction System</h2>
+          <p className="text-xl text-gray-200">Advanced Train Management & Operations</p>
         </div>
       </div>
 
-      <div
-        className={`fixed top-6 right-6 z-50 transform transition-all duration-300 ${
-          showToast ? 'translate-x-0 opacity-100' : 'translate-x-full opacity-0'
-        }`}
-      >
-        <div className="flex items-center gap-3 rounded-xl border-l-4 border-green-500 bg-white/90 px-5 py-4 text-slate-900 shadow-2xl backdrop-blur">
-          {(toastVariant === 'success' ? <CheckCircle2 className="h-5 w-5 text-green-600" /> : <AlertCircle className="h-5 w-5 text-red-500" />)}
-          <div>
-            <p className="text-sm font-semibold">
-              {toastVariant === 'success' ? 'Success' : 'Error'}
+      {/* Right Side - Login Form */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 bg-gray-900">
+        <div className="max-w-md w-full space-y-8">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold text-white">Welcome Back</h1>
+            <p className="mt-2 text-gray-400">Sign in to your account</p>
+          </div>
+
+          {error && (
+            <div className="bg-red-900/50 border border-red-500 text-red-200 p-4 rounded-md flex items-center">
+              <AlertCircle className="w-5 h-5 mr-2" />
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">
+                  I am a...
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Briefcase className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <select
+                    value={selectedRole}
+                    onChange={(e) => setSelectedRole(e.target.value as UserRole)}
+                    className="block w-full pl-10 bg-gray-800 border border-gray-700 rounded-md py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value={UserRole.ADMIN}>Admin / Operations Manager</option>
+                    <option value={UserRole.STATION_SUPERVISOR}>Station Supervisor</option>
+                    <option value={UserRole.METRO_DRIVER}>Metro Driver</option>
+                    <option value={UserRole.PASSENGER}>Passenger</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">
+                  Username
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <User className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <input
+                    type="text"
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    className="block w-full pl-10 bg-gray-800 border border-gray-700 rounded-md py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your username"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-400 mb-1">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <Lock className="h-5 w-5 text-gray-500" />
+                  </div>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    className="block w-full pl-10 bg-gray-800 border border-gray-700 rounded-md py-2 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter your password"
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {loading ? 'Signing in...' : 'Sign In'}
+            </button>
+          </form>
+
+          <div className="text-center mt-4">
+            <p className="text-gray-400 text-sm">
+              Don't have an account?{' '}
+              <Link to="/signup" className="text-blue-400 hover:text-blue-300 font-medium">
+                Sign up
+              </Link>
             </p>
-            <p className="text-xs text-slate-600">{toastMessage}</p>
           </div>
         </div>
       </div>
@@ -212,4 +202,3 @@ const Login = () => {
 };
 
 export default Login;
-

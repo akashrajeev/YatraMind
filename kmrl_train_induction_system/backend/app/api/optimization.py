@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 async def run_optimization(
     background_tasks: BackgroundTasks,
     request: OptimizationRequest,
-    _auth=Depends(require_api_key),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
     """Run AI/ML optimization with rule-based constraints (OR-Tools + Drools)"""
     try:
@@ -148,7 +148,7 @@ async def run_optimization(
         raise HTTPException(status_code=500, detail=f"Optimization failed: {str(e)}")
 
 @router.get("/constraints/check")
-async def check_constraints(_auth=Depends(require_api_key)):
+async def check_constraints(current_user: User = Depends(require_role(UserRole.ADMIN))):
     """Real-time constraint validation using rule engine"""
     try:
         collection = await cloud_db_manager.get_collection("trainsets")
@@ -203,7 +203,7 @@ async def explain_assignment(
     trainset_id: str,
     decision: str = "INDUCT",
     format: str = "json",
-    _auth=Depends(require_api_key)
+    current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
     """Generate comprehensive explanation for a specific trainset assignment"""
     try:
@@ -244,7 +244,7 @@ async def explain_assignment(
 async def explain_batch_assignments(
     assignments: List[Dict[str, Any]],
     format: str = "json",
-    _auth=Depends(require_api_key)
+    current_user: User = Depends(require_role(UserRole.ADMIN))
 ):
     """Generate explanations for multiple trainset assignments"""
     try:
@@ -318,7 +318,7 @@ async def simulate_what_if(
     w_branding: float = 0.20,
     w_shunt: float = 0.10,
     w_mileage_balance: float = 0.05,
-    _auth=Depends(require_api_key),
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
 ):
     """What-if simulation with ML models"""
     try:

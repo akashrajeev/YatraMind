@@ -2,7 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.api import trainsets, optimization, dashboard, ingestion, assignments, reports, auth, simulation
+from app.api import trainsets, optimization, dashboard, ingestion, assignments, reports, auth, simulation, users
 from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -73,6 +73,8 @@ app.include_router(ingestion.router, prefix="/api/ingestion", tags=["Data Ingest
 app.include_router(assignments.router, prefix="/api/v1/assignments", tags=["Assignments"])
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["Authentication"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["User Management"])
 app.include_router(simulation.router, prefix="/api/simulation", tags=["Simulation"])
 
 scheduler: AsyncIOScheduler | None = None
