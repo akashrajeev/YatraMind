@@ -333,6 +333,22 @@ class ReviewCreate(BaseModel):
     rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
     comment: str = Field(..., min_length=1, max_length=500, description="Review comment")
 
+@router.get("/reviews/all")
+async def get_all_reviews(limit: int = 20, _auth=Depends(require_api_key)):
+    """Get latest reviews"""
+    try:
+        collection = await cloud_db_manager.get_collection("trainset_reviews")
+        cursor = collection.find().sort("created_at", -1).limit(limit)
+        reviews = []
+        async for doc in cursor:
+            doc.pop('_id', None)
+            reviews.append(doc)
+        return reviews
+    except Exception as e:
+        logger.error(f"Error fetching reviews: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch reviews: {str(e)}")
+
+
 
 @router.post("/{trainset_id}/review")
 async def submit_review(

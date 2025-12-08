@@ -87,7 +87,7 @@ async def run_optimization(
         }
 
         try:
-            sim_dir = Path(cfg.get("SIMULATION_SAVE_DIR", "backend/simulation_runs"))
+            sim_dir = Path(settings.SIMULATION_SAVE_DIR if hasattr(settings, "SIMULATION_SAVE_DIR") else "backend/simulation_runs")
             sim_dir.mkdir(parents=True, exist_ok=True)
             snapshot_payload = {
                 "optimization_id": str(uuid.uuid4()),
@@ -427,202 +427,6 @@ async def get_latest_ranked_list():
             }
         )
         
-        # Create ranked decisions for all trainsets with proper scoring
-        mock_decisions = []
-        
-        for trainset in trainsets:
-            # Calculate score based on KMRL priority factors (in order of importance)
-            score = 0.0
-            reasons = []
-            risks = []
-            
-            try:
-                # 1. FITNESS CERTIFICATES (Highest Priority - 35% weight)
-                # Check Rolling-Stock, Signalling, and Telecom certificates
-                fitness_score = 0.0
-                cert_status = trainset.get("fitness_certificates", {})
-                
-                # Rolling-Stock certificate (most critical)
-                rolling_stock = cert_status.get("rolling_stock", {})
-                if rolling_stock.get("status") == "VALID":
-                    fitness_score += 0.15
-                    reasons.append("Valid Rolling-Stock fitness certificate")
-                elif rolling_stock.get("status") == "EXPIRED":
-                    fitness_score += 0.0
-                    risks.append("Rolling-Stock certificate expired")
-                else:
-                    fitness_score += 0.05
-                    risks.append("Rolling-Stock certificate pending")
-                
-                # Signalling certificate
-                signalling = cert_status.get("signalling", {})
-                if signalling.get("status") == "VALID":
-                    fitness_score += 0.10
-                    reasons.append("Valid Signalling fitness certificate")
-                elif signalling.get("status") == "EXPIRED":
-                    fitness_score += 0.0
-                    risks.append("Signalling certificate expired")
-                else:
-                    fitness_score += 0.05
-                    risks.append("Signalling certificate pending")
-                
-                # Telecom certificate
-                telecom = cert_status.get("telecom", {})
-                if telecom.get("status") == "VALID":
-                    fitness_score += 0.10
-                    reasons.append("Valid Telecom fitness certificate")
-                elif telecom.get("status") == "EXPIRED":
-                    fitness_score += 0.0
-                    risks.append("Telecom certificate expired")
-                else:
-                    fitness_score += 0.05
-                    risks.append("Telecom certificate pending")
-                
-                score += fitness_score
-                
-                # 2. JOB-CARD STATUS (25% weight)
-                # Check for open/pending work orders in Maximo
-                job_cards = trainset.get("job_cards", {})
-                open_cards = job_cards.get("open_cards", 0)
-                critical_cards = job_cards.get("critical_cards", 0)
-                
-                if critical_cards > 0:
-                    score += 0.0
-                    risks.append(f"{critical_cards} critical job cards open")
-                elif open_cards > 0:
-                    score += 0.05
-                    risks.append(f"{open_cards} job cards open")
-                else:
-                    score += 0.25
-                    reasons.append("No critical job cards pending")
-                
-                # 3. CLEANING & DETAILING SLOTS (20% weight)
-                # Check availability of manpower and bay occupancy
-                # For now, use sensor health as proxy for cleaning readiness
-                sensor_health = trainset.get("sensor_health_score", 0.8)
-                if sensor_health > 0.9:
-                    score += 0.20
-                    reasons.append("Excellent sensor health - ready for service")
-                elif sensor_health > 0.7:
-                    score += 0.10
-                    reasons.append("Good sensor health")
-                else:
-                    score += 0.0
-                    risks.append("Poor sensor health - needs attention")
-                
-                # 4. STABLING GEOMETRY (15% weight)
-                # Physical positions of bays affect dispatch efficiency
-                # Use current location as proxy for stabling position
-                current_location = trainset.get("current_location", {})
-                depot = current_location.get("depot", "unknown")
-                if depot in ["Petta", "Vytilla"]:  # Main depots
-                    score += 0.15
-                    reasons.append("Optimal depot location for dispatch")
-                else:
-                    score += 0.10
-                    reasons.append("Good depot location")
-                
-                # 5. MILEAGE BALANCING (10% weight)
-                # Balance wear on bogies, brake pads, and HVAC systems
-                current_mileage = trainset.get("current_mileage", 0)
-                max_mileage = trainset.get("max_mileage_before_maintenance", 50000)
-                mileage_ratio = current_mileage / max_mileage if max_mileage > 0 else 0
-                
-                if mileage_ratio < 0.5:
-                    score += 0.10
-                    reasons.append("Low mileage - good for balancing wear")
-                elif mileage_ratio > 0.8:
-                    score += 0.05
-                    risks.append("High mileage - consider maintenance")
-                else:
-                    score += 0.08
-                    reasons.append("Balanced mileage")
-                
-                # 6. BRANDING PRIORITIES (5% weight - Lowest Priority)
-                # Contractual commitments for exterior wrap exposure hours
-                branding_priority = trainset.get("branding_priority", 0)
-                if branding_priority > 0.7:
-                    score += 0.05
-                    reasons.append("High branding priority")
-                elif branding_priority > 0.3:
-                    score += 0.03
-                    reasons.append("Medium branding priority")
-                else:
-                    score += 0.02
-                    reasons.append("Low branding priority")
-                
-                # Normalize score to 0-1 range
-                score = min(1.0, max(0.0, score))
-                
-            except Exception as e:
-                logger.error(f"Error calculating score for trainset {trainset.get('trainset_id', 'unknown')}: {e}")
-                # Fallback to simple scoring
-                score = 0.5
-                reasons = ["Default scoring applied"]
-                risks = ["Scoring error occurred"]
-            
-            # Determine decision based on KMRL priority factors
-            # INDUCT: All critical factors (fitness, job cards) are good
-            # STANDBY: Some issues but not critical
-            # MAINTENANCE: Critical issues that need attention
-            
-            if score >= 0.8 and len([r for r in risks if "certificate" in r.lower() or "critical" in r.lower()]) == 0:
-                decision = "INDUCT"
-            elif score >= 0.6 and len([r for r in risks if "certificate" in r.lower()]) == 0:
-                decision = "STANDBY"
-            else:
-                decision = "MAINTENANCE"
-            
-            # Calculate confidence based on score and risk factors
-            base_confidence = min(0.95, max(0.6, score))
-            risk_penalty = len(risks) * 0.05
-            confidence = round(max(0.6, base_confidence - risk_penalty), 2)
-            final_score = round(score, 3)
-            
-            mock_decision = {
-                "trainset_id": trainset["trainset_id"],
-                "decision": decision,
-                "confidence_score": confidence,
-                "score": final_score,
-                "top_reasons": reasons[:3] if reasons else ["All systems operational"],
-                "top_risks": [risk for risk in risks[:2] if risk is not None] if risks else [],
-                "violations": [],
-                "shap_values": [
-                    {"name": "Fitness Certificates", "value": fitness_score, "impact": "positive"},
-                    {"name": "Job Card Status", "value": 0.25 if critical_cards == 0 and open_cards == 0 else 0.05, "impact": "positive"},
-                    {"name": "Sensor Health", "value": trainset.get("sensor_health_score", 0.85), "impact": "positive"},
-                    {"name": "Mileage Balance", "value": 1.0 - mileage_ratio, "impact": "positive"},
-                    {"name": "Branding Priority", "value": branding_priority, "impact": "positive"}
-                ],
-                "reasons": reasons if reasons else ["Default scoring applied"]
-            }
-            mock_decisions.append(mock_decision)
-        
-        # Sort by score (highest first) - ensure proper ranking
-        mock_decisions.sort(key=lambda x: x["score"], reverse=True)
-        
-        # Take top 10 trainsets for induction list (not just 3)
-        top_decisions = mock_decisions[:10]
-        
-        logger.info(f"Created {len(mock_decisions)} ranked decisions, returning top {len(top_decisions)}")
-        
-        # Store the ranked list (only if not manually adjusted)
-        # Don't overwrite manually adjusted lists
-        existing_doc = await latest_collection.find_one(sort=[("_meta.updated_at", -1), ("created_at", -1)])
-        if not existing_doc or not existing_doc.get("_meta", {}).get("manually_adjusted", False):
-            await latest_collection.insert_one({
-                "_meta": {
-                    "updated_at": datetime.utcnow().isoformat(),
-                    "manually_adjusted": False
-                },
-                "decisions": top_decisions,
-                "created_at": datetime.utcnow().isoformat(),
-                "total_trainsets": len(mock_decisions)
-            })
-        
-        logger.info(f"Stored ranked list with {len(top_decisions)} decisions")
-        return top_decisions
-        
     except HTTPException:
         # Re-raise HTTP exceptions (like our 404 for no optimization)
         raise
@@ -638,7 +442,7 @@ async def get_latest_ranked_list():
             }
         )
 
-@router.get("/stabling-geometry", response_model=StablingGeometryResponse)
+@router.get("/stabling-geometry")
 async def get_stabling_geometry_optimization():
     """Get optimized stabling geometry with rich, structured intelligence"""
     try:
@@ -684,13 +488,12 @@ async def get_stabling_geometry_optimization():
         except Exception as e:
             logger.warning(f"Could not retrieve fleet requirements: {e}")
 
-        # Generate rich stabling geometry response
         stabling_optimizer = StablingGeometryOptimizer()
-        rich_response = await stabling_optimizer.generate_rich_stabling_geometry(
+        geometry = await stabling_optimizer.optimize_stabling_geometry(
             trainsets_data, decisions, fleet_req
         )
 
-        return rich_response
+        return geometry
         
     except HTTPException:
         raise
@@ -702,7 +505,6 @@ async def get_stabling_geometry_optimization():
 async def get_shunting_schedule():
     """Get detailed shunting schedule with ordered moves and operational intelligence"""
     try:
-        # Load current trainsets
         collection = await cloud_db_manager.get_collection("trainsets")
         cursor = collection.find({})
         trainsets_data: List[Dict[str, Any]] = []
@@ -714,7 +516,6 @@ async def get_shunting_schedule():
         if not trainsets_data:
             raise HTTPException(status_code=404, detail="No trainsets found")
 
-        # Reuse latest optimization decisions (same strategy as stabling-geometry)
         decisions: Optional[List[Dict[str, Any]]] = await get_latest_decisions()
         if not decisions:
             decisions = await get_decisions_from_history()
@@ -729,101 +530,32 @@ async def get_shunting_schedule():
             )
 
         stabling_optimizer = StablingGeometryOptimizer()
-        stabling_data = await stabling_optimizer.optimize_stabling_geometry(
-            trainsets_data, decisions
-        )
+        stabling_data = await stabling_optimizer.optimize_stabling_geometry(trainsets_data, decisions)
 
-        # Generate shunting schedule
-        shunting_schedule = await stabling_optimizer.get_shunting_schedule(
-            stabling_data.get("optimized_layout", {})
-        )
-
-        # Calculate totals
-        total_time = sum(
-            op.get("estimated_time", 0)
-            for op in shunting_schedule
-            if isinstance(op.get("estimated_time"), (int, float))
-        )
-
-        available_minutes = 120  # 21:00–23:00
-        buffer_minutes = available_minutes - total_time
-        feasible = buffer_minutes >= 0
-
-        # Group by depot and order by priority (service > maintenance > standby)
-        decision_map = {d.get("trainset_id"): d.get("decision") for d in decisions if isinstance(d, dict)}
+        operations = stabling_data.get("shunting_operations", [])
+        summary = stabling_data.get("shunting_summary", {})
         
-        # Create trainset map for additional context
-        trainset_map = {t.get("trainset_id"): t for t in trainsets_data}
-        
-        # Enhance schedule with decision context and priority
-        enhanced_schedule = []
-        for op in shunting_schedule:
-            trainset_id = op.get("trainset_id")
-            decision = decision_map.get(trainset_id, "STANDBY")
-            trainset = trainset_map.get(trainset_id, {})
-            
-            # Determine priority (1 = highest, 3 = lowest)
-            priority = 1 if decision == "INDUCT" else 2 if decision == "MAINTENANCE" else 3
-            
-            enhanced_op = {
-                **op,
-                "priority": priority,
-                "decision": decision,
-                "trainset_mileage": trainset.get("current_mileage", 0),
-                "sequence": None  # Will be set after sorting
-            }
-            enhanced_schedule.append(enhanced_op)
-        
-        # Sort by priority, then by estimated_time (fastest first within same priority)
-        enhanced_schedule.sort(key=lambda x: (x["priority"], x.get("estimated_time", 0)))
-        
-        # Assign sequence numbers
-        for idx, op in enumerate(enhanced_schedule, 1):
-            op["sequence"] = idx
-        
-        # Group by depot for better organization
-        schedule_by_depot: Dict[str, List[Dict[str, Any]]] = {}
-        for op in enhanced_schedule:
-            depot = op.get("depot", "UNKNOWN")
-            if depot not in schedule_by_depot:
-                schedule_by_depot[depot] = []
-            schedule_by_depot[depot].append(op)
-        
-        # Calculate depot-level summaries
-        depot_summaries = {}
-        for depot, ops in schedule_by_depot.items():
-            depot_time = sum(op.get("estimated_time", 0) for op in ops)
-            depot_summaries[depot] = {
-                "total_operations": len(ops),
-                "estimated_time_min": depot_time,
-                "high_complexity": len([op for op in ops if op.get("complexity") == "HIGH"]),
-                "medium_complexity": len([op for op in ops if op.get("complexity") == "MEDIUM"]),
-                "low_complexity": len([op for op in ops if op.get("complexity") == "LOW"]),
-            }
+        # Calculate totals for shunting window feasibility
+        total_time = summary.get("total_time_min", 0)
+        available_minutes = stabling_optimizer.operational_window["minutes"]
+        buffer_minutes = summary.get("buffer_minutes", available_minutes - total_time)
+        feasible = summary.get("feasible", total_time <= available_minutes)
 
         return {
-            "shunting_schedule": enhanced_schedule,
-            "schedule_by_depot": schedule_by_depot,
-            "depot_summaries": depot_summaries,
-            "total_operations": len(enhanced_schedule),
-            "estimated_total_time": int(total_time),
+            "shunting_schedule": operations,
+            "schedule_by_depot": {"Muttom Depot": operations},
+            "depot_summaries": {"Muttom Depot": summary},
+            "total_operations": summary.get("total_operations", 0),
+            "estimated_total_time": summary.get("total_time_min", 0),
             "crew_requirements": {
-                "high_complexity": len(
-                    [op for op in enhanced_schedule if op.get("complexity") == "HIGH"]
-                ),
-                "medium_complexity": len(
-                    [op for op in enhanced_schedule if op.get("complexity") == "MEDIUM"]
-                ),
-                "low_complexity": len(
-                    [op for op in enhanced_schedule if op.get("complexity") == "LOW"]
-                ),
+                "high_complexity": len([op for op in operations if op.get("complexity") == "HIGH"]),
+                "medium_complexity": len([op for op in operations if op.get("complexity") == "MEDIUM"]),
+                "low_complexity": len([op for op in operations if op.get("complexity") == "LOW"]),
             },
             "operational_window": {
-                "start_time": "21:00 IST",
-                "end_time": "23:00 IST",
-                "duration_minutes": 120,
-                "recommended_start": "21:00 IST",
-                "buffer_minutes": max(0, 120 - int(total_time))
+                "start_time": stabling_optimizer.operational_window["start"],
+                "end_time": stabling_optimizer.operational_window["end"],
+                "buffer_minutes": summary.get("buffer_minutes", 0),
             },
             "shunting_window": {
                 "available_minutes": available_minutes,

@@ -1,144 +1,109 @@
-"""Unit tests for shunting time parsing (numeric field)"""
+"""Tests for Muttom depot stabling + shunting logic."""
+import asyncio
 import pytest
+
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 
 
-@pytest.fixture
-def optimizer():
-    return StablingGeometryOptimizer()
+@pytest.mark.asyncio
+async def test_capacity_enforced_with_overflow():
+    optimizer = StablingGeometryOptimizer()
+    trainsets = []
+    decisions = []
+
+    # 25 trainsets: 13 service, 6 maintenance, 6 standby
+    for idx in range(25):
+        train_id = f"T-{idx:03d}"
+        trainsets.append(
+            {
+                "trainset_id": train_id,
+                "current_location": {"depot": "Muttom Depot", "bay": (idx % 12) + 1},
+                "job_cards": {"critical_cards": 0},
+                "current_mileage": 10000 + idx * 100,
+            }
+        )
+        if idx < 13:
+            decisions.append({"trainset_id": train_id, "decision": "SERVICE", "score": 1.0 - idx * 0.01})
+        elif idx < 19:
+            severity = "HEAVY" if idx % 2 == 0 else "LIGHT"
+            decisions.append({"trainset_id": train_id, "decision": "MAINTENANCE", "maintenance_severity": severity})
+        else:
+            decisions.append({"trainset_id": train_id, "decision": "STANDBY"})
+
+    result = await optimizer.optimize_stabling_geometry(trainsets, decisions)
+    summary = result["stabling_summary"]
+
+    assert summary["stabled_service_trains"] == 6
+    assert summary["stabled_maintenance_trains"] == 4
+    assert summary["stabled_standby_trains"] == 2
+    assert summary["total_stabled_trains"] <= 12
+    assert summary["unassigned_due_to_capacity"] > 0
 
 
-@pytest.fixture
-def sample_operations():
-    """Sample shunting operations with numeric estimated_time"""
-    return [
-        {
-            "trainset_id": "T-001",
-            "from_bay": 1,
-            "to_bay": 6,
-            "estimated_time": 8,  # Numeric
-            "complexity": "MEDIUM"
-        },
-        {
-            "trainset_id": "T-002",
-            "from_bay": 2,
-            "to_bay": 7,
-            "estimated_time": 12,  # Numeric
-            "complexity": "HIGH"
-        },
-        {
-            "trainset_id": "T-003",
-            "from_bay": 3,
-            "to_bay": 8,
-            "estimated_time": 5,  # Numeric
-            "complexity": "LOW"
-        }
+@pytest.mark.asyncio
+async def test_service_shortfall_is_capacity_based():
+    optimizer = StablingGeometryOptimizer()
+    trainsets = [{"trainset_id": f"T-{i:03d}", "current_location": {"depot": "Muttom Depot", "bay": i + 1}} for i in range(15)]
+    decisions = [{"trainset_id": t["trainset_id"], "decision": "SERVICE", "score": 1.0} for t in trainsets]
+
+    result = await optimizer.optimize_stabling_geometry(trainsets, decisions, fleet_req={"required_service_trains": 13})
+    requirement = result["service_requirement"]
+
+    assert requirement["required_service_trains"] == 13
+    assert requirement["stabled_service_trains"] >= 13  # depot + terminals
+    assert requirement["capacity_shortfall"] == 0
+    assert requirement["effective_service_shortfall"] == 0
+
+
+@pytest.mark.asyncio
+async def test_bay_diff_categorizes_move_enter_exit():
+    optimizer = StablingGeometryOptimizer()
+    trainsets = [
+        {"trainset_id": "T-MOVE", "current_location": {"depot": "Muttom Depot", "bay": 5}},
+        {"trainset_id": "T-ENTER", "current_location": {"depot": "Muttom Depot", "bay": None}},
+        {"trainset_id": "T-EXIT", "current_location": {"depot": "Muttom Depot", "bay": 2}},
+        {"trainset_id": "T-SB-HI1", "current_location": {"depot": "Muttom Depot", "bay": None}},
+        {"trainset_id": "T-SB-HI2", "current_location": {"depot": "Muttom Depot", "bay": None}},
+    ]
+    decisions = [
+        {"trainset_id": "T-MOVE", "decision": "SERVICE", "score": 0.9},
+        {"trainset_id": "T-ENTER", "decision": "SERVICE", "score": 0.8},
+        {"trainset_id": "T-EXIT", "decision": "STANDBY", "priority": 0},
+        {"trainset_id": "T-SB-HI1", "decision": "STANDBY", "priority": 10},
+        {"trainset_id": "T-SB-HI2", "decision": "STANDBY", "priority": 9},
     ]
 
+    result = await optimizer.optimize_stabling_geometry(trainsets, decisions)
+    diff = result["bay_diff"]
+    move_types = {d["trainset_id"]: d["move_type"] for d in diff}
 
-def test_get_shunting_schedule_uses_numeric_estimated_time(optimizer, sample_operations):
-    """Test that get_shunting_schedule uses numeric estimated_time field"""
-    optimized_layout = {
-        "Aluva": {
-            "shunting_operations": sample_operations
-        }
+    assert move_types["T-MOVE"] == "MOVE"
+    assert move_types["T-ENTER"] == "ENTER"
+    assert move_types["T-EXIT"] == "EXIT"
+
+
+@pytest.mark.asyncio
+async def test_shunting_feasibility_flips_when_window_exceeded():
+    optimizer = StablingGeometryOptimizer()
+    # Stretch bay positions to force large shunting times
+    optimizer.depot_layouts["Muttom Depot"]["bay_positions"] = {
+        1: {"x": 0, "y": 0},
+        2: {"x": 10, "y": 0},
+        7: {"x": 1000, "y": 0},
+        8: {"x": 1000, "y": 1000},
     }
-    
-    import asyncio
-    schedule = asyncio.run(optimizer.get_shunting_schedule(optimized_layout))
-    
-    # Check all entries have numeric estimated_time
-    for entry in schedule:
-        assert "estimated_time" in entry
-        assert isinstance(entry["estimated_time"], int)
-        assert entry["estimated_time"] > 0
-    
-    # Check total time calculation
-    total = sum(entry["estimated_time"] for entry in schedule)
-    assert total == 25  # 8 + 12 + 5
 
+    trainsets = [
+        {"trainset_id": "T-001", "current_location": {"depot": "Muttom Depot", "bay": 1}},
+        {"trainset_id": "T-002", "current_location": {"depot": "Muttom Depot", "bay": 2}},
+    ]
+    decisions = [
+        {"trainset_id": "T-001", "decision": "SERVICE", "score": 1.0},
+        {"trainset_id": "T-002", "decision": "SERVICE", "score": 0.9},
+    ]
 
-def test_get_shunting_schedule_handles_non_numeric_estimated_time(optimizer):
-    """Test that non-numeric estimated_time is converted or defaulted"""
-    optimized_layout = {
-        "Aluva": {
-            "shunting_operations": [
-                {
-                    "trainset_id": "T-001",
-                    "from_bay": 1,
-                    "to_bay": 6,
-                    "estimated_time": "8",  # String that can be converted
-                    "complexity": "MEDIUM"
-                },
-                {
-                    "trainset_id": "T-002",
-                    "from_bay": 2,
-                    "to_bay": 7,
-                    "estimated_time": None,  # Invalid
-                    "complexity": "HIGH"
-                }
-            ]
-        }
-    }
-    
-    import asyncio
-    schedule = asyncio.run(optimizer.get_shunting_schedule(optimized_layout))
-    
-    # T-001 should have converted string to int
-    assert schedule[0]["estimated_time"] == 8
-    
-    # T-002 should have defaulted to 0
-    assert schedule[1]["estimated_time"] == 0
+    result = await optimizer.optimize_stabling_geometry(trainsets, decisions)
+    shunting_summary = result["shunting_summary"]
 
-
-def test_get_shunting_schedule_sorts_by_numeric_time(optimizer, sample_operations):
-    """Test that schedule is sorted by numeric estimated_time"""
-    optimized_layout = {
-        "Aluva": {
-            "shunting_operations": sample_operations
-        }
-    }
-    
-    import asyncio
-    schedule = asyncio.run(optimizer.get_shunting_schedule(optimized_layout))
-    
-    # Should be sorted by estimated_time (5, 8, 12)
-    times = [entry["estimated_time"] for entry in schedule]
-    assert times == sorted(times)
-
-
-def test_get_shunting_schedule_includes_both_numeric_and_string_fields(optimizer):
-    """Test that both estimated_time (numeric) and estimated_duration (string) are included"""
-    optimized_layout = {
-        "Aluva": {
-            "shunting_operations": [
-                {
-                    "trainset_id": "T-001",
-                    "from_bay": 1,
-                    "to_bay": 6,
-                    "estimated_time": 8,
-                    "complexity": "MEDIUM"
-                }
-            ]
-        }
-    }
-    
-    import asyncio
-    schedule = asyncio.run(optimizer.get_shunting_schedule(optimized_layout))
-    
-    entry = schedule[0]
-    assert "estimated_time" in entry
-    assert isinstance(entry["estimated_time"], int)
-    assert entry["estimated_time"] == 8
-    
-    assert "estimated_duration" in entry
-    assert isinstance(entry["estimated_duration"], str)
-    assert entry["estimated_duration"] == "8 minutes"
-
-
-
-
-
-
-
-
+    assert shunting_summary["feasible"] is False
+    assert shunting_summary["total_time_min"] > optimizer.operational_window["minutes"]

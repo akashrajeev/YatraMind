@@ -19,8 +19,13 @@ import {
   BarChart3,
   Settings,
   FileText,
-  ArrowRight
+  ArrowRight,
+  Bell
 } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { UserRole } from "@/types/auth";
+import { toast } from "sonner";
+import api from "@/services/api";
 
 // Tomorrow's Service Plan types and helpers
 interface ServiceData {
@@ -63,7 +68,9 @@ const describeArc = (x: number, y: number, radius: number, startAngle: number, e
 export function DashboardOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user, logout } = useAuth();
   const [hoverItem, setHoverItem] = useState<ServiceData | null>(null);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Fetch dashboard data
   const { data: overview, isLoading: overviewLoading } = useQuery({
@@ -109,7 +116,7 @@ export function DashboardOverview() {
   // Get approved assignments sorted by rank and enrich with decision from latest ranked list
   const approvedTrainsByRank = useMemo(() => {
     const approvedAssignments = assignments.filter((a: any) => a.status === "APPROVED");
-    
+
     // Create a map of trainset_id to rank from ranked list
     const rankMap = new Map();
     const decisionMap = new Map();
@@ -295,23 +302,116 @@ export function DashboardOverview() {
     generateReportMutation.mutate(undefined);
   };
 
+  const { data: notifications = [] } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: () => api.get('/v1/notifications?unread_only=true').then(res => res.data),
+    refetchInterval: 5000,
+    enabled: user?.role !== UserRole.METRO_DRIVER
+  });
+
+  const handleSOS = async () => {
+    try {
+      await api.post('/v1/notifications/sos');
+      toast.error("EMERGENCY SOS SIGNAL SENT! Admins and Supervisors Notified.");
+    } catch (error) {
+      console.error("Failed to send SOS", error);
+      toast.error("Failed to send SOS signal");
+    }
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 p-6 md:p-8">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Operations Dashboard</h2>
-          <p className="text-muted-foreground">Train induction system monitoring</p>
+          <h2 className="text-4xl font-bold text-foreground tracking-tight">Operations Dashboard</h2>
+          <p className="text-muted-foreground mt-1 text-lg">Train induction system monitoring</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-success border-success/20">
-            <Zap className="h-3 w-3 mr-1" />
+        <div className="flex items-center gap-3">
+          {user?.role === UserRole.METRO_DRIVER && (
+            <>
+              <Button
+                variant="destructive"
+                size="lg"
+                className="animate-pulse font-bold shadow-lg shadow-red-500/20"
+                onClick={handleSOS}
+              >
+                <AlertTriangle className="h-5 w-5 mr-2" />
+                SOS ALERT
+              </Button>
+              <Button
+                variant="ghost"
+                size="lg"
+                onClick={() => {
+                  logout();
+                  navigate('/login');
+                }}
+              >
+                Sign Out
+              </Button>
+            </>
+          )}
+
+          {user?.role !== UserRole.METRO_DRIVER && (
+            <div className="relative">
+              <Button
+                variant="outline"
+                size="icon"
+                className="relative"
+                onClick={() => setShowNotifications(!showNotifications)}
+              >
+                <Bell className="h-5 w-5" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 h-3 w-3 bg-red-500 rounded-full animate-pulse" />
+                )}
+              </Button>
+
+              {showNotifications && (
+                <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
+                  <div className="p-3 border-b border-border flex justify-between items-center sticky top-0 bg-card/95 backdrop-blur-sm">
+                    <h4 className="font-semibold text-sm">Notifications</h4>
+                    <span className="text-xs text-muted-foreground">{notifications.length} unread</span>
+                  </div>
+                  <div className="divide-y divide-border">
+                    {notifications.length === 0 ? (
+                      <div className="p-4 text-center text-muted-foreground text-sm">
+                        No new notifications
+                      </div>
+                    ) : (
+                      notifications.map((notif: any) => (
+                        <div key={notif.id} className="p-3 hover:bg-accent/50 transition-colors">
+                          <div className="flex justify-between items-start mb-1">
+                            <span className={`text-xs font-bold px-1.5 py-0.5 rounded ${notif.priority === 'CRITICAL' ? 'bg-red-100 text-red-700' :
+                              notif.priority === 'HIGH' ? 'bg-orange-100 text-orange-700' :
+                                'bg-blue-100 text-blue-700'
+                              }`}>
+                              {notif.priority}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(notif.created_at).toLocaleTimeString()}
+                            </span>
+                          </div>
+                          <h5 className="text-sm font-medium mb-1">{notif.title}</h5>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{notif.message}</p>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <Badge variant="outline" className="text-success border-success/20 px-3 py-1 text-sm">
+            <Zap className="h-3 w-3 mr-2" />
             System Online
           </Badge>
-          <Button 
-            variant="industrial" 
+          <Button
+            variant="industrial"
+            size="lg"
             onClick={handleGenerateReport}
             disabled={generateReportMutation.isPending}
+            className="shadow-md"
           >
             {generateReportMutation.isPending ? (
               <>
@@ -520,44 +620,53 @@ export function DashboardOverview() {
         </Card>
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            <Button 
-              variant="industrial"
-              onClick={handleNavigateToAssignments}
-            >
-              <CheckCircle className="h-4 w-4 mr-2" />
-              View Assignments
-            </Button>
-            <Button 
-              variant="outline"
-              onClick={handleNavigateToConflicts}
-            >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              Review Conflicts ({conflicts.length})
-            </Button>
-            <Button 
-              variant="secondary"
-              onClick={() => navigate('/reports')}
-            >
-              <BarChart3 className="h-4 w-4 mr-2" />
-              View Reports
-            </Button>
-            <Button 
-              variant="ghost"
-              onClick={() => navigate('/optimization')}
-            >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              Run Optimization
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Actions - Hidden for Drivers */}
+      {user?.role !== UserRole.METRO_DRIVER && (
+        <Card className="bg-gradient-to-r from-card to-accent/5 border-border/60 shadow-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-500" />
+              Quick Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Button
+                variant="industrial"
+                onClick={handleNavigateToAssignments}
+                className="shadow-sm hover:shadow-md transition-all"
+              >
+                <CheckCircle className="h-4 w-4 mr-2" />
+                View Assignments
+              </Button>
+              <Button
+                variant="outline"
+                onClick={handleNavigateToConflicts}
+                className="shadow-sm hover:shadow-md transition-all border-destructive/20 hover:border-destructive/50 hover:bg-destructive/5"
+              >
+                <AlertTriangle className="h-4 w-4 mr-2 text-destructive" />
+                Review Conflicts ({conflicts.length})
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => navigate('/reports')}
+                className="shadow-sm hover:shadow-md transition-all"
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                View Reports
+              </Button>
+              <Button
+                variant="ghost"
+                onClick={() => navigate('/optimization')}
+                className="hover:bg-accent/50"
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                Run Optimization
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
