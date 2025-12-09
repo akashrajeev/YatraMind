@@ -4,9 +4,16 @@ from __future__ import annotations
 from typing import Dict, Any, List, Tuple
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 import os
+import time
+import asyncio
 import numpy as np
 from datetime import datetime, timedelta
 from app.models.trainset import ShapFeature
+import httpx
+import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def _jinja_env() -> Environment:
@@ -466,7 +473,205 @@ def detect_rule_violations(trainset: Dict[str, Any], decision: str) -> List[str]
     return violations
 
 
-def generate_comprehensive_explanation(trainset: Dict[str, Any], decision: str) -> Dict[str, Any]:
+from app.config import settings
+
+
+# Global rate limiter state
+_gemini_lock = asyncio.Lock()
+_last_request_time = 0.0
+MIN_REQUEST_INTERVAL = 12.0  # Increased to 12s to be safe for Free Tier (approx 5 requests/min)
+
+async def _generate_gemini_explanation(trainset: Dict[str, Any], decision: str, generated_reasons: Dict[str, List[str]]) -> Dict[str, Any]:
+    """Call Gemini API to generate human-readable explanation using available context"""
+    # SKIP AI for Standby trains to save quota
+    if decision == "STANDBY":
+        logger.info(f"Skipping Gemini for STANDBY train {trainset.get('trainset_id')} to conserve quota.")
+        return {
+            "summary": "Trainset is in good health but not selected for immediate service due to lower optimization score or sufficient fleet capacity.",
+            "bullets": generated_reasons.get('top_reasons', [])
+        }
+
+    api_key = settings.gemini_api_key
+    if not api_key:
+        logger.warning("GEMINI_API_KEY not found in environment. Skipping AI explanation.")
+        return {}
+    
+    # logger.info(f"Gemini API Key found: {api_key[:4]}...{api_key[-4:]}") # Reduce log noise
+    
+    global _last_request_time
+    
+    async with _gemini_lock:
+        # Enforce minimum interval
+        now = time.time()
+        time_since_last = now - _last_request_time
+        if time_since_last < MIN_REQUEST_INTERVAL:
+            sleep_time = MIN_REQUEST_INTERVAL - time_since_last
+            logger.info(f"Rate limiting: Waiting {sleep_time:.2f}s before next request...")
+            await asyncio.sleep(sleep_time)
+        
+        try:
+            # Prepare context for LLM
+            # Simplify trainset data to avoid huge payload
+            context_data = {
+                "id": trainset.get("trainset_id"),
+                "status": trainset.get("status"),
+                "decision": decision,
+                "mileage": trainset.get("current_mileage"),
+                "max_mileage": trainset.get("max_mileage_before_maintenance"),
+                "certificates": trainset.get("fitness_certificates"),
+                "job_cards": trainset.get("job_cards"),
+                "branding": trainset.get("branding"),
+                "generated_reasons": generated_reasons
+            }
+            
+            prompt = f"""
+            You are an expert metro train fleet manager acting as a decision support system. 
+            Analyze the following trainset and the system-generated decision to provide a comprehensive, detailed, and professional justification.
+
+            Context:
+            - Decision: {decision}
+               * INDUCT: Selected for passenger service. High health, low risk.
+               * STANDBY: Reserve fleet. Good health but lower priority.
+               * MAINTENANCE: Needs repair/inspection. Risk or hard failure.
+            
+            - Trainset Data (JSON): 
+            {json.dumps(context_data, default=str)}
+            
+            System-Identified Factors:
+            - Primary Reasons: {generated_reasons.get('top_reasons')}
+            - Potential Risks: {generated_reasons.get('top_risks')}
+            
+            Task:
+            Generate a detailed explanation that will be displayed to fleet operators.
+            1. Synthesize the system factors into a coherent narrative.
+            2. Highlight specific metrics (mileage, certificate type, job card count) to justify the decision.
+            3. If there are risks, explain their operational impact.
+            4. Be precise and professional.
+            
+            Return **STRICT JSON** format:
+            {{
+                "summary": "A detailed 2-3 sentence narrative explaining exactly why this specific train was assigned this status, referencing key data points.",
+                "bullets": [
+                    "Detailed point about strongest positive factor (e.g., 'Low mileage of 12,500km makes it ideal for heavy service usage')",
+                    "Detailed point about operational status or branding (e.g., 'High priority ad-wrap requires immediate induction')",
+                    "Detailed point about health/risks (e.g., 'Zero critical job cards and 98% sensor health score')"
+                ]
+            }}
+            """
+            
+            async with httpx.AsyncClient() as client:
+                logger.info(f"Sending request to Gemini API for trainset {trainset.get('trainset_id')}...")
+                
+                # Robust retry logic
+                max_retries = 1 # 3 - Reduced to fail fast for better UX
+                for attempt in range(max_retries):
+                    response = await client.post(
+                        f"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key={api_key}",
+                        json={"contents": [{"parts": [{"text": prompt}]}]},
+                        timeout=10.0 # Increased timeout for safety
+                    )
+                    
+                    if response.status_code == 429:
+                        # Fail fast strategy: Cap waiting to 2 seconds max
+                        retry_after = 2.0 
+                        
+                        # Don't sleep if this was the last attempt
+                        if attempt < max_retries - 1:
+                            logger.warning(f"Gemini API rate limited (429). Retrying in {retry_after}s...")
+                            await asyncio.sleep(retry_after)
+                            continue
+                        else:
+                            logger.warning(f"Gemini API rate limited (429). Max retries reached.")
+                    
+                    break # Exit loop if not 429 or max retries reached
+                
+                # Update timestamp after request completes (whether success or fail)
+                _last_request_time = time.time()
+                
+                logger.info(f"Gemini API Response Status: {response.status_code}")
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    # logger.debug(f"Gemini Raw Response: {json.dumps(result)[:200]}...") 
+                    parts = result.get('candidates', [{}])[0].get('content', {}).get('parts', [{}])
+                    if not parts:
+                        logger.error(f"Gemini response has no parts: {result}")
+                        return {}
+                        
+                    text_content = parts[0].get('text', '')
+                    
+                    # Extract JSON from markdown code block if present
+                    if "```json" in text_content:
+                        text_content = text_content.split("```json")[1].split("```")[0].strip()
+                    elif "```" in text_content:
+                        text_content = text_content.split("```")[1].split("```")[0].strip()
+                    
+                    parsed_json = json.loads(text_content)
+                    logger.info("Successfully parsed Gemini JSON explanation.")
+                    return parsed_json
+                else:
+                    logger.error(f"Gemini API error: {response.status_code} - {response.text}")
+                    
+                    # Generate elaborated rule-based fallback
+                    reasons = generated_reasons.get('top_reasons', [])
+                    risks = generated_reasons.get('top_risks', [])
+                    
+                    # Construct a data-driven narrative
+                    narrative = []
+                    
+                    # 1. Decision Context
+                    narrative.append(f"This trainset has been categorized as **{decision}**.")
+                    
+                    # 2. Operational Health Details
+                    job_cards = trainset.get("job_cards", {})
+                    critical = job_cards.get("critical_cards", 0)
+                    open_cards = job_cards.get("open_cards", 0)
+                    
+                    if critical > 0:
+                        narrative.append(f"Crucially, there are {critical} critical job cards that require immediate attention, necessitating a maintenance stop.")
+                    elif open_cards > 0:
+                        narrative.append(f"While there are {open_cards} minor open job cards, no critical faults were detected, allowing for operational deployment.")
+                    else:
+                        narrative.append("The unit reports zero open job cards with all systems functioning optimally.")
+
+                    # 3. Usage & Mileage Context
+                    mileage = trainset.get("current_mileage", 0)
+                    max_mileage = trainset.get("max_mileage_before_maintenance", 50000)
+                    if mileage > 0:
+                        usage_percent = (mileage / max_mileage) * 100
+                        narrative.append(f"Current operational mileage is {mileage:,.0f} km ({usage_percent:.1f}% of utilization limit).")
+                    
+                    # 4. Branding/Commercial Context
+                    branding = trainset.get("branding", {})
+                    advertiser = branding.get("current_advertiser")
+                    if advertiser and advertiser != "None":
+                         priority = branding.get("priority", "Standard")
+                         narrative.append(f"Commercial priority is high due to an active '{advertiser}' ad-wrap ({priority} priority), supporting the induction decision.")
+
+                    # 5. Conclusion from Rules
+                    if reasons:
+                        narrative.append(f"Key automated selection factors: {'; '.join(reasons)}.")
+                    
+                    fallback_summary = " ".join(narrative)
+                        
+                    # Return partial explanation if AI fails
+                    return {
+                        "summary": fallback_summary,
+                        "bullets": reasons
+                    }
+                    
+        except Exception as e:
+            logger.error(f"Failed to generate Gemini explanation: {e}")
+            # Ensure we return a structuredfallback even on exception
+            reasons_text = "; ".join(generated_reasons.get('top_reasons', []))
+            return {
+                 "summary": f"Automated analysis unavailable. System assigned {decision} based on: {reasons_text}.",
+                 "bullets": generated_reasons.get('top_reasons', [])
+            }
+
+
+
+async def generate_comprehensive_explanation(trainset: Dict[str, Any], decision: str) -> Dict[str, Any]:
     """Generate comprehensive explanation for assignment decision"""
     
     # Calculate composite score
@@ -481,12 +686,24 @@ def generate_comprehensive_explanation(trainset: Dict[str, Any], decision: str) 
     # Generate SHAP values
     shap_values = generate_shap_values(trainset)
     
+    # Try to enhance with Gemini
+    ai_explanation = await _generate_gemini_explanation(trainset, decision, reasons_risks)
+    
+    final_reasons = reasons_risks["top_reasons"]
+    # If Gemini provided bullets, merge them or use them?
+    # User wants detailed explanations. Let's use Gemini bullets as top reasons if available,
+    # but ensure we don't lose critical rule-based info if Gemini hallucinates.
+    # Actually, the prompt gives Gemini the rule-based reasons. It should incorporate them.
+    if ai_explanation.get("bullets"):
+        final_reasons = ai_explanation["bullets"]
+        
     return {
         "score": score,
-        "top_reasons": reasons_risks["top_reasons"],
+        "top_reasons": final_reasons,
         "top_risks": reasons_risks["top_risks"],
         "violations": violations,
-        "shap_values": [feature.dict() for feature in shap_values]
+        "shap_values": [feature.dict() for feature in shap_values],
+        "summary": ai_explanation.get("summary") # Return summary separately if needed, or put in reasons[0]
     }
 
 

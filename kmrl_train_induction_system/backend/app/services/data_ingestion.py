@@ -459,6 +459,19 @@ class DataIngestionService:
             # Log the refresh trigger
             logger.info(f"Optimization refresh triggered by {source}")
             
+            # Trigger the actual optimization task via Celery to re-rank trains
+            # Import strictly inside method to avoid circular imports
+            try:
+                from app.celery_app import celery_app
+                task_sig = celery_app.signature("optimization.nightly_run")
+                # Use apply_async or send_task
+                celery_app.send_task("optimization.nightly_run")
+                logger.info(f"Queued 'optimization.nightly_run' task to update rankings.")
+            except ImportError:
+                logger.warning("Could not import celery_app to trigger optimization.")
+            except Exception as ce:
+                logger.error(f"Failed to trigger Celery task: {ce}")
+
         except Exception as e:
             logger.error(f"Failed to trigger optimization refresh: {e}")
             # Don't fail the upload if optimization refresh fails
@@ -509,6 +522,9 @@ class DataIngestionService:
             # 1. Store the raw result in a dedicated collection
             collection = await cloud_db_manager.get_collection("n8n_ingested_data")
             
+            logger.info(f"Processing N8N payload (apply_updates={apply_updates})")
+            logger.debug(f"N8N Payload content: {str(data)[:500]}...") # Log partial content
+
             doc = {
                 "data": data,
                 "ingested_at": datetime.now().isoformat(),
@@ -517,31 +533,58 @@ class DataIngestionService:
             }
             
             result = await collection.insert_one(doc)
+            logger.info(f"Stored raw N8N data with ID: {result.inserted_id}")
             
             # 2. Router Logic: Process 'updates' if present AND apply_updates is True
             updates_processed = 0
             errors = []
             
             if apply_updates:
-                # Handle n8n bulk output format: [{"output": [...]}]
+                # Handle n8n bulk output format: [{"output": [...]}] OR direct list of objects
                 if isinstance(data, list):
-                    logger.info("Detected list input (n8n bulk format)")
+                    logger.info("Detected list input")
                     for item in data:
-                        if isinstance(item, dict) and "output" in item and isinstance(item["output"], list):
-                            logger.info(f"Processing bulk output with {len(item['output'])} items")
-                            for trainset_data in item["output"]:
+                        if isinstance(item, dict):
+                            # Case 1: Standard N8N bulk wrapper
+                            if "output" in item and isinstance(item["output"], list):
+                                logger.info(f"Processing bulk output wrapper with {len(item['output'])} items")
+                                for trainset_data in item["output"]:
+                                    try:
+                                        await self._process_bulk_trainset_data(trainset_data)
+                                        updates_processed += 1
+                                    except Exception as e:
+                                        logger.error(f"Failed to process bulk item: {e}")
+                                        errors.append(str(e))
+                            # Case 2: Direct trainset object in list
+                            elif "trainset_id" in item:
+                                logger.info(f"Processing direct trainset object: {item.get('trainset_id')}")
                                 try:
-                                    await self._process_bulk_trainset_data(trainset_data)
+                                    await self._process_bulk_trainset_data(item)
                                     updates_processed += 1
                                 except Exception as e:
-                                    logger.error(f"Failed to process bulk item: {e}")
+                                    logger.error(f"Failed to process direct item: {e}")
                                     errors.append(str(e))
+                            else:
+                                logger.warning("Skipped list item: Missing 'output' wrapper or 'trainset_id'")
                 
                 # Handle nested body format: {"body": {"output": [...]}}
                 elif isinstance(data, dict) and "body" in data and isinstance(data["body"], dict) and "output" in data["body"] and isinstance(data["body"]["output"], list):
                     logger.info("Detected nested body input (n8n bulk format)")
                     items = data["body"]["output"]
                     logger.info(f"Processing nested bulk output with {len(items)} items")
+                    for trainset_data in items:
+                        try:
+                            await self._process_bulk_trainset_data(trainset_data)
+                            updates_processed += 1
+                        except Exception as e:
+                            logger.error(f"Failed to process bulk item: {e}")
+                            errors.append(str(e))
+
+                # Handle single dict wrapper: {"output": [...]} (This was the missing case!)
+                elif isinstance(data, dict) and "output" in data and isinstance(data["output"], list):
+                    logger.info("Detected single dict wrapper with 'output' key")
+                    items = data["output"]
+                    logger.info(f"Processing output wrapper with {len(items)} items")
                     for trainset_data in items:
                         try:
                             await self._process_bulk_trainset_data(trainset_data)
@@ -593,13 +636,20 @@ class DataIngestionService:
                 )
 
             # Record event
-            await record_uns_event(
-                source="n8n_webhook",
-                target_collection="n8n_ingested_data",
-                raw_payload={"id": str(result.inserted_id), "updates_count": updates_processed},
-                normalized_docs=None  # Already inserted manually above
-            )
+            try:
+                await record_uns_event(
+                    source="n8n_webhook",
+                    target_collection="n8n_ingested_data",
+                    raw_payload={"id": str(result.inserted_id), "updates_count": updates_processed},
+                    normalized_docs=None  # Already inserted manually above
+                )
+            except Exception as e:
+                logger.warning(f"Failed to record UNS event: {e}")
             
+            logger.info(f"N8N Processing Complete: ID={result.inserted_id}, Updates={updates_processed}, Errors={len(errors)}")
+            if len(errors) > 0:
+                logger.error(f"N8N Processing Errors: {errors}")
+
             return {
                 "status": "stored_and_processed",
                 "id": str(result.inserted_id),

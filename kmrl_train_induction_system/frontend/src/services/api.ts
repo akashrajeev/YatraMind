@@ -112,6 +112,8 @@ export const trainsetsApi = {
   getFitness: (id: string) => api.get(`/v1/trainsets/${id}/fitness`),
   getDetails: (id: string) => api.get(`/v1/trainsets/${id}/details`),
   getReviews: () => api.get('/v1/trainsets/reviews/all'),
+  generateExplanation: (id: string, data: { decision: string, top_reasons: string[], top_risks: string[] }) =>
+    api.post(`/v1/trainsets/${id}/explain`, data),
 };
 
 // Data Ingestion API
@@ -192,6 +194,8 @@ export const authApi = {
   refreshToken: () => api.post('/v1/auth/refresh-token'),
   changePassword: (data: { current_password: string; new_password: string }) =>
     api.post('/v1/auth/change-password', data),
+  verifyEmail: (data: { user_id: string; otp: string }) =>
+    api.post('/v1/auth/verify-email', data),
 };
 
 // Add auth token to requests

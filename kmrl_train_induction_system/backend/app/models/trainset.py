@@ -101,7 +101,9 @@ class InductionDecision(BaseModel):
     top_reasons: List[str] = Field(default_factory=list, description="Top 3 contributing positive reasons")
     top_risks: List[str] = Field(default_factory=list, description="Top 3 negative reasons")
     violations: List[str] = Field(default_factory=list, description="List of rule violations if assignment chosen despite violation")
+
     shap_values: List[ShapFeature] = Field(default_factory=list, description="Top 5 features and their impact if ML used")
+    summary: Optional[str] = Field(default=None, description="Detailed narrative explanation of the decision")
 
 
 # Stabling Geometry Models
@@ -182,3 +184,18 @@ class StablingGeometryResponse(BaseModel):
     service_requirement: Optional[Dict[str, Any]] = None
     induction_summary: Optional[Dict[str, Any]] = None
     stabling_summary: Optional[Dict[str, Any]] = None
+
+
+class ReviewCreate(BaseModel):
+    rating: int = Field(..., ge=1, le=5, description="Rating from 1 to 5")
+    comment: str = Field(..., min_length=1, max_length=1000, description="Review comment")
+
+
+class TrainsetReview(BaseModel):
+    id: Optional[str] = Field(None, alias="_id")
+    trainset_id: str
+    user_id: str
+    username: str
+    rating: int
+    comment: str
+    created_at: datetime = Field(default_factory=datetime.utcnow)

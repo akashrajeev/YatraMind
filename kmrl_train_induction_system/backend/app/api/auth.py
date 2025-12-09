@@ -3,7 +3,7 @@ from fastapi import APIRouter, HTTPException, Depends, status
 from datetime import timedelta
 import logging
 
-from app.models.user import User, UserCreate, UserLogin, Token, PasswordChange
+from app.models.user import User, UserCreate, UserLogin, Token, PasswordChange, UserRole, VerifyOTP
 from app.services.auth_service import auth_service, get_current_user
 from app.security import require_api_key
 
@@ -14,32 +14,29 @@ router = APIRouter()
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
-@router.post("/register", response_model=User)
+# Import email verification service
+from app.services.email_verification_service import email_verification_service
+from typing import Union
+
+@router.post("/register", response_model=Union[User, dict])
 async def register(user_data: UserCreate):
     """Register a new user"""
     try:
-        # Check if username already exists
-        existing_user = await auth_service.authenticate_user(user_data.username, "dummy") # This is not efficient, better to have get_user_by_username
-        # Actually authenticate_user verifies password.
-        # Let's just try to create and handle duplicate error or check manually
+        # Check if username already exists handled by DB constraints or create_user
         
-        # We need to check if user exists. 
-        # Since we don't have get_user_by_username exposed publicly without password check in auth_service (yet),
-        # we will rely on create_user to fail or we should add it.
-        # For now, let's assume create_user handles it or we catch the error.
-        # But wait, create_user in auth_service doesn't check.
+        # Determine if email verification is needed
+        needs_verification = user_data.role in [
+            UserRole.STATION_SUPERVISOR, 
+            UserRole.SUPERVISOR, 
+            UserRole.METRO_DRIVER,
+            UserRole.MAINTENANCE_HEAD,
+            UserRole.BRANDING_DEALER
+        ]
         
-        # Let's add a check here using a direct DB call or add method to service.
-        # Direct DB call for now to avoid another round trip to auth_service file editing if possible, 
-        # but clean architecture prefers service.
-        # I'll add the check inside the try block by calling a new helper or just proceeding.
-        
-        # Actually, let's just implement it cleanly.
-        # I will rely on the fact that I can't easily check without modifying service again.
-        # But I can use `auth_service.authenticate_user`? No.
-        
-        # I will modify auth_service to add get_user_by_username in the next step if needed.
-        # For now, I'll just proceed with creation.
+        # Determine initial email_verified status
+        # If needs verification -> False
+        # Else -> True (maintain existing behavior for others)
+        email_verified = not needs_verification
         
         user = await auth_service.create_user(
             username=user_data.username,
@@ -47,16 +44,53 @@ async def register(user_data: UserCreate):
             name=user_data.name,
             role=user_data.role,
             email=user_data.email,
-            permissions=user_data.permissions
+            permissions=user_data.permissions,
+            email_verified=email_verified
         )
+        
+        if needs_verification and user.email:
+            # Generate token and send email
+            token = await email_verification_service.create_verification_token(user.id)
+            await email_verification_service.send_verification_email(user.email, user.id, token)
+            return {
+                "message": "Account created. A verification code has been sent to your email. Please verify to continue.",
+                "id": str(user.id),
+                "email": user.email
+            }
+            
         return user
         
     except Exception as e:
         logger.error(f"Error registering user: {e}")
+        # Return the actual error message for debugging
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Username already exists or registration failed"
+            detail=f"Registration failed: {str(e)}"
         )
+
+
+@router.post("/verify-email")
+async def verify_email(verification_data: VerifyOTP):
+    """Verify user email with OTP"""
+    # Verify token
+    is_valid = await email_verification_service.verify_token(verification_data.user_id, verification_data.otp)
+    
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired OTP"
+        )
+        
+    # Mark email as verified
+    success = await auth_service.mark_email_verified(verification_data.user_id)
+    
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update user verification status"
+        )
+        
+    return {"message": "Email verified successfully. Your account is now pending admin approval."}
 
 
 @router.post("/login", response_model=Token)
@@ -83,8 +117,25 @@ async def login(
                 detail="Inactive user account"
             )
             
-        if not user.is_approved:
-            raise HTTPException(
+        # Email Verification Check for specific roles
+        if user.role in [UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR, UserRole.METRO_DRIVER, UserRole.MAINTENANCE_HEAD, UserRole.BRANDING_DEALER]:
+            if not user.email_verified:
+                 raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Please verify your email before logging in."
+                )
+                
+            if not user.is_approved:
+                raise HTTPException(
+                    status_code=status.HTTP_403_FORBIDDEN,
+                    detail="Your account is pending admin approval."
+                )
+        elif not user.is_approved and not (user.role == UserRole.PASSENGER): 
+             # Keep existing check ("Account pending approval") for other roles if they require approval
+             # Note: logic in create_user sets is_approved=True for Passenger.
+             # Existing logic in login was: if not user.is_approved: raise 403.
+             # We should preserve that for others.
+             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Account pending approval. Please contact the administrator."
             )

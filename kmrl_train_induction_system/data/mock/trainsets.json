@@ -4,45 +4,45 @@
     "manufacturer": "Alstom",
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2015,
-    "status": "ACTIVE",
-    "current_mileage": 28174,
+    "status": "STANDBY",
+    "current_mileage": 46813,
     "max_mileage_before_maintenance": 50000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-06-20T02:03:11.584026",
+        "expiry_date": "2026-08-01T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_2135"
+        "certificate_id": "GEN_9286"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-06-06T02:03:11.584026",
+        "expiry_date": "2026-10-13T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_3590"
+        "certificate_id": "GEN_8175"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-03-31T02:03:11.584884",
+        "expiry_date": "2026-05-18T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_2824"
+        "certificate_id": "GEN_7207"
       }
     },
     "job_cards": {
-      "open_cards": 2,
+      "open_cards": 0,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Kerala Tourism",
-      "contract_expiry": "2026-03-23T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 12732.629421655824,
-      "branding_status": "OPTIONAL"
+      "current_advertiser": "Cochin International Airport",
+      "contract_expiry": "2026-05-02T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 10739.546326087335,
+      "branding_status": "REQUIRED"
     },
     "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_02"
+      "depot": "Petta",
+      "bay": "Petta_BAY_01"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-002",
@@ -50,116 +50,71 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2015,
     "status": "ACTIVE",
-    "current_mileage": 16756,
+    "current_mileage": 32775,
     "max_mileage_before_maintenance": 50000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-07-27T02:03:11.584884",
+        "expiry_date": "2026-11-21T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_1162"
+        "certificate_id": "GEN_4868"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-03-07T02:03:11.584884",
+        "expiry_date": "2026-05-04T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8488"
+        "certificate_id": "GEN_7006"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-02-17T02:03:11.584884",
+        "expiry_date": "2026-11-08T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9772"
+        "certificate_id": "GEN_1028"
       }
     },
     "job_cards": {
-      "open_cards": 0,
+      "open_cards": 1,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Kerala Tourism",
-      "contract_expiry": "2026-01-21T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 5707.960722921045,
-      "branding_status": "OPTIONAL"
+      "current_advertiser": "Federal Bank",
+      "contract_expiry": "2026-03-21T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 11486.655924218518,
+      "branding_status": "REQUIRED"
     },
     "current_location": {
       "depot": "Petta",
-      "bay": "Petta_BAY_05"
+      "bay": "Petta_BAY_06"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-003",
     "manufacturer": "Alstom",
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2015,
-    "status": "STANDBY",
-    "current_mileage": 19669,
-    "max_mileage_before_maintenance": 52000,
-    "fitness_certificates": {
-      "rolling_stock": {
-        "status": "VALID",
-        "expiry_date": "2026-08-26T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_6516"
-      },
-      "signalling": {
-        "status": "VALID",
-        "expiry_date": "2026-05-13T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_7196"
-      },
-      "telecom": {
-        "status": "VALID",
-        "expiry_date": "2026-08-15T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_3462"
-      }
-    },
-    "job_cards": {
-      "open_cards": 2,
-      "critical_cards": 0
-    },
-    "branding": {
-      "current_advertiser": "MRF Tyres",
-      "contract_expiry": "2026-04-13T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 8905.358692024227,
-      "branding_status": "OPTIONAL"
-    },
-    "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_02"
-    },
-    "last_updated": "2025-11-27T02:03:11.584884"
-  },
-  {
-    "trainset_id": "T-004",
-    "manufacturer": "Alstom",
-    "model": "Kochi Metro Coach",
-    "year_of_manufacture": 2015,
     "status": "ACTIVE",
-    "current_mileage": 50379,
-    "max_mileage_before_maintenance": 52000,
+    "current_mileage": 22908,
+    "max_mileage_before_maintenance": 50000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-09-18T02:03:11.584884",
+        "expiry_date": "2026-06-12T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8897"
+        "certificate_id": "GEN_3828"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-09-21T02:03:11.584884",
+        "expiry_date": "2026-06-11T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_2244"
+        "certificate_id": "GEN_8485"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-02-26T02:03:11.584884",
+        "expiry_date": "2026-09-23T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9698"
+        "certificate_id": "GEN_9535"
       }
     },
     "job_cards": {
@@ -168,16 +123,61 @@
     },
     "branding": {
       "current_advertiser": "Cochin International Airport",
-      "contract_expiry": "2026-03-02T02:03:11.584884",
-      "priority": "HIGH",
-      "revenue_per_day": 5173.166925342154,
-      "branding_status": "REQUIRED"
+      "contract_expiry": "2026-05-01T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 10719.497451148893,
+      "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Aluva",
-      "bay": "Aluva_BAY_03"
+      "bay": "Aluva_BAY_06"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
+  },
+  {
+    "trainset_id": "T-004",
+    "manufacturer": "Alstom",
+    "model": "Kochi Metro Coach",
+    "year_of_manufacture": 2015,
+    "status": "STANDBY",
+    "current_mileage": 30457,
+    "max_mileage_before_maintenance": 52000,
+    "fitness_certificates": {
+      "rolling_stock": {
+        "status": "VALID",
+        "expiry_date": "2026-09-06T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_3007"
+      },
+      "signalling": {
+        "status": "VALID",
+        "expiry_date": "2026-12-05T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_8056"
+      },
+      "telecom": {
+        "status": "VALID",
+        "expiry_date": "2026-09-16T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_8303"
+      }
+    },
+    "job_cards": {
+      "open_cards": 0,
+      "critical_cards": 0
+    },
+    "branding": {
+      "current_advertiser": "Cochin International Airport",
+      "contract_expiry": "2026-01-26T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 8536.62958238105,
+      "branding_status": "OPTIONAL"
+    },
+    "current_location": {
+      "depot": "Petta",
+      "bay": "Petta_BAY_02"
+    },
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-005",
@@ -185,26 +185,26 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2015,
     "status": "ACTIVE",
-    "current_mileage": 28165,
+    "current_mileage": 14343,
     "max_mileage_before_maintenance": 55000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-03-26T02:03:11.584884",
+        "expiry_date": "2026-05-10T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9329"
+        "certificate_id": "GEN_9331"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-03-22T02:03:11.584884",
+        "expiry_date": "2026-09-05T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8902"
+        "certificate_id": "GEN_8826"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-02-24T02:03:11.584884",
+        "expiry_date": "2026-03-29T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8599"
+        "certificate_id": "GEN_6049"
       }
     },
     "job_cards": {
@@ -212,17 +212,17 @@
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Kerala Tourism",
-      "contract_expiry": "2026-05-11T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 11406.036172505468,
+      "current_advertiser": "MRF Tyres",
+      "contract_expiry": "2026-04-28T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 11009.068533197249,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Aluva",
-      "bay": "Aluva_BAY_05"
+      "bay": "Aluva_BAY_01"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-006",
@@ -230,26 +230,71 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2016,
     "status": "STANDBY",
-    "current_mileage": 24809,
+    "current_mileage": 48561,
     "max_mileage_before_maintenance": 52000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-08-13T02:03:11.584884",
+        "expiry_date": "2026-05-28T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_4958"
+        "certificate_id": "GEN_2816"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-02-18T02:03:11.584884",
+        "expiry_date": "2026-05-25T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_2526"
+        "certificate_id": "GEN_3788"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-04-10T02:03:11.584884",
+        "expiry_date": "2026-08-23T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_2757"
+        "certificate_id": "GEN_3266"
+      }
+    },
+    "job_cards": {
+      "open_cards": 1,
+      "critical_cards": 0
+    },
+    "branding": {
+      "current_advertiser": "Cochin International Airport",
+      "contract_expiry": "2026-03-27T16:57:11.035080",
+      "priority": "LOW",
+      "revenue_per_day": 10663.943043007428,
+      "branding_status": "OPTIONAL"
+    },
+    "current_location": {
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_03"
+    },
+    "last_updated": "2025-12-09T16:57:11.035080"
+  },
+  {
+    "trainset_id": "T-007",
+    "manufacturer": "Alstom",
+    "model": "Kochi Metro Coach",
+    "year_of_manufacture": 2016,
+    "status": "STANDBY",
+    "current_mileage": 52010,
+    "max_mileage_before_maintenance": 55000,
+    "fitness_certificates": {
+      "rolling_stock": {
+        "status": "VALID",
+        "expiry_date": "2026-06-25T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_7142"
+      },
+      "signalling": {
+        "status": "VALID",
+        "expiry_date": "2026-02-28T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_2019"
+      },
+      "telecom": {
+        "status": "VALID",
+        "expiry_date": "2026-08-06T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_8682"
       }
     },
     "job_cards": {
@@ -258,61 +303,16 @@
     },
     "branding": {
       "current_advertiser": "MRF Tyres",
-      "contract_expiry": "2026-04-14T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 7083.237331422919,
+      "contract_expiry": "2026-03-08T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 10338.630811078307,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Aluva",
-      "bay": "Aluva_BAY_03"
+      "bay": "Aluva_BAY_01"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
-  },
-  {
-    "trainset_id": "T-007",
-    "manufacturer": "Alstom",
-    "model": "Kochi Metro Coach",
-    "year_of_manufacture": 2016,
-    "status": "ACTIVE",
-    "current_mileage": 13347,
-    "max_mileage_before_maintenance": 50000,
-    "fitness_certificates": {
-      "rolling_stock": {
-        "status": "VALID",
-        "expiry_date": "2026-04-28T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_5931"
-      },
-      "signalling": {
-        "status": "VALID",
-        "expiry_date": "2026-03-24T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_6505"
-      },
-      "telecom": {
-        "status": "VALID",
-        "expiry_date": "2026-04-02T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_8438"
-      }
-    },
-    "job_cards": {
-      "open_cards": 0,
-      "critical_cards": 0
-    },
-    "branding": {
-      "current_advertiser": "Kalyan Jewellers",
-      "contract_expiry": "2025-12-31T02:03:11.584884",
-      "priority": "LOW",
-      "revenue_per_day": 13041.722411631146,
-      "branding_status": "OPTIONAL"
-    },
-    "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_07"
-    },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-008",
@@ -320,71 +320,71 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2016,
     "status": "ACTIVE",
-    "current_mileage": 34687,
-    "max_mileage_before_maintenance": 50000,
+    "current_mileage": 51288,
+    "max_mileage_before_maintenance": 55000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-06-29T02:03:11.584884",
+        "expiry_date": "2026-11-25T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_1061"
+        "certificate_id": "GEN_8565"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-02-28T02:03:11.584884",
+        "expiry_date": "2026-09-22T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_1770"
+        "certificate_id": "GEN_2761"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-04-30T02:03:11.584884",
+        "expiry_date": "2026-02-14T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_3485"
+        "certificate_id": "GEN_3848"
       }
     },
     "job_cards": {
-      "open_cards": 0,
+      "open_cards": 2,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "None",
-      "contract_expiry": "2026-05-26T02:03:11.584884",
-      "priority": "LOW",
-      "revenue_per_day": 11971.116390134492,
+      "current_advertiser": "Kalyan Jewellers",
+      "contract_expiry": "2026-02-08T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 13045.431394754454,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Petta",
-      "bay": "Petta_BAY_05"
+      "bay": "Petta_BAY_04"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-009",
     "manufacturer": "Alstom",
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2016,
-    "status": "STANDBY",
-    "current_mileage": 19276,
-    "max_mileage_before_maintenance": 55000,
+    "status": "ACTIVE",
+    "current_mileage": 23772,
+    "max_mileage_before_maintenance": 52000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-06-09T02:03:11.584884",
+        "expiry_date": "2026-07-16T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9838"
+        "certificate_id": "GEN_2050"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-09-21T02:03:11.584884",
+        "expiry_date": "2026-07-24T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8741"
+        "certificate_id": "GEN_1250"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-11-07T02:03:11.584884",
+        "expiry_date": "2026-10-05T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8143"
+        "certificate_id": "GEN_9777"
       }
     },
     "job_cards": {
@@ -392,17 +392,17 @@
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "None",
-      "contract_expiry": "2026-01-17T02:03:11.584884",
-      "priority": "HIGH",
-      "revenue_per_day": 8195.335664101149,
+      "current_advertiser": "Cochin International Airport",
+      "contract_expiry": "2026-03-07T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 12945.90313646931,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Aluva",
-      "bay": "Aluva_BAY_04"
+      "bay": "Aluva_BAY_08"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-010",
@@ -410,44 +410,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2016,
     "status": "STANDBY",
-    "current_mileage": 29480,
-    "max_mileage_before_maintenance": 52000,
+    "current_mileage": 34573,
+    "max_mileage_before_maintenance": 55000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-11-07T02:03:11.584884",
+        "expiry_date": "2026-08-04T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_7659"
+        "certificate_id": "GEN_8294"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-09-26T02:03:11.584884",
+        "expiry_date": "2026-11-09T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_5071"
+        "certificate_id": "GEN_2342"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-06-28T02:03:11.584884",
+        "expiry_date": "2026-09-08T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_1525"
+        "certificate_id": "GEN_7042"
       }
     },
     "job_cards": {
-      "open_cards": 2,
+      "open_cards": 0,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Kalyan Jewellers",
-      "contract_expiry": "2026-02-27T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 10241.037786713321,
-      "branding_status": "OPTIONAL"
+      "current_advertiser": "Kerala Tourism",
+      "contract_expiry": "2026-04-21T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 12835.762049193192,
+      "branding_status": "REQUIRED"
     },
     "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_06"
+      "depot": "Petta",
+      "bay": "Petta_BAY_03"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-011",
@@ -455,44 +455,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2017,
     "status": "STANDBY",
-    "current_mileage": 19918,
-    "max_mileage_before_maintenance": 50000,
+    "current_mileage": 49189,
+    "max_mileage_before_maintenance": 52000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-05-25T02:03:11.584884",
+        "expiry_date": "2026-07-31T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8986"
+        "certificate_id": "GEN_4632"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-06-13T02:03:11.584884",
+        "expiry_date": "2026-07-17T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_5411"
+        "certificate_id": "GEN_3691"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-06-19T02:03:11.584884",
+        "expiry_date": "2026-10-27T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9972"
+        "certificate_id": "GEN_9744"
       }
     },
     "job_cards": {
-      "open_cards": 0,
+      "open_cards": 1,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Kerala Tourism",
-      "contract_expiry": "2026-04-25T02:03:11.584884",
-      "priority": "LOW",
-      "revenue_per_day": 12413.636899644724,
+      "current_advertiser": "Cochin International Airport",
+      "contract_expiry": "2026-04-18T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 8071.19294994172,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
-      "depot": "Petta",
-      "bay": "Petta_BAY_06"
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_03"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-012",
@@ -500,26 +500,26 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2017,
     "status": "ACTIVE",
-    "current_mileage": 13052,
-    "max_mileage_before_maintenance": 50000,
+    "current_mileage": 25791,
+    "max_mileage_before_maintenance": 52000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-03-26T02:03:11.584884",
+        "expiry_date": "2026-05-08T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_7982"
+        "certificate_id": "GEN_9676"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-11-12T02:03:11.584884",
+        "expiry_date": "2026-04-17T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_2375"
+        "certificate_id": "GEN_4492"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-05-01T02:03:11.584884",
+        "expiry_date": "2026-03-11T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9243"
+        "certificate_id": "GEN_4210"
       }
     },
     "job_cards": {
@@ -527,17 +527,17 @@
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "MRF Tyres",
-      "contract_expiry": "2026-03-09T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 9851.25711981715,
+      "current_advertiser": "None",
+      "contract_expiry": "2026-06-02T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 12217.071382287031,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_06"
+      "depot": "Petta",
+      "bay": "Petta_BAY_03"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-013",
@@ -545,116 +545,26 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2017,
     "status": "STANDBY",
-    "current_mileage": 49269,
+    "current_mileage": 49001,
     "max_mileage_before_maintenance": 55000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-07-19T02:03:11.584884",
+        "expiry_date": "2026-11-22T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_3578"
+        "certificate_id": "GEN_6078"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-04-27T02:03:11.584884",
+        "expiry_date": "2026-08-28T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_6447"
+        "certificate_id": "GEN_9154"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-02-04T02:03:11.584884",
+        "expiry_date": "2026-04-13T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_7989"
-      }
-    },
-    "job_cards": {
-      "open_cards": 1,
-      "critical_cards": 0
-    },
-    "branding": {
-      "current_advertiser": "MRF Tyres",
-      "contract_expiry": "2025-12-28T02:03:11.584884",
-      "priority": "HIGH",
-      "revenue_per_day": 9684.951451359346,
-      "branding_status": "REQUIRED"
-    },
-    "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_02"
-    },
-    "last_updated": "2025-11-27T02:03:11.584884"
-  },
-  {
-    "trainset_id": "T-014",
-    "manufacturer": "Alstom",
-    "model": "Kochi Metro Coach",
-    "year_of_manufacture": 2017,
-    "status": "STANDBY",
-    "current_mileage": 25210,
-    "max_mileage_before_maintenance": 52000,
-    "fitness_certificates": {
-      "rolling_stock": {
-        "status": "VALID",
-        "expiry_date": "2026-04-02T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_8857"
-      },
-      "signalling": {
-        "status": "VALID",
-        "expiry_date": "2026-04-10T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_8752"
-      },
-      "telecom": {
-        "status": "VALID",
-        "expiry_date": "2026-02-23T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_4517"
-      }
-    },
-    "job_cards": {
-      "open_cards": 2,
-      "critical_cards": 0
-    },
-    "branding": {
-      "current_advertiser": "Federal Bank",
-      "contract_expiry": "2026-04-10T02:03:11.584884",
-      "priority": "HIGH",
-      "revenue_per_day": 13716.703064670199,
-      "branding_status": "REQUIRED"
-    },
-    "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_05"
-    },
-    "last_updated": "2025-11-27T02:03:11.584884"
-  },
-  {
-    "trainset_id": "T-015",
-    "manufacturer": "Alstom",
-    "model": "Kochi Metro Coach",
-    "year_of_manufacture": 2017,
-    "status": "ACTIVE",
-    "current_mileage": 49954,
-    "max_mileage_before_maintenance": 55000,
-    "fitness_certificates": {
-      "rolling_stock": {
-        "status": "VALID",
-        "expiry_date": "2026-03-12T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_3017"
-      },
-      "signalling": {
-        "status": "VALID",
-        "expiry_date": "2026-07-25T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_2921"
-      },
-      "telecom": {
-        "status": "VALID",
-        "expiry_date": "2026-03-05T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_5540"
+        "certificate_id": "GEN_1709"
       }
     },
     "job_cards": {
@@ -662,17 +572,107 @@
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "MRF Tyres",
-      "contract_expiry": "2026-02-08T02:03:11.584884",
+      "current_advertiser": "Kalyan Jewellers",
+      "contract_expiry": "2026-03-20T16:57:11.035080",
       "priority": "HIGH",
-      "revenue_per_day": 8014.234135018413,
+      "revenue_per_day": 9269.268974955168,
+      "branding_status": "REQUIRED"
+    },
+    "current_location": {
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_03"
+    },
+    "last_updated": "2025-12-09T16:57:11.035080"
+  },
+  {
+    "trainset_id": "T-014",
+    "manufacturer": "Alstom",
+    "model": "Kochi Metro Coach",
+    "year_of_manufacture": 2017,
+    "status": "ACTIVE",
+    "current_mileage": 32045,
+    "max_mileage_before_maintenance": 55000,
+    "fitness_certificates": {
+      "rolling_stock": {
+        "status": "VALID",
+        "expiry_date": "2026-11-26T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_3423"
+      },
+      "signalling": {
+        "status": "VALID",
+        "expiry_date": "2026-09-01T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_8737"
+      },
+      "telecom": {
+        "status": "VALID",
+        "expiry_date": "2026-08-22T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_3885"
+      }
+    },
+    "job_cards": {
+      "open_cards": 2,
+      "critical_cards": 0
+    },
+    "branding": {
+      "current_advertiser": "MRF Tyres",
+      "contract_expiry": "2026-03-09T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 5553.125439362155,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Petta",
-      "bay": "Petta_BAY_03"
+      "bay": "Petta_BAY_02"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
+  },
+  {
+    "trainset_id": "T-015",
+    "manufacturer": "Alstom",
+    "model": "Kochi Metro Coach",
+    "year_of_manufacture": 2017,
+    "status": "ACTIVE",
+    "current_mileage": 31585,
+    "max_mileage_before_maintenance": 52000,
+    "fitness_certificates": {
+      "rolling_stock": {
+        "status": "VALID",
+        "expiry_date": "2026-06-29T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_5116"
+      },
+      "signalling": {
+        "status": "VALID",
+        "expiry_date": "2026-03-15T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_3235"
+      },
+      "telecom": {
+        "status": "VALID",
+        "expiry_date": "2026-11-18T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_3133"
+      }
+    },
+    "job_cards": {
+      "open_cards": 1,
+      "critical_cards": 0
+    },
+    "branding": {
+      "current_advertiser": "Cochin International Airport",
+      "contract_expiry": "2026-03-30T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 13275.232452625829,
+      "branding_status": "OPTIONAL"
+    },
+    "current_location": {
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_05"
+    },
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-016",
@@ -680,26 +680,26 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2018,
     "status": "STANDBY",
-    "current_mileage": 39525,
-    "max_mileage_before_maintenance": 50000,
+    "current_mileage": 32129,
+    "max_mileage_before_maintenance": 55000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-11-16T02:03:11.584884",
+        "expiry_date": "2026-11-03T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9708"
+        "certificate_id": "GEN_5289"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-02-11T02:03:11.584884",
+        "expiry_date": "2026-07-19T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_1550"
+        "certificate_id": "GEN_9322"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-02-15T02:03:11.584884",
+        "expiry_date": "2026-08-27T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_6927"
+        "certificate_id": "GEN_5056"
       }
     },
     "job_cards": {
@@ -707,17 +707,17 @@
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Kerala Tourism",
-      "contract_expiry": "2026-01-28T02:03:11.584884",
-      "priority": "HIGH",
-      "revenue_per_day": 11832.16778499157,
+      "current_advertiser": "Cochin International Airport",
+      "contract_expiry": "2026-01-28T16:57:11.035080",
+      "priority": "LOW",
+      "revenue_per_day": 7814.687337805937,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Petta",
-      "bay": "Petta_BAY_04"
+      "bay": "Petta_BAY_01"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-017",
@@ -725,44 +725,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2018,
     "status": "STANDBY",
-    "current_mileage": 21668,
-    "max_mileage_before_maintenance": 52000,
+    "current_mileage": 36770,
+    "max_mileage_before_maintenance": 50000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-04-29T02:03:11.584884",
+        "expiry_date": "2026-04-06T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_3593"
+        "certificate_id": "GEN_7917"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-04-12T02:03:11.584884",
+        "expiry_date": "2026-05-07T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8856"
+        "certificate_id": "GEN_3348"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-10-04T02:03:11.584884",
+        "expiry_date": "2026-06-18T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_1782"
+        "certificate_id": "GEN_1480"
       }
     },
     "job_cards": {
-      "open_cards": 4,
+      "open_cards": 3,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Kerala Tourism",
-      "contract_expiry": "2026-01-24T02:03:11.584884",
-      "priority": "LOW",
-      "revenue_per_day": 5435.828132597319,
+      "current_advertiser": "Cochin International Airport",
+      "contract_expiry": "2026-02-28T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 11604.861592008963,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
-      "depot": "Petta",
-      "bay": "Petta_BAY_03"
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_05"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-018",
@@ -770,44 +770,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2018,
     "status": "STANDBY",
-    "current_mileage": 21547,
+    "current_mileage": 41373,
     "max_mileage_before_maintenance": 52000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-06-09T02:03:11.584884",
+        "expiry_date": "2026-04-02T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9978"
+        "certificate_id": "GEN_4649"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-02-13T02:03:11.584884",
+        "expiry_date": "2026-08-18T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_5023"
+        "certificate_id": "GEN_5702"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-11-16T02:03:11.584884",
+        "expiry_date": "2026-04-06T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8670"
+        "certificate_id": "GEN_7709"
       }
     },
     "job_cards": {
-      "open_cards": 3,
+      "open_cards": 5,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Cochin International Airport",
-      "contract_expiry": "2026-04-10T02:03:11.584884",
+      "current_advertiser": "MRF Tyres",
+      "contract_expiry": "2026-01-16T16:57:11.035080",
       "priority": "LOW",
-      "revenue_per_day": 5046.473958019154,
+      "revenue_per_day": 10261.359635123194,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_01"
+      "depot": "Petta",
+      "bay": "Petta_BAY_04"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-019",
@@ -815,44 +815,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2018,
     "status": "STANDBY",
-    "current_mileage": 32063,
-    "max_mileage_before_maintenance": 52000,
+    "current_mileage": 31702,
+    "max_mileage_before_maintenance": 50000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-05-04T02:03:11.584884",
+        "expiry_date": "2026-04-15T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_4364"
+        "certificate_id": "GEN_7620"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-07-09T02:03:11.584884",
+        "expiry_date": "2026-09-26T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9632"
+        "certificate_id": "GEN_6727"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-07-17T02:03:11.584884",
+        "expiry_date": "2026-06-26T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_7810"
+        "certificate_id": "GEN_1694"
       }
     },
     "job_cards": {
-      "open_cards": 5,
+      "open_cards": 4,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "MRF Tyres",
-      "contract_expiry": "2026-02-24T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 14985.35855226461,
+      "current_advertiser": "None",
+      "contract_expiry": "2026-05-06T16:57:11.035080",
+      "priority": "LOW",
+      "revenue_per_day": 5560.8525231159165,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Aluva",
-      "bay": "Aluva_BAY_03"
+      "bay": "Aluva_BAY_02"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-020",
@@ -860,44 +860,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2018,
     "status": "STANDBY",
-    "current_mileage": 32417,
-    "max_mileage_before_maintenance": 52000,
+    "current_mileage": 26483,
+    "max_mileage_before_maintenance": 50000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-07-16T02:03:11.584884",
+        "expiry_date": "2026-04-20T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_9082"
+        "certificate_id": "GEN_2217"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-04-10T02:03:11.584884",
+        "expiry_date": "2026-02-24T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_3606"
+        "certificate_id": "GEN_1558"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-11-16T02:03:11.584884",
+        "expiry_date": "2026-02-22T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_7209"
+        "certificate_id": "GEN_7897"
       }
     },
     "job_cards": {
-      "open_cards": 5,
+      "open_cards": 4,
       "critical_cards": 0
     },
     "branding": {
-      "current_advertiser": "Kalyan Jewellers",
-      "contract_expiry": "2026-02-19T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 10520.073078719168,
+      "current_advertiser": "None",
+      "contract_expiry": "2026-03-13T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 6006.899931846285,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Petta",
       "bay": "Petta_BAY_04"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-021",
@@ -905,44 +905,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2019,
     "status": "MAINTENANCE",
-    "current_mileage": 39200,
-    "max_mileage_before_maintenance": 50000,
+    "current_mileage": 52918,
+    "max_mileage_before_maintenance": 55000,
     "fitness_certificates": {
       "rolling_stock": {
         "status": "VALID",
-        "expiry_date": "2026-03-03T02:03:11.584884",
+        "expiry_date": "2026-07-20T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_2588"
+        "certificate_id": "GEN_3775"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-07-08T02:03:11.584884",
+        "expiry_date": "2026-06-11T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_7807"
+        "certificate_id": "GEN_8039"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-11-22T02:03:11.584884",
+        "expiry_date": "2026-05-02T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_5621"
+        "certificate_id": "GEN_6889"
       }
     },
     "job_cards": {
-      "open_cards": 2,
-      "critical_cards": 1
+      "open_cards": 5,
+      "critical_cards": 2
     },
     "branding": {
       "current_advertiser": "Kerala Tourism",
-      "contract_expiry": "2026-04-16T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 6599.0763172992665,
+      "contract_expiry": "2026-02-24T16:57:11.035080",
+      "priority": "LOW",
+      "revenue_per_day": 13240.895368042313,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
-      "depot": "Petta",
-      "bay": "Petta_BAY_04"
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_03"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-022",
@@ -950,44 +950,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2019,
     "status": "MAINTENANCE",
-    "current_mileage": 51617,
+    "current_mileage": 38051,
     "max_mileage_before_maintenance": 52000,
     "fitness_certificates": {
       "rolling_stock": {
-        "status": "VALID",
-        "expiry_date": "2026-04-30T02:03:11.584884",
+        "status": "EXPIRED",
+        "expiry_date": "2025-11-12T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_1120"
+        "certificate_id": "GEN_8160"
       },
       "signalling": {
-        "status": "EXPIRED",
-        "expiry_date": "2025-11-12T02:03:11.584884",
+        "status": "VALID",
+        "expiry_date": "2026-09-03T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_4292"
+        "certificate_id": "GEN_5700"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-07-07T02:03:11.584884",
+        "expiry_date": "2026-01-11T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_1315"
+        "certificate_id": "GEN_5155"
       }
     },
     "job_cards": {
       "open_cards": 5,
-      "critical_cards": 3
+      "critical_cards": 2
     },
     "branding": {
-      "current_advertiser": "MRF Tyres",
-      "contract_expiry": "2026-03-18T02:03:11.584884",
-      "priority": "HIGH",
-      "revenue_per_day": 14757.872275485215,
+      "current_advertiser": "Kerala Tourism",
+      "contract_expiry": "2026-03-01T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 9031.493525198823,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
-      "depot": "Petta",
-      "bay": "Petta_BAY_01"
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_03"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-023",
@@ -995,44 +995,44 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2019,
     "status": "MAINTENANCE",
-    "current_mileage": 49379,
-    "max_mileage_before_maintenance": 55000,
+    "current_mileage": 52197,
+    "max_mileage_before_maintenance": 52000,
     "fitness_certificates": {
       "rolling_stock": {
-        "status": "EXPIRED",
-        "expiry_date": "2025-10-22T02:03:11.584884",
+        "status": "VALID",
+        "expiry_date": "2026-08-29T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_8124"
+        "certificate_id": "GEN_6495"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-03-12T02:03:11.584884",
+        "expiry_date": "2026-07-29T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_7845"
+        "certificate_id": "GEN_8276"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-10-10T02:03:11.584884",
+        "expiry_date": "2026-06-07T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_4637"
+        "certificate_id": "GEN_6396"
       }
     },
     "job_cards": {
-      "open_cards": 6,
+      "open_cards": 8,
       "critical_cards": 3
     },
     "branding": {
-      "current_advertiser": "None",
-      "contract_expiry": "2026-05-08T02:03:11.584884",
-      "priority": "MEDIUM",
-      "revenue_per_day": 11701.786082793866,
+      "current_advertiser": "Kalyan Jewellers",
+      "contract_expiry": "2026-04-13T16:57:11.035080",
+      "priority": "HIGH",
+      "revenue_per_day": 5029.377788961336,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
-      "depot": "Petta",
-      "bay": "Petta_BAY_06"
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_05"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   },
   {
     "trainset_id": "T-024",
@@ -1040,71 +1040,26 @@
     "model": "Kochi Metro Coach",
     "year_of_manufacture": 2019,
     "status": "MAINTENANCE",
-    "current_mileage": 55242,
-    "max_mileage_before_maintenance": 55000,
+    "current_mileage": 51471,
+    "max_mileage_before_maintenance": 52000,
     "fitness_certificates": {
       "rolling_stock": {
-        "status": "VALID",
-        "expiry_date": "2026-01-27T02:03:11.584884",
+        "status": "EXPIRED",
+        "expiry_date": "2025-12-08T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_4058"
+        "certificate_id": "GEN_3612"
       },
       "signalling": {
         "status": "VALID",
-        "expiry_date": "2026-05-02T02:03:11.584884",
+        "expiry_date": "2026-07-03T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_3784"
+        "certificate_id": "GEN_2215"
       },
       "telecom": {
         "status": "VALID",
-        "expiry_date": "2026-11-12T02:03:11.584884",
+        "expiry_date": "2026-05-01T16:57:11.035080",
         "issued_by": "RDSO",
-        "certificate_id": "GEN_7169"
-      }
-    },
-    "job_cards": {
-      "open_cards": 4,
-      "critical_cards": 2
-    },
-    "branding": {
-      "current_advertiser": "Kalyan Jewellers",
-      "contract_expiry": "2026-03-24T02:03:11.584884",
-      "priority": "LOW",
-      "revenue_per_day": 6201.016429426711,
-      "branding_status": "OPTIONAL"
-    },
-    "current_location": {
-      "depot": "Aluva",
-      "bay": "Aluva_BAY_04"
-    },
-    "last_updated": "2025-11-27T02:03:11.584884"
-  },
-  {
-    "trainset_id": "T-025",
-    "manufacturer": "Alstom",
-    "model": "Kochi Metro Coach",
-    "year_of_manufacture": 2019,
-    "status": "MAINTENANCE",
-    "current_mileage": 43417,
-    "max_mileage_before_maintenance": 55000,
-    "fitness_certificates": {
-      "rolling_stock": {
-        "status": "VALID",
-        "expiry_date": "2026-06-06T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_7076"
-      },
-      "signalling": {
-        "status": "VALID",
-        "expiry_date": "2026-01-19T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_1185"
-      },
-      "telecom": {
-        "status": "VALID",
-        "expiry_date": "2026-02-14T02:03:11.584884",
-        "issued_by": "RDSO",
-        "certificate_id": "GEN_9687"
+        "certificate_id": "GEN_8838"
       }
     },
     "job_cards": {
@@ -1112,16 +1067,61 @@
       "critical_cards": 2
     },
     "branding": {
-      "current_advertiser": "Cochin International Airport",
-      "contract_expiry": "2026-01-08T02:03:11.584884",
-      "priority": "HIGH",
-      "revenue_per_day": 9240.414011542784,
+      "current_advertiser": "Federal Bank",
+      "contract_expiry": "2026-03-19T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 6880.526488133528,
+      "branding_status": "OPTIONAL"
+    },
+    "current_location": {
+      "depot": "Aluva",
+      "bay": "Aluva_BAY_06"
+    },
+    "last_updated": "2025-12-09T16:57:11.035080"
+  },
+  {
+    "trainset_id": "T-025",
+    "manufacturer": "Alstom",
+    "model": "Kochi Metro Coach",
+    "year_of_manufacture": 2019,
+    "status": "MAINTENANCE",
+    "current_mileage": 52056,
+    "max_mileage_before_maintenance": 52000,
+    "fitness_certificates": {
+      "rolling_stock": {
+        "status": "VALID",
+        "expiry_date": "2026-01-28T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_4312"
+      },
+      "signalling": {
+        "status": "VALID",
+        "expiry_date": "2026-09-04T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_9885"
+      },
+      "telecom": {
+        "status": "VALID",
+        "expiry_date": "2026-05-20T16:57:11.035080",
+        "issued_by": "RDSO",
+        "certificate_id": "GEN_2225"
+      }
+    },
+    "job_cards": {
+      "open_cards": 1,
+      "critical_cards": 1
+    },
+    "branding": {
+      "current_advertiser": "MRF Tyres",
+      "contract_expiry": "2026-01-27T16:57:11.035080",
+      "priority": "MEDIUM",
+      "revenue_per_day": 12910.45467787924,
       "branding_status": "OPTIONAL"
     },
     "current_location": {
       "depot": "Petta",
-      "bay": "Petta_BAY_02"
+      "bay": "Petta_BAY_05"
     },
-    "last_updated": "2025-11-27T02:03:11.584884"
+    "last_updated": "2025-12-09T16:57:11.035080"
   }
 ]

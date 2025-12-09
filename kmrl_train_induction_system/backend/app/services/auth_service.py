@@ -117,7 +117,8 @@ class AuthService:
         role: str,
         email: Optional[str] = None,
         permissions: Optional[list] = None,
-        is_approved: bool = False
+        is_approved: bool = False,
+        email_verified: bool = False
     ) -> User:
         """Create a new user"""
         try:
@@ -137,7 +138,8 @@ class AuthService:
                 permissions=permissions or [],
                 created_at=datetime.utcnow(),
                 is_active=True,
-                is_approved=final_is_approved
+                is_approved=final_is_approved,
+                email_verified=email_verified
             )
             
             collection = await cloud_db_manager.get_collection("users")
@@ -164,6 +166,19 @@ class AuthService:
             return result.modified_count > 0
         except Exception as e:
             logger.error(f"Error approving user: {e}")
+            return False
+
+    async def mark_email_verified(self, user_id: str) -> bool:
+        """Mark user email as verified"""
+        try:
+            collection = await cloud_db_manager.get_collection("users")
+            result = await collection.update_one(
+                {"id": user_id},
+                {"$set": {"email_verified": True, "updated_at": datetime.utcnow()}}
+            )
+            return result.modified_count > 0
+        except Exception as e:
+            logger.error(f"Error marking email verified: {e}")
             return False
 
     async def reject_user(self, user_id: str) -> bool:
