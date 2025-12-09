@@ -4,6 +4,7 @@ import json
 from typing import Dict, Any, List, Optional
 from datetime import datetime
 import logging
+from pathlib import Path
 from app.utils.cloud_database import cloud_db_manager
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 
@@ -31,14 +32,22 @@ async def capture_snapshot() -> Dict[str, Any]:
     try:
         logger.info("Capturing system snapshot for What-If simulation")
         
-        # Get all trainsets from database
-        collection = await cloud_db_manager.get_collection("trainsets")
-        cursor = collection.find({})
-        trainsets_data = []
-        
-        async for trainset_doc in cursor:
-            trainset_doc.pop('_id', None)
-            trainsets_data.append(trainset_doc)
+        trainsets_data: List[Dict[str, Any]] = []
+
+        # If Mongo isn't connected (local/dev tests), fall back to bundled mock data
+        mongo_connected = cloud_db_manager.connections.get("mongodb", False)
+
+        if mongo_connected:
+            collection = await cloud_db_manager.get_collection("trainsets")
+            cursor = collection.find({})
+            async for trainset_doc in cursor:
+                trainset_doc.pop('_id', None)
+                trainsets_data.append(trainset_doc)
+        else:
+            logger.warning("MongoDB not connected; using mock trainset data for snapshot")
+            mock_path = Path(__file__).resolve().parents[3] / "data" / "mock" / "trainsets.json"
+            with mock_path.open("r", encoding="utf-8") as f:
+                trainsets_data = json.load(f)
         
         # Extract depot layouts from stabling optimizer
         stabling_optimizer = StablingGeometryOptimizer()

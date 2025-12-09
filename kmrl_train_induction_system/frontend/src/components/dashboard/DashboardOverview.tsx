@@ -26,6 +26,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { toast } from "sonner";
 import api from "@/services/api";
+import { useTranslate } from "@/contexts/LanguageContext";
 // Tomorrow's Service Plan types and helpers
 interface ServiceData {
   id: string;
@@ -68,6 +69,7 @@ export function DashboardOverview() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, logout } = useAuth();
+  const t = useTranslate();
   const [hoverItem, setHoverItem] = useState<ServiceData | null>(null);
   const [showNotifications, setShowNotifications] = useState(false);
 
@@ -145,28 +147,28 @@ export function DashboardOverview() {
   // Transform API data to component format
   const stats = overview ? [
     {
-      title: "Active Trainsets",
+      title: t("activeTrainsets"),
       value: overview.fleet_status?.active?.toString() || "0",
       icon: Train,
-      description: "Currently in service"
+      description: t("currentlyInService")
     },
     {
-      title: "Pending Assignments",
+      title: t("pendingAssignments"),
       value: overview.pending_assignments?.toString() || "0",
       icon: Clock,
-      description: "Awaiting approval"
+      description: t("awaitingApproval")
     },
     {
-      title: "Fleet Efficiency",
+      title: t("fleetEfficiency"),
       value: `${Math.round((overview.fleet_status?.active || 0) / (overview.total_trainsets || 1) * 100)}%`,
       icon: TrendingUp,
-      description: "Operational efficiency"
+      description: t("operationalEfficiency")
     },
     {
-      title: "Active Conflicts",
+      title: t("activeConflicts"),
       value: conflicts.length.toString(),
       icon: AlertTriangle,
-      description: "Requiring attention"
+      description: t("requiringAttention")
     }
   ] : [];
 
@@ -182,8 +184,8 @@ export function DashboardOverview() {
     return [
       {
         id: 'running',
-        label: 'Running in Service',
-        subLabel: 'Trains scheduled for passenger service',
+        label: t("runningInService"),
+        subLabel: t("scheduledPassenger"),
         percent: pct(active),
         count: `${active}/${totalTrainsets}`,
         startColor: '#4ADE80',
@@ -194,8 +196,8 @@ export function DashboardOverview() {
       },
       {
         id: 'standby',
-        label: 'On Standby',
-        subLabel: 'Trains ready for deployment',
+        label: t("onStandby"),
+        subLabel: t("readyDeployment"),
         percent: pct(standby),
         count: `${standby}/${totalTrainsets}`,
         startColor: '#60A5FA',
@@ -206,8 +208,8 @@ export function DashboardOverview() {
       },
       {
         id: 'inspection',
-        label: 'In Inspection Bay',
-        subLabel: 'Trains under maintenance/inspection',
+        label: t("inInspectionBay"),
+        subLabel: t("underMaintenance"),
         percent: pct(maintenance),
         count: `${maintenance}/${totalTrainsets}`,
         startColor: '#FBBF24',
@@ -323,8 +325,8 @@ export function DashboardOverview() {
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-4xl font-bold text-foreground tracking-tight">Operations Dashboard</h2>
-          <p className="text-muted-foreground mt-1 text-lg">System Overview</p>
+          <h2 className="text-4xl font-bold text-foreground tracking-tight">{t("operationsDashboard")}</h2>
+          <p className="text-muted-foreground mt-1 text-lg">{t("systemOverview")}</p>
         </div>
         <div className="flex items-center gap-3">
           {user?.role === UserRole.METRO_DRIVER && (
@@ -368,13 +370,13 @@ export function DashboardOverview() {
               {showNotifications && (
                 <div className="absolute right-0 mt-2 w-80 bg-card border border-border rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto">
                   <div className="p-3 border-b border-border flex justify-between items-center sticky top-0 bg-card/95 backdrop-blur-sm">
-                    <h4 className="font-semibold text-sm">Notifications</h4>
-                    <span className="text-xs text-muted-foreground">{notifications.length} unread</span>
+                    <h4 className="font-semibold text-sm">{t("notifications")}</h4>
+                    <span className="text-xs text-muted-foreground">{notifications.length} {t("unreadCount")}</span>
                   </div>
                   <div className="divide-y divide-border">
                     {notifications.length === 0 ? (
                       <div className="p-4 text-center text-muted-foreground text-sm">
-                        No new notifications
+                        {t("noNewNotifications")}
                       </div>
                     ) : (
                       notifications.map((notif: any) => (
@@ -403,7 +405,7 @@ export function DashboardOverview() {
 
           <Badge variant="outline" className="text-success border-success/20 px-3 py-1 text-sm">
             <Zap className="h-3 w-3 mr-2" />
-            System Online
+            {t("systemOnline")}
           </Badge>
           <Button
             variant="industrial"
@@ -415,12 +417,12 @@ export function DashboardOverview() {
             {generateReportMutation.isPending ? (
               <>
                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                Generating...
+                {t("generating")}
               </>
             ) : (
               <>
                 <BarChart3 className="h-4 w-4 mr-2" />
-                Generate Report
+                {t("generateReport")}
               </>
             )}
           </Button>
@@ -453,7 +455,7 @@ export function DashboardOverview() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Train className="h-6 w-6" />
-              Tomorrow's Service Plan
+              {t("tomorrowsPlan")}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 min-h-0">
@@ -580,15 +582,15 @@ export function DashboardOverview() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CheckCircle className="h-5 w-5" />
-              Approved Trains List
+              {t("approvedTrainsList")}
             </CardTitle>
           </CardHeader>
           <CardContent className="flex-1 min-h-0">
             {approvedTrainsByRank.length === 0 ? (
               <div className="text-center py-8">
                 <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-4 opacity-50" />
-                <p className="text-muted-foreground">No approved trains</p>
-                <p className="text-sm text-muted-foreground mt-2">Approved trains will appear here</p>
+                <p className="text-muted-foreground">{t("noApprovedTrains")}</p>
+                <p className="text-sm text-muted-foreground mt-2">{t("approvedTrainsAppearHere")}</p>
               </div>
             ) : (
               <div className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
@@ -609,7 +611,7 @@ export function DashboardOverview() {
                       </div>
                     </div>
                     <Badge variant="success" className="text-xs">
-                      Approved
+                      {t("approvedStatus")}
                     </Badge>
                   </div>
                 ))}
@@ -625,7 +627,7 @@ export function DashboardOverview() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Zap className="h-5 w-5 text-yellow-500" />
-              Quick Actions
+              {t("quickActions")}
             </CardTitle>
           </CardHeader>
           <CardContent>

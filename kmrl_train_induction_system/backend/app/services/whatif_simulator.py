@@ -17,6 +17,7 @@ from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.models.trainset import OptimizationRequest, OptimizationWeights
 from app.utils.snapshot import capture_snapshot
 from app.config import settings
+import math
 
 logger = logging.getLogger(__name__)
 
@@ -100,6 +101,34 @@ def _apply_overrides(snapshot: Dict[str, Any], scenario: Dict[str, Any]) -> Dict
     return scenario_snapshot
 
 
+def _hours_to_trains(required_hours: Optional[float], trainsets: List[Dict[str, Any]], default_hours_per_train: float = 2.0) -> int:
+    """Convert required service hours to a train count using average estimated hours."""
+    if required_hours is None:
+        return 0
+    if required_hours <= 0:
+        return 1 if trainsets else 0
+
+    # Use provided estimated_service_hours when available
+    hours_list = []
+    for t in trainsets:
+        val = t.get("estimated_service_hours")
+        try:
+            if val is not None:
+                hours_list.append(float(val))
+        except (TypeError, ValueError):
+            continue
+
+    avg_hours = float(sum(hours_list) / len(hours_list)) if hours_list else float(default_hours_per_train or 2.0)
+    if avg_hours <= 0:
+        avg_hours = 2.0
+
+    needed = math.ceil(required_hours / avg_hours)
+    # Clamp to available fleet
+    if trainsets:
+        needed = min(needed, len(trainsets))
+    return max(1, int(needed))
+
+
 def _normalize_decision_explain(decision: Dict[str, Any]) -> Dict[str, Any]:
     """
     Ensure decision has an 'explain' field.
@@ -148,7 +177,22 @@ def _normalize_decision_explain(decision: Dict[str, Any]) -> Dict[str, Any]:
 
 def _normalize_decisions_list(decisions: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Normalize a list of decisions to ensure each has an explain field"""
-    return [_normalize_decision_explain(d) for d in decisions]
+    normalized: List[Dict[str, Any]] = []
+    for d in decisions:
+        # Flatten nested lists that may come from downstream model outputs
+        if isinstance(d, list):
+            for sub in d:
+                if hasattr(sub, "dict"):
+                    normalized.append(_normalize_decision_explain(sub.dict()))
+                elif isinstance(sub, dict):
+                    normalized.append(_normalize_decision_explain(sub))
+            continue
+
+        if hasattr(d, "dict"):
+            normalized.append(_normalize_decision_explain(d.dict()))
+        elif isinstance(d, dict):
+            normalized.append(_normalize_decision_explain(d))
+    return normalized
 
 
 def _compute_kpis(decisions: List[Dict[str, Any]], stabling_geometry: Dict[str, Any]) -> Dict[str, Any]:
@@ -280,6 +324,12 @@ async def run_whatif(scenario: Dict[str, Any], snapshot: Optional[Dict[str, Any]
         # Prepare optimization request with weights if provided
         required_count = scenario.get("required_service_count", snapshot["config"].get("required_service_count"))
         service_date = scenario.get("service_date", snapshot["config"].get("service_date"))
+
+        # Support legacy required_service_hours by converting to train count
+        if required_count is None and "required_service_hours" in scenario:
+            required_hours = scenario.get("required_service_hours")
+            default_hours_per_train = snapshot["config"].get("default_hours_per_train", 2.0)
+            required_count = _hours_to_trains(required_hours, scenario_snapshot["trainsets"], default_hours_per_train)
         
         # Create weights from scenario if provided, otherwise use defaults
         scenario_weights = None

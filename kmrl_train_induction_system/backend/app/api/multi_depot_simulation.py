@@ -23,6 +23,61 @@ simulation_engine = MultiDepotSimulationEngine()
 feedback_loop = MultiDepotFeedbackLoop()
 explainability = AIExplainability()
 
+# In-memory run registry for lightweight retrieval/export without a database dependency
+_RUN_REGISTRY: Dict[str, Dict[str, Any]] = {}
+
+# Simple preset depots for UI dropdowns
+DEPOT_PRESETS = [
+    {
+        "depot_id": "MUTTOM",
+        "depot_name": "Muttom Depot",
+        "location_type": "FULL_DEPOT",
+        "service_bay_capacity": 6,
+        "maintenance_bay_capacity": 4,
+        "standby_bay_capacity": 2,
+        "total_bays": 12,
+        "supports_heavy_maintenance": True,
+        "supports_cleaning": True,
+        "can_start_service": True,
+    },
+    {
+        "depot_id": "KAKKANAD",
+        "depot_name": "Kakkanad Depot",
+        "location_type": "FULL_DEPOT",
+        "service_bay_capacity": 6,
+        "maintenance_bay_capacity": 3,
+        "standby_bay_capacity": 2,
+        "total_bays": 11,
+        "supports_heavy_maintenance": True,
+        "supports_cleaning": True,
+        "can_start_service": True,
+    },
+    {
+        "depot_id": "ALUVA_TERM",
+        "depot_name": "Aluva Terminal",
+        "location_type": "TERMINAL_YARD",
+        "service_bay_capacity": 0,
+        "maintenance_bay_capacity": 0,
+        "standby_bay_capacity": 6,
+        "total_bays": 6,
+        "supports_heavy_maintenance": False,
+        "supports_cleaning": False,
+        "can_start_service": True,
+    },
+    {
+        "depot_id": "PETTA_TERM",
+        "depot_name": "Petta Terminal",
+        "location_type": "TERMINAL_YARD",
+        "service_bay_capacity": 0,
+        "maintenance_bay_capacity": 0,
+        "standby_bay_capacity": 6,
+        "total_bays": 6,
+        "supports_heavy_maintenance": False,
+        "supports_cleaning": False,
+        "can_start_service": True,
+    },
+]
+
 
 class SimulationRequest(BaseModel):
     """Request model for multi-depot simulation"""
@@ -69,11 +124,66 @@ async def run_simulation(
                 }
                 for i in range(request.train_count)
             ],
+            "run_id": f"md-{int(datetime.utcnow().timestamp()*1000)}",
         }
+        # Store lightweight run result for follow-up retrieval/export
+        _RUN_REGISTRY[resp["run_id"]] = resp
         return resp
     except Exception as e:
         logger.error(f"Simulation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Simulation failed: {str(e)}")
+
+
+@router.get("/simulate/{run_id}")
+async def get_simulation_run(
+    run_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    _auth=Depends(require_api_key),
+):
+    """Fetch a previously run simulation from the in-memory registry."""
+    run = _RUN_REGISTRY.get(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Simulation run {run_id} not found")
+    return run
+
+
+@router.get("/simulate/{run_id}/export/json")
+async def export_simulation_json(
+    run_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    _auth=Depends(require_api_key),
+):
+    """Export a simulation run as JSON."""
+    run = _RUN_REGISTRY.get(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Simulation run {run_id} not found")
+    return run
+
+
+@router.get("/simulate/{run_id}/export/pdf")
+async def export_simulation_pdf(
+    run_id: str,
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    _auth=Depends(require_api_key),
+):
+    """Placeholder PDF export endpoint."""
+    run = _RUN_REGISTRY.get(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail=f"Simulation run {run_id} not found")
+    return {
+        "status": "ok",
+        "message": f"PDF export stub for run {run_id}",
+        "run_id": run_id,
+    }
+
+
+@router.get("/depots/presets")
+async def get_depot_presets(
+    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    _auth=Depends(require_api_key),
+):
+    """Return hardcoded depot presets for UI convenience."""
+    return {"presets": DEPOT_PRESETS}
 
 
 @router.get("/explain")

@@ -1,7 +1,19 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
-from app.api import trainsets, optimization, dashboard, ingestion, assignments, reports, auth, simulation, users, notifications
+from app.api import (
+    trainsets,
+    optimization,
+    dashboard,
+    ingestion,
+    assignments,
+    reports,
+    auth,
+    simulation,
+    users,
+    notifications,
+    multi_depot_simulation,
+)
 from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -75,6 +87,7 @@ app.include_router(assignments.router, prefix="/api/v1/assignments", tags=["Assi
 app.include_router(reports.router, prefix="/api/v1/reports", tags=["Reports"])
 app.include_router(simulation.router, prefix="/api/v1/simulation", tags=["Simulation"])
 app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["Notifications"])
+app.include_router(multi_depot_simulation.router, prefix="/api/v1/multi-depot", tags=["Multi-Depot Simulation"])
 
 # These handlers are defined but won't execute unless Socket.IO is enabled above
 if _HAS_SOCKETIO and sio:
