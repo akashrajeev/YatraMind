@@ -109,6 +109,45 @@ class TestN8NIngestion(unittest.TestCase):
                 # But let's assume standard mock behavior
                 pass
 
+    def test_n8n_result_switch_false(self):
+        """Test that apply_updates=False prevents data processing"""
+        with patch('app.services.data_ingestion.cloud_db_manager') as mock_db:
+            mock_collection = MagicMock()
+            async def async_get_collection(*args, **kwargs):
+                return mock_collection
+            mock_db.get_collection.side_effect = async_get_collection
+            
+            mock_insert_result = MagicMock()
+            mock_insert_result.inserted_id = "mock_id_switch"
+            async def async_insert_one(*args, **kwargs):
+                return mock_insert_result
+            mock_collection.insert_one.side_effect = async_insert_one
+            
+            # Mock update (should be called to set processed=True/False)
+            async def async_update_one(*args, **kwargs):
+                return None
+            mock_collection.update_one.side_effect = async_update_one
+
+            with patch('app.services.data_ingestion.record_uns_event') as mock_record:
+                async def async_record(*args, **kwargs): return None
+                mock_record.side_effect = async_record
+
+                # Data that WOULD trigger updates if switch was True
+                data = {
+                    "updates": [
+                        {"source_type": "fitness", "data": {"trainset_id": "T-001", "certificate": "Test"}}
+                    ]
+                }
+                
+                # Call with apply_updates=False
+                response = self.client.post("/api/v1/ingestion/ingest/n8n/result?apply_updates=true", json=data)
+                
+                self.assertEqual(response.status_code, 200)
+                json_resp = response.json()
+                self.assertEqual(json_resp["updates_processed"], 0)
+                self.assertIn("stored", json_resp["status"]) # Should be stored but not processed
+
+
     def test_n8n_router_logic(self):
         """Test that the router correctly calls update methods based on source_type"""
         with patch('app.services.data_ingestion.cloud_db_manager') as mock_db:
