@@ -7,13 +7,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { trainsetsApi, optimizationApi } from "@/services/api";
 import { Trainset } from "@/types/api";
-import { 
-  Train, 
-  Search, 
-  Filter, 
-  RefreshCw, 
-  AlertTriangle, 
-  CheckCircle, 
+import {
+  Train,
+  Search,
+  Filter,
+  RefreshCw,
+  AlertTriangle,
+  CheckCircle,
   Clock,
   MapPin,
   Wrench,
@@ -32,9 +32,9 @@ const Trainsets = () => {
   // Fetch trainsets data
   const { data: trainsets = [], isLoading, refetch } = useQuery({
     queryKey: ['trainsets', statusFilter, depotFilter],
-    queryFn: () => trainsetsApi.getAll({ 
+    queryFn: () => trainsetsApi.getAll({
       status: statusFilter !== 'all' ? statusFilter : undefined,
-      depot: depotFilter !== 'all' ? depotFilter : undefined 
+      depot: depotFilter !== 'all' ? depotFilter : undefined
     }).then(res => res.data),
     refetchInterval: 30000,
   });
@@ -59,7 +59,7 @@ const Trainsets = () => {
 
   // Update trainset mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) => 
+    mutationFn: ({ id, data }: { id: string; data: any }) =>
       trainsetsApi.update(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries(['trainsets']);
@@ -188,8 +188,8 @@ const Trainsets = () => {
               </select>
             </div>
             <div className="flex items-end">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 onClick={() => {
                   setSearchTerm("");
                   setStatusFilter("all");
@@ -239,7 +239,7 @@ const Trainsets = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Fitness Certificates</span>
-                    <Badge 
+                    <Badge
                       variant={getFitnessStatus(trainset.fitness_certificates) as any}
                       className="text-xs"
                     >
@@ -251,7 +251,7 @@ const Trainsets = () => {
                     {Object.entries(trainset.fitness_certificates || {}).map(([type, cert]: [string, any]) => (
                       <div key={type} className="flex items-center justify-between">
                         <span className="text-muted-foreground">{type}</span>
-                        <Badge 
+                        <Badge
                           variant={cert.status === "VALID" ? "success" : "destructive"}
                           className="text-xs"
                         >
@@ -266,7 +266,7 @@ const Trainsets = () => {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <span className="text-sm text-muted-foreground">Job Cards</span>
-                    <Badge 
+                    <Badge
                       variant={getJobCardsStatus(trainset.job_cards) as any}
                       className="text-xs"
                     >
@@ -292,10 +292,10 @@ const Trainsets = () => {
                     <span className="font-medium">{trainset.max_mileage_before_maintenance || 0} km</span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
-                    <div 
-                      className="bg-primary h-2 rounded-full" 
-                      style={{ 
-                        width: `${Math.min(100, ((trainset.current_mileage || 0) / (trainset.max_mileage_before_maintenance || 1)) * 100)}%` 
+                    <div
+                      className="bg-primary h-2 rounded-full"
+                      style={{
+                        width: `${Math.min(100, ((trainset.current_mileage || 0) / (trainset.max_mileage_before_maintenance || 1)) * 100)}%`
                       }}
                     />
                   </div>
@@ -306,8 +306,8 @@ const Trainsets = () => {
                   <Button size="sm" variant="outline" className="flex-1">
                     View Details
                   </Button>
-                  <Button 
-                    size="sm" 
+                  <Button
+                    size="sm"
                     variant="secondary"
                     onClick={() => updateMutation.mutate({
                       id: trainset.trainset_id,

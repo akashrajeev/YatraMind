@@ -28,7 +28,9 @@ async def register(user_data: UserCreate):
         needs_verification = user_data.role in [
             UserRole.STATION_SUPERVISOR, 
             UserRole.SUPERVISOR, 
-            UserRole.METRO_DRIVER
+            UserRole.METRO_DRIVER,
+            UserRole.MAINTENANCE_HEAD,
+            UserRole.BRANDING_DEALER
         ]
         
         # Determine initial email_verified status
@@ -116,7 +118,7 @@ async def login(
             )
             
         # Email Verification Check for specific roles
-        if user.role in [UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR, UserRole.METRO_DRIVER]:
+        if user.role in [UserRole.STATION_SUPERVISOR, UserRole.SUPERVISOR, UserRole.METRO_DRIVER, UserRole.MAINTENANCE_HEAD, UserRole.BRANDING_DEALER]:
             if not user.email_verified:
                  raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,

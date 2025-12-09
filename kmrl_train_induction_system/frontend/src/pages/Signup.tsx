@@ -276,6 +276,8 @@ const Signup: React.FC = () => {
                                 <option value={UserRole.PASSENGER}>Passenger</option>
                                 <option value={UserRole.METRO_DRIVER}>Metro Driver</option>
                                 <option value={UserRole.STATION_SUPERVISOR}>Station Supervisor</option>
+                                <option value={UserRole.MAINTENANCE_HEAD}>Maintenance Head</option>
+                                <option value={UserRole.BRANDING_DEALER}>Branding Dealer</option>
                                 <option value={UserRole.ADMIN}>Admin</option>
                             </select>
                         </div>

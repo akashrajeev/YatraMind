@@ -218,41 +218,41 @@ const Assignments = () => {
 
   // Create a map of trainset_id to assignment for quick lookup
   const assignmentsMap = new Map(assignments.map(a => [a.trainset_id, a]));
-  
+
   // Get pending assignments from ranked list (sorted by rank) or from assignments
   // Priority: ranked list order (if exists) > assignment priority
   const pendingAssignments = rankedList.length > 0
     ? rankedList
-        .map((decision: any, index: number) => {
-          const assignment = assignmentsMap.get(decision.trainset_id);
-          // If assignment exists and is pending, use it; otherwise create a virtual one
-          if (assignment && assignment.status === "PENDING") {
-            return {
-              ...assignment,
-              rank: index + 1,
-              decision: decision // Use decision from ranked list
-            };
-          } else if (!assignment) {
-            // Create virtual assignment for trains in ranked list but not in assignments
-            return {
-              id: `virtual-${decision.trainset_id}`,
-              trainset_id: decision.trainset_id,
-              decision: decision,
-              status: "PENDING" as const,
-              priority: 5 - index, // Higher rank = higher priority
-              rank: index + 1,
-              created_at: new Date().toISOString(),
-              created_by: "system",
-              last_updated: new Date().toISOString()
-            };
-          }
-          return null;
-        })
-        .filter((a): a is NonNullable<typeof a> => a !== null && a.status === "PENDING")
+      .map((decision: any, index: number) => {
+        const assignment = assignmentsMap.get(decision.trainset_id);
+        // If assignment exists and is pending, use it; otherwise create a virtual one
+        if (assignment && assignment.status === "PENDING") {
+          return {
+            ...assignment,
+            rank: index + 1,
+            decision: decision // Use decision from ranked list
+          };
+        } else if (!assignment) {
+          // Create virtual assignment for trains in ranked list but not in assignments
+          return {
+            id: `virtual-${decision.trainset_id}`,
+            trainset_id: decision.trainset_id,
+            decision: decision,
+            status: "PENDING" as const,
+            priority: 5 - index, // Higher rank = higher priority
+            rank: index + 1,
+            created_at: new Date().toISOString(),
+            created_by: "system",
+            last_updated: new Date().toISOString()
+          };
+        }
+        return null;
+      })
+      .filter((a): a is NonNullable<typeof a> => a !== null && a.status === "PENDING")
     : assignments
-        .filter(a => a.status === "PENDING")
-        .sort((a, b) => (b.priority || 0) - (a.priority || 0)); // Sort by priority descending
-  
+      .filter(a => a.status === "PENDING")
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0)); // Sort by priority descending
+
   const approvedAssignments = assignments.filter(a => a.status === "APPROVED");
   const overriddenAssignments = assignments.filter(a => a.status === "OVERRIDDEN");
 
@@ -739,7 +739,7 @@ const Assignments = () => {
                         onClick={async (e) => {
                           e.preventDefault();
                           e.stopPropagation();
-                          
+
                           // If virtual assignment, create it first
                           if (!assignment.id || assignment.id.startsWith('virtual-')) {
                             try {
@@ -750,10 +750,10 @@ const Assignments = () => {
                                 created_by: "system",
                                 priority: assignment.priority || 5
                               });
-                              
+
                               // Invalidate queries to refresh the list
                               queryClient.invalidateQueries({ queryKey: ['assignments'] });
-                              
+
                               // Then approve it
                               approveMutation.mutate({
                                 assignment_ids: [createResponse.data.id],
@@ -761,13 +761,13 @@ const Assignments = () => {
                                 comments: "Approved by supervisor"
                               });
                             } catch (error: any) {
-                              toast.error("Error", { 
-                                description: error.response?.data?.detail || "Failed to create assignment" 
+                              toast.error("Error", {
+                                description: error.response?.data?.detail || "Failed to create assignment"
                               });
                             }
                             return;
                           }
-                          
+
                           console.log("Approve clicked - Assignment:", assignment);
                           approveMutation.mutate({
                             assignment_ids: [assignment.id],

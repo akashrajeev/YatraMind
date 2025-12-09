@@ -85,11 +85,11 @@ startxref
   });
 
   const assignmentsExportMutation = useMutation({
-    mutationFn: ({ format, filters }: { format: string; filters?: any }) => 
+    mutationFn: ({ format, filters }: { format: string; filters?: any }) =>
       reportsApi.exportAssignments(format, filters),
     onSuccess: (data, variables) => {
-      const blob = new Blob([data.data], { 
-        type: variables.format === 'pdf' ? 'application/pdf' : 'text/csv' 
+      const blob = new Blob([data.data], {
+        type: variables.format === 'pdf' ? 'application/pdf' : 'text/csv'
       });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -276,9 +276,9 @@ startxref
                   <span className="font-medium">{report.lastGenerated}</span>
                 </div>
                 <div className="flex gap-2">
-                  <Button 
-                    size="sm" 
-                    variant="outline" 
+                  <Button
+                    size="sm"
+                    variant="outline"
                     className="flex-1"
                     onClick={report.onGenerate}
                     disabled={dailyBriefingMutation.isPending || assignmentsExportMutation.isPending || fleetStatusMutation.isPending}
@@ -286,9 +286,9 @@ startxref
                     <Download className="h-4 w-4 mr-2" />
                     {dailyBriefingMutation.isPending || assignmentsExportMutation.isPending || fleetStatusMutation.isPending ? 'Generating...' : 'Download'}
                   </Button>
-                  <Button 
-                    size="sm" 
-                    variant="secondary" 
+                  <Button
+                    size="sm"
+                    variant="secondary"
                     className="flex-1"
                     onClick={report.onGenerate}
                     disabled={dailyBriefingMutation.isPending || assignmentsExportMutation.isPending || fleetStatusMutation.isPending}

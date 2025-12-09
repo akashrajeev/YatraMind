@@ -16,6 +16,8 @@ class UserRole(str, Enum):
     OPERATIONS_MANAGER = "OPERATIONS_MANAGER" # Equivalent to ADMIN
     SUPERVISOR = "SUPERVISOR" # Equivalent to STATION_SUPERVISOR
     MAINTENANCE_ENGINEER = "MAINTENANCE_ENGINEER"
+    MAINTENANCE_HEAD = "MAINTENANCE_HEAD"
+    BRANDING_DEALER = "BRANDING_DEALER"
     READONLY_VIEWER = "READONLY_VIEWER"
 
 
@@ -161,6 +163,12 @@ ROLE_PERMISSIONS = {
     ],
     UserRole.MAINTENANCE_ENGINEER: [
         "assignments.view", "trainsets.view", "trainsets.edit", "reports.generate"
+    ],
+    UserRole.MAINTENANCE_HEAD: [
+        "assignments.view", "trainsets.view", "trainsets.edit", "reports.generate", "reports.export", "audit.view"
+    ],
+    UserRole.BRANDING_DEALER: [
+        "assignments.view", "trainsets.view"
     ],
     UserRole.READONLY_VIEWER: [
         "assignments.view", "trainsets.view", "reports.generate"
