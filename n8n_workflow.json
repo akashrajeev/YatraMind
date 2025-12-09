@@ -1,0 +1,633 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "functionCode": "// SPLIT MULTIPLE FILES INTO MULTIPLE ITEMS\nconst binaries = items[0].binary || {};\nconst out = [];\n\nfor (const key of Object.keys(binaries)) {\n\n    const fileItem = binaries[key];\n    const fileName = (fileItem.fileName || '').toLowerCase();\n    const fileBuffer = Buffer.from(fileItem.data, 'base64');\n\n    let extension = 'unknown';\n    let textContent = '';\n\n    // Detect magic bytes\n    const hex = fileBuffer.subarray(0, 8).toString('hex').toUpperCase();\n    const utf8Preview = fileBuffer.subarray(0, 100).toString('utf8').trim();\n\n    if (utf8Preview.startsWith('%PDF')) extension = 'pdf';\n    else if (hex.startsWith('89504E47') || hex.startsWith('FFD8') || hex.startsWith('47494638'))\n        extension = 'image';\n    else if (hex.startsWith('504B0304'))\n        extension = fileName.endsWith('.xlsx') ? 'xlsx' : 'xlsx';\n    else {\n        const fullText = fileBuffer.toString('utf8');\n        if (fullText.trim().startsWith('{') || fullText.trim().startsWith('[')) {\n            try { JSON.parse(fullText); extension = 'json'; textContent = fullText; }\n            catch (e) { extension = 'txt'; textContent = fullText; }\n        } else if (/^[\\x20-\\x7E\\s]+$/.test(fullText.substring(0, 500))) {\n            extension = 'txt';\n            textContent = fullText;\n        } else {\n            extension = 'image';\n        }\n    }\n\n    // Push **one item per file**\n    out.push({\n        json: {\n            file_key: key,\n            file_name: fileName,\n            extension: extension,\n            text: textContent\n        },\n        binary: {\n            [key]: fileItem\n        }\n    });\n}\n\nreturn out;\n"
+      },
+      "id": "eea5ce01-f9b2-4cb7-9832-417baf6c1c38",
+      "name": "File Type Detector",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -992,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"extension\"]}}",
+              "value2": "pdf"
+            }
+          ]
+        }
+      },
+      "id": "ebf9552f-c639-4871-a48b-007969d1cea5",
+      "name": "Is PDF?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -752,
+        -80
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"extension\"]}}",
+              "value2": "csv"
+            }
+          ]
+        }
+      },
+      "id": "94f734a1-2e5c-40f8-a0ce-45650d623369",
+      "name": "Is CSV?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        192
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"extension\"]}}",
+              "value2": "image"
+            }
+          ]
+        }
+      },
+      "id": "a6b8367d-6688-43b4-8161-d3fea6d5b252",
+      "name": "Is Image?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        384
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"extension\"]}}",
+              "value2": "json"
+            }
+          ]
+        }
+      },
+      "id": "35e05a86-26a9-4af2-a381-5639a9027a13",
+      "name": "Is JSON?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -528,
+        608
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"extension\"]}}",
+              "value2": "txt"
+            }
+          ]
+        }
+      },
+      "id": "b2d83e4e-5336-44cb-854a-ef8e8dbb7ae3",
+      "name": "Is TXT?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        -576,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "functionCode": "const binary = items[0].binary.data;\nconst buffer = Buffer.from(binary.data, 'base64');\nconst jsonString = buffer.toString('utf-8');\nconst jsonData = JSON.parse(jsonString);\n\nreturn [{\n  json: {\n    text: JSON.stringify(jsonData, null, 2)\n  }\n}];"
+      },
+      "id": "f6e6bdf5-f0ed-492b-b830-c6a309599630",
+      "name": "Extract JSON",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -240,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:8000/api/v1/ingestion/ingest/n8n/result",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "={{Object.keys($json)[0]}}",
+              "value": "={{Object.values($json)[0]}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "55f4ba3e-de13-4195-9826-48423ef4c7a4",
+      "name": "Send to API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2128,
+        -112
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "fyIOcqtWnomuE9mp",
+          "name": "Header Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "input",
+        "options": {
+          "binaryPropertyName": "file"
+        }
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1248,
+        160
+      ],
+      "id": "26cd0ff5-6ee6-47a4-ad53-03fd66d23ded",
+      "name": "Webhook",
+      "webhookId": "d21a58d0-af9c-46ac-91fe-a586a4372421"
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "text": "extract the text ",
+        "inputType": "binary",
+        "binaryPropertyName": "={{ $json.file_key }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        -224
+      ],
+      "id": "9ffd8359-6ab7-4548-9b5c-6b3810361d91",
+      "name": "Analyze an image",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "z6WgnQqpufxCmuxB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "image",
+        "operation": "analyze",
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "text": "extract the text ",
+        "inputType": "binary",
+        "binaryPropertyName": "={{ $json.file_key }}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        512
+      ],
+      "id": "5e552dee-33c5-4d0f-ba41-f8371eeeb13e",
+      "name": "Analyze an image1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "z6WgnQqpufxCmuxB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $json.combined_text }}\n",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3,
+      "position": [
+        1424,
+        -336
+      ],
+      "id": "32247511-a944-4339-8b81-4ff883853528",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        368
+      ],
+      "id": "a860796b-1805-47e8-a5f2-722360d0b252",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "z6WgnQqpufxCmuxB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsonSchemaExample": "[\n  {\n    \"trainset_id\": \"T-001\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2015,\n    \"status\": \"ACTIVE\",\n    \"current_mileage\": 43883,\n    \"max_mileage_before_maintenance\": 50000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-01-21T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_3506\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-02-10T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_1694\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-04-10T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8660\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 3,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Federal Bank\",\n      \"contract_expiry\": \"2026-05-18T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 11275.118975583402,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_03\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-002\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2015,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 28221,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"EXPIRED\",\n        \"expiry_date\": \"2025-12-01T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9227\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-09-04T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9141\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-01T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6186\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 5,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Kerala Tourism\",\n      \"contract_expiry\": \"2026-01-16T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 14028.911270294566,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_03\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-003\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2015,\n    \"status\": \"MAINTENANCE\",\n    \"current_mileage\": 51497,\n    \"max_mileage_before_maintenance\": 50000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-07T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9835\"\n      },\n      \"signalling\": {\n        \"status\": \"EXPIRED\",\n        \"expiry_date\": \"2025-11-13T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6961\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-14T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8407\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 1,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Federal Bank\",\n      \"contract_expiry\": \"2026-08-26T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 10012.230191624672,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_02\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-004\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2015,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 31669,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-07-22T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_3118\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-01-16T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_7941\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-05-22T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_2741\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 5,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Federal Bank\",\n      \"contract_expiry\": \"2026-02-09T01:37:05.532079\",\n      \"priority\": \"MEDIUM\",\n      \"revenue_per_day\": 6991.732018782328,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_02\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-005\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2015,\n    \"status\": \"ACTIVE\",\n    \"current_mileage\": 37746,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-07-03T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_1306\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-31T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9897\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-14T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_4639\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 4,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Kerala Tourism\",\n      \"contract_expiry\": \"2026-04-16T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 11345.922688936818,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_06\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-006\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2016,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 22636,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-01-22T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5517\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-07-03T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5236\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-16T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_7796\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 5,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"None\",\n      \"contract_expiry\": \"2026-02-02T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 12002.408544197564,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_06\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-007\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2016,\n    \"status\": \"ACTIVE\",\n    \"current_mileage\": 42174,\n    \"max_mileage_before_maintenance\": 50000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-01-11T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6914\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-05-23T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_1101\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-03T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9565\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 3,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Kerala Tourism\",\n      \"contract_expiry\": \"2026-06-26T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 7268.5741088777595,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_01\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-008\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2016,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 23943,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"EXPIRED\",\n        \"expiry_date\": \"2025-11-23T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_7662\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-26T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8749\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-11-28T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_2741\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 1,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"MRF Tyres\",\n      \"contract_expiry\": \"2026-01-14T01:37:05.532079\",\n      \"priority\": \"MEDIUM\",\n      \"revenue_per_day\": 13200.060126951172,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_03\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-009\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2016,\n    \"status\": \"MAINTENANCE\",\n    \"current_mileage\": 48451,\n    \"max_mileage_before_maintenance\": 50000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-07-19T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9182\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-06-29T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_4806\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-07-01T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5927\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 4,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Federal Bank\",\n      \"contract_expiry\": \"2026-06-07T01:37:05.532079\",\n      \"priority\": \"MEDIUM\",\n      \"revenue_per_day\": 8615.010262455266,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_02\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-010\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2016,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 54250,\n    \"max_mileage_before_maintenance\": 50000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-28T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9275\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-06-27T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_7853\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-09-12T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5321\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 1,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Kerala Tourism\",\n      \"contract_expiry\": \"2026-09-05T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 14895.694988948972,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_04\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-011\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2017,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 24091,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-17T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8175\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-08-12T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_3995\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-07-07T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5255\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 0,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Kerala Tourism\",\n      \"contract_expiry\": \"2026-08-05T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 12835.837218572251,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_06\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-012\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2017,\n    \"status\": \"ACTIVE\",\n    \"current_mileage\": 23672,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-14T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_1572\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-05-02T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6314\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-12T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6605\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 1,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"MRF Tyres\",\n      \"contract_expiry\": \"2026-06-20T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 7697.190558919816,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_04\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-013\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2017,\n    \"status\": \"ACTIVE\",\n    \"current_mileage\": 48238,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-06-29T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9676\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-07-04T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_1618\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-11-18T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_2880\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 0,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"MRF Tyres\",\n      \"contract_expiry\": \"2026-09-14T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 8436.522957425965,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_06\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-014\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2017,\n    \"status\": \"MAINTENANCE\",\n    \"current_mileage\": 34892,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-08-31T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8144\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-11-27T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_3144\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-22T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_3642\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 4,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Kerala Tourism\",\n      \"contract_expiry\": \"2026-06-24T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 11384.439187530124,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_06\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-015\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2017,\n    \"status\": \"ACTIVE\",\n    \"current_mileage\": 31241,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-08-01T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_3334\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-11-14T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5088\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-03T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_1484\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 4,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"None\",\n      \"contract_expiry\": \"2026-05-22T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 7041.420441161248,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_06\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-016\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2018,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 49069,\n    \"max_mileage_before_maintenance\": 50000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-08-18T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8196\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-18T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_4379\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-09-17T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6345\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 4,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"MRF Tyres\",\n      \"contract_expiry\": \"2026-07-30T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 6843.819967375446,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_04\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-017\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2018,\n    \"status\": \"MAINTENANCE\",\n    \"current_mileage\": 36675,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-05-01T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_4802\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-08-05T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6584\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-06T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_4121\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 4,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Federal Bank\",\n      \"contract_expiry\": \"2026-05-16T01:37:05.532079\",\n      \"priority\": \"MEDIUM\",\n      \"revenue_per_day\": 14047.105445748088,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_04\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-018\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2018,\n    \"status\": \"ACTIVE\",\n    \"current_mileage\": 52503,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-04-03T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6146\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-10T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5300\"\n      },\n      \"telecom\": {\n        \"status\": \"EXPIRED\",\n        \"expiry_date\": \"2025-11-18T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6277\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 1,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"None\",\n      \"contract_expiry\": \"2026-02-02T01:37:05.532079\",\n      \"priority\": \"MEDIUM\",\n      \"revenue_per_day\": 12647.562678923307,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_01\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-019\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2018,\n    \"status\": \"ACTIVE\",\n    \"current_mileage\": 30452,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-21T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_7596\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-09-17T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6798\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-19T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8359\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 5,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Federal Bank\",\n      \"contract_expiry\": \"2026-04-15T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 11421.143134613923,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_05\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-020\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2018,\n    \"status\": \"MAINTENANCE\",\n    \"current_mileage\": 21679,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-02-13T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_4767\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-04-18T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_4417\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-06-05T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_1177\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 3,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Federal Bank\",\n      \"contract_expiry\": \"2026-08-30T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 9069.220226532714,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_04\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-021\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2019,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 24310,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-06-12T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8191\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-02-04T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5680\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-05-27T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_9983\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 0,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"None\",\n      \"contract_expiry\": \"2026-02-06T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 10896.035519384355,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_02\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-022\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2019,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 33176,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-23T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8069\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-06-26T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5726\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-01-15T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_3975\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 3,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Kerala Tourism\",\n      \"contract_expiry\": \"2026-03-19T01:37:05.532079\",\n      \"priority\": \"HIGH\",\n      \"revenue_per_day\": 7702.597324081012,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Aluva\",\n      \"bay\": \"Aluva_BAY_06\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  },\n  {\n    \"trainset_id\": \"T-023\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2019,\n    \"status\": \"MAINTENANCE\",\n    \"current_mileage\": 34396,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-04-15T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_2960\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-05-11T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6944\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-03-15T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_3700\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 2,\n      \"critical_cards\": 0\n    },\n    \"branding\": {\n      \"current_advertiser\": \"None\",\n      \"contract_expiry\": \"2026-09-09T01:37:05.532079\",\n      \"priority\": \"MEDIUM\",\n      \"revenue_per_day\": 8747.50501065254,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_03\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-024\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2019,\n    \"status\": \"STANDBY\",\n    \"current_mileage\": 25806,\n    \"max_mileage_before_maintenance\": 55000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-05-12T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5109\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-06-13T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6331\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-08-11T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_8337\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 2,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"Federal Bank\",\n      \"contract_expiry\": \"2026-06-21T01:37:05.532079\",\n      \"priority\": \"MEDIUM\",\n      \"revenue_per_day\": 5336.440285189199,\n      \"branding_status\": \"REQUIRED\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_06\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": true\n  },\n  {\n    \"trainset_id\": \"T-025\",\n    \"manufacturer\": \"Alstom\",\n    \"model\": \"Kochi Metro Coach\",\n    \"year_of_manufacture\": 2019,\n    \"status\": \"MAINTENANCE\",\n    \"current_mileage\": 44336,\n    \"max_mileage_before_maintenance\": 52000,\n    \"fitness_certificates\": {\n      \"rolling_stock\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-01-25T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_5398\"\n      },\n      \"signalling\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-09-25T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_2653\"\n      },\n      \"telecom\": {\n        \"status\": \"VALID\",\n        \"expiry_date\": \"2026-10-02T01:37:05.532079\",\n        \"issued_by\": \"RDSO\",\n        \"certificate_id\": \"GEN_6589\"\n      }\n    },\n    \"job_cards\": {\n      \"open_cards\": 1,\n      \"critical_cards\": 1\n    },\n    \"branding\": {\n      \"current_advertiser\": \"None\",\n      \"contract_expiry\": \"2026-01-21T01:37:05.532079\",\n      \"priority\": \"LOW\",\n      \"revenue_per_day\": 11480.041603188623,\n      \"branding_status\": \"OPTIONAL\"\n    },\n    \"current_location\": {\n      \"depot\": \"Petta\",\n      \"bay\": \"Petta_BAY_02\"\n    },\n    \"last_updated\": \"2025-12-08T01:37:05.532079\",\n    \"ml_feedback_required\": false\n  }\n]",
+        "autoFix": true
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        1984,
+        400
+      ],
+      "id": "5d8f2765-3371-4535-9efa-06a3bb3bce3e",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "numberInputs": 6
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        768,
+        64
+      ],
+      "id": "c7c79109-8f06-432c-81ef-580c65b92814",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "convert the give into text fomat"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        224
+      ],
+      "id": "7ec5e442-b3b4-4c0b-8a9e-d304bbe975ec",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "z6WgnQqpufxCmuxB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Convert binary → text\nconst binaryKeys = Object.keys(item.binary || {});\nif (binaryKeys.length === 0) {\n  return { json: { text: \"\" }};\n}\n\nconst key = binaryKeys[0];\nconst file = item.binary[key];\n\nconst buffer = Buffer.from(file.data, \"base64\");\nconst text = buffer.toString(\"utf8\");\n\nreturn {\n  json: {\n    file_key: key,\n    file_name: file.fileName,\n    extension: item.json.extension,\n    text: text\n  }\n};\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        864
+      ],
+      "id": "7181e952-8e0b-4b82-9a38-cb410e73fa2c",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "let output = \"\";\n\n// Loop through all merged items\nfor (const item of items) {\n  \n  // PDF / Image OCR (content.parts)\n  if (item.content?.parts?.[0]?.text) {\n    output += item.content.parts[0].text + \"\\n\\n---\\n\\n\";\n  }\n  \n  // TXT and CSV extracted text\n  if (item.json?.text) {\n    output += item.json.text + \"\\n\\n---\\n\\n\";\n  }\n}\n\nreturn [{\n  json: {\n    combined_text_: output\n  }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        864
+      ],
+      "id": "72975177-285d-4395-affe-3202fc54efe6",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "let output = \"\";\n\n// loop through all merged items\nfor (const item of items) {\n\n  // 1) OCR from Gemini (PDF / image)\n  if (item.content?.parts?.[0]?.text) {\n    output += item.content.parts[0].text + \"\\n\\n---\\n\\n\";\n  }\n\n  // 2) Extracted raw text (TXT / CSV / JSON / Excel)\n  if (item.json?.text && typeof item.json.text === \"string\") {\n    output += item.json.text + \"\\n\\n---\\n\\n\";\n  }\n\n  // 3) Rare: nested Gemini text\n  if (item.json?.content?.parts?.[0]?.text) {\n    output += item.json.content.parts[0].text + \"\\n\\n---\\n\\n\";\n  }\n\n  // 4) ⭐ NEW: merged CSV/TXT stored as combined_text_\n  if (item.json?.combined_text_) {\n    output += item.json.combined_text_ + \"\\n\\n---\\n\\n\";\n  }\n}\n\nreturn [{\n  json: { combined_text: output }\n}];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        128
+      ],
+      "id": "29e7eb6f-6aca-4836-afe6-fd75b7914346",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        608
+      ],
+      "id": "98baa407-d072-439a-aa12-cf2f4bf39cde",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "z6WgnQqpufxCmuxB",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "File Type Detector": {
+      "main": [
+        [
+          {
+            "node": "Is PDF?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is CSV?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is Image?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is JSON?",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Is TXT?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is PDF?": {
+      "main": [
+        [
+          {
+            "node": "Analyze an image",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is CSV?": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is Image?": {
+      "main": [
+        [
+          {
+            "node": "Analyze an image1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is JSON?": {
+      "main": [
+        [
+          {
+            "node": "Extract JSON",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Is TXT?": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract JSON": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "File Type Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze an image": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Analyze an image1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Send to API",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 5
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Structured Output Parser",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "80c9d7780133cd5797a686cee8840ee8eafcbf8096d64f7ddbeedd42517c04ea"
+  }
+}
