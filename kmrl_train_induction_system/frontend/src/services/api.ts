@@ -103,6 +103,8 @@ export const trainsetsApi = {
   getFitness: (id: string) => api.get(`/v1/trainsets/${id}/fitness`),
   getDetails: (id: string) => api.get(`/v1/trainsets/${id}/details`),
   getReviews: () => api.get('/v1/trainsets/reviews/all'),
+  generateExplanation: (id: string, data: { decision: string, top_reasons: string[], top_risks: string[] }) =>
+    api.post(`/v1/trainsets/${id}/explain`, data),
 };
 
 // Data Ingestion API

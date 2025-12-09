@@ -42,6 +42,9 @@ class Settings(BaseSettings):
     secret_key: Optional[str] = Field(default=None, env="SECRET_KEY")
     environment: Optional[str] = Field(default=None, env="ENVIRONMENT")
     debug: bool = Field(default=True, env="DEBUG")
+
+    # Gemini API Configuration
+    gemini_api_key: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
     
     # ML Model Configuration
     model_path: str = Field(default="models/", env="MODEL_PATH")
@@ -78,7 +81,10 @@ class Settings(BaseSettings):
     # No custom __init__; rely on pydantic-settings to read from .env and env vars
 
 # Eagerly load .env and fallback 'use' file so cloud creds are picked up reliably
-load_dotenv(".env")
+# Load .env from the same directory as this file (backend/app/../.env -> backend/.env)
+env_path = Path(__file__).parent.parent / ".env"
+load_dotenv(env_path)
+
 if os.path.exists("use"):
     load_dotenv("use", override=True)
 

@@ -13,6 +13,16 @@ import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import { DragDropContext, Droppable, Draggable, DropResult } from "react-beautiful-dnd";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { MessageSquare, Sparkles, Loader2 } from "lucide-react";
 
 const Assignments = () => {
   const queryClient = useQueryClient();
@@ -27,6 +37,9 @@ const Assignments = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [editedRankedList, setEditedRankedList] = useState<any[]>([]);
   const [reorderReason, setReorderReason] = useState("");
+  const [selectedTrainsetForChat, setSelectedTrainsetForChat] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
 
   // Check for tab parameter from URL
   useEffect(() => {
@@ -39,7 +52,7 @@ const Assignments = () => {
   // Fetch assignments data
   const { data: assignments = [], isLoading, refetch } = useQuery({
     queryKey: ['assignments'],
-    queryFn: () => assignmentApi.getAll().then(res => res.data),
+    queryFn: () => assignmentApi.getAll().then(res => res.data as Assignment[]),
     refetchInterval: 30000,
   });
 
@@ -62,8 +75,8 @@ const Assignments = () => {
     }
   }, [isEditMode, rankedList]);
 
-  // Check if user is admin (OPERATIONS_MANAGER)
-  const isAdmin = user?.role === 'OPERATIONS_MANAGER';
+  // Check if user is admin (OPERATIONS_MANAGER or ADMIN)
+  const isAdmin = user?.role === 'OPERATIONS_MANAGER' || user?.role === 'ADMIN';
 
   // Reorder mutation
   const reorderMutation = useMutation({
@@ -213,6 +226,38 @@ const Assignments = () => {
       setShowTrainsetDetails(true);
     } catch (error) {
       console.error('Error fetching trainset details:', error);
+    }
+  };
+
+  const handleOpenChat = async (trainset_id: string, decision: string) => {
+    setSelectedTrainsetForChat({ trainset_id });
+    setChatMessages([]);
+    setIsChatLoading(true);
+
+    try {
+      // Pre-fill chat with the initial explanation
+      const response = await trainsetsApi.generateExplanation(
+        trainset_id,
+        {
+          decision: decision,
+          top_reasons: [],
+          top_risks: []
+        }
+      );
+
+      const explanation = response.data;
+      setChatMessages([
+        { role: 'user', content: `Why was ${trainset_id} ranked as ${decision}?` },
+        { role: 'assistant', content: explanation.summary || "I analyzed the trainset data.", details: explanation.bullets || [] }
+      ]);
+
+    } catch (error: any) {
+      console.error("Chat error", error);
+      // Use backend provided message if available (including fallback explanation)
+      const errorMessage = error.response?.data?.detail || error.response?.data?.summary || "Analysis temporarily unavailable. Please check system logs for rule-based details.";
+      setChatMessages([{ role: 'assistant', content: errorMessage }]);
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
@@ -458,6 +503,14 @@ const Assignments = () => {
                                     </Badge>
                                   </div>
                                   <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 mr-2"
+                                      onClick={() => handleOpenChat(decision.trainset_id, decision.decision)}
+                                    >
+                                      <MessageSquare className="h-4 w-4" />
+                                    </Button>
                                     {isEditMode && (
                                       <div className="flex flex-col gap-1 mr-2">
                                         <Button
@@ -575,6 +628,14 @@ const Assignments = () => {
                         </Badge>
                       </div>
                       <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 w-8 p-0 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400 mr-2"
+                          onClick={() => handleOpenChat(assignment.trainset_id, "MAINTENANCE")}
+                        >
+                          <MessageSquare className="h-4 w-4" />
+                        </Button>
                         <span className="text-sm font-medium text-muted-foreground">
                           Score: {Math.round((assignment.decision?.score || 0) * 100)}%
                         </span>
@@ -831,8 +892,8 @@ const Assignments = () => {
                       </div>
                     )}
                   </div>
-                  {assignment.decision.reasons && assignment.decision.reasons.length > 0 && (
-                    <p className="text-sm text-muted-foreground mt-2">{assignment.decision.reasons[0]}</p>
+                  {assignment.decision.top_reasons && assignment.decision.top_reasons.length > 0 && (
+                    <p className="text-sm text-muted-foreground mt-2">{assignment.decision.top_reasons[0]}</p>
                   )}
                   <div className="flex gap-2 mt-4">
                     <Button
@@ -878,8 +939,8 @@ const Assignments = () => {
                       <p className="font-medium">{assignment.decision.decision}</p>
                     </div>
                     <div>
-                      <span className="text-muted-foreground">Override Decision:</span>
-                      <p className="font-medium text-orange-600">{assignment.override_decision || 'N/A'}</p>
+                      <span className="text-muted-foreground">Override Reason:</span>
+                      <p className="font-medium text-orange-600">{assignment.override_reason || 'N/A'}</p>
                     </div>
                     {assignment.override_by && (
                       <div>
@@ -1223,7 +1284,61 @@ const Assignments = () => {
           </div>
         )
       }
-    </div >
+      {/* Chatbot Dialog */}
+      <Dialog open={!!selectedTrainsetForChat} onOpenChange={(open) => !open && setSelectedTrainsetForChat(null)}>
+        <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-indigo-500" />
+              AI Analysis: {selectedTrainsetForChat?.trainset_id}
+            </DialogTitle>
+            <DialogDescription>
+              Ask questions about this trainset's ranking and status.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.role === 'assistant' && (
+                    <Avatar className="h-8 w-8 border bg-indigo-100">
+                      <AvatarImage src="/ai-avatar.png" />
+                      <AvatarFallback className="text-indigo-700">AI</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className={`rounded-lg p-3 text-sm max-w-[85%] ${msg.role === 'user'
+                    ? 'bg-indigo-600 text-white rounded-br-none'
+                    : 'bg-slate-100 dark:bg-slate-800 rounded-bl-none'
+                    }`}>
+                    <p className="leading-relaxed">{msg.content}</p>
+                    {msg.details && msg.details.length > 0 && (
+                      <ul className="mt-2 space-y-1 list-disc pl-4 opacity-90 text-xs">
+                        {msg.details.map((d: string, j: number) => (
+                          <li key={j}>{d}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex gap-3 justify-start">
+                  <Avatar className="h-8 w-8 border bg-indigo-100">
+                    <AvatarFallback className="text-indigo-700">AI</AvatarFallback>
+                  </Avatar>
+                  <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 rounded-bl-none">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          <div className="p-4 border-t">
+            <p className="text-xs text-center text-muted-foreground">AI analysis provided by Gemini</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 };
 

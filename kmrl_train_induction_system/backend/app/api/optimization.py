@@ -22,7 +22,7 @@ from app.utils.explainability import (
     render_explanation_text
 )
 from app.config import settings
-from app.security import require_api_key, require_role
+from app.security import require_api_key, require_role, require_permission
 from app.models.user import UserRole, User
 from pydantic import BaseModel, Field
 
@@ -217,7 +217,7 @@ async def explain_assignment(
         trainset_doc.pop('_id', None)
         
         # Generate comprehensive explanation
-        explanation = generate_comprehensive_explanation(trainset_doc, decision)
+        explanation = await generate_comprehensive_explanation(trainset_doc, decision)
         
         # Add metadata
         explanation.update({
@@ -271,7 +271,7 @@ async def explain_batch_assignments(
             trainset_doc.pop('_id', None)
             
             # Generate comprehensive explanation
-            explanation = generate_comprehensive_explanation(trainset_doc, decision)
+            explanation = await generate_comprehensive_explanation(trainset_doc, decision)
             explanation.update({
                 "trainset_id": trainset_id,
                 "role": decision,
@@ -639,7 +639,7 @@ class RankedListReorderRequest(BaseModel):
 @router.post("/latest/reorder", response_model=List[InductionDecision])
 async def reorder_ranked_list(
     reorder_request: RankedListReorderRequest,
-    current_user: User = Depends(require_role(UserRole.OPERATIONS_MANAGER.value)),
+    current_user: User = Depends(require_permission("assignments.override")),
     _auth=Depends(require_api_key),
 ):
     """Manually reorder the ranked induction list (Admin only)"""

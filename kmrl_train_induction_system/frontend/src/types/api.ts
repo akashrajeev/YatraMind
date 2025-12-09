@@ -69,6 +69,8 @@ export interface Assignment {
     decision: string;
     confidence_score: number;
     reasoning: string;
+    top_reasons?: string[];
+    top_risks?: string[];
     violations?: string[];
   };
   status: 'PENDING' | 'APPROVED' | 'REJECTED' | 'OVERRIDDEN';

@@ -390,8 +390,10 @@ class TrainInductionOptimizer:
                         combined_score = tier2_scale * tier2_val + tier3_val
                         confidence = min(1.0, max(0.5, (combined_score + 5000) / 10000))
                         
-                        explanation = generate_comprehensive_explanation(t, "INDUCT")
+                        # explanation = await generate_comprehensive_explanation(t, "INDUCT")
                         reasons = self._get_tiered_induction_reasons(t, tier2_val, tier3_val)
+                        # if explanation.get("summary"):
+                        #     reasons.insert(0, explanation.get("summary"))
                         
                         # Calculate normalized score based on actual optimization priority
                         normalized_score = self._calculate_normalized_optimization_score(
@@ -403,12 +405,13 @@ class TrainInductionOptimizer:
                                 trainset_id=t["trainset_id"],
                                 decision="INDUCT",
                                 confidence_score=confidence,
-                                reasons=reasons + explanation.get("top_reasons", []),
-                                score=normalized_score,  # Use actual optimization score
-                                top_reasons=explanation.get("top_reasons", []),
-                                top_risks=explanation.get("top_risks", []),
-                                violations=explanation.get("violations", []),
-                                shap_values=explanation.get("shap_values", [])
+                                reasons=reasons,
+                                score=normalized_score,
+                                top_reasons=[], # explanation.get("top_reasons", []),
+                                top_risks=[], # explanation.get("top_risks", []),
+                                violations=[], # explanation.get("violations", []),
+                                shap_values=[], # explanation.get("shap_values", []),
+                                summary=None # explanation.get("summary")
                             )
                         )
                 
@@ -416,7 +419,7 @@ class TrainInductionOptimizer:
                 for i, t in enumerate(eligible_trainsets):
                     if i not in chosen_indices:
                         if self._needs_maintenance(t):
-                            explanation = generate_comprehensive_explanation(t, "MAINTENANCE")
+                            # explanation = await generate_comprehensive_explanation(t, "MAINTENANCE")
                             tier2_val = tier2_scores[i]
                             tier3_val = tier3_scores[i]
                             normalized_score = self._calculate_normalized_optimization_score(
@@ -427,16 +430,17 @@ class TrainInductionOptimizer:
                                     trainset_id=t["trainset_id"],
                                     decision="MAINTENANCE",
                                     confidence_score=0.9,
-                                    reasons=["Maintenance required - not selected for service"] + explanation.get("top_reasons", []),
+                                    reasons=["Maintenance required - not selected for service"],
                                     score=normalized_score,
-                                    top_reasons=explanation.get("top_reasons", []),
-                                    top_risks=explanation.get("top_risks", []),
-                                    violations=explanation.get("violations", []),
-                                    shap_values=explanation.get("shap_values", [])
+                                    top_reasons=[],
+                                    top_risks=[],
+                                    violations=[],
+                                    shap_values=[],
+                                    summary=None
                                 )
                             )
                         else:
-                            explanation = generate_comprehensive_explanation(t, "STANDBY")
+                            # explanation = await generate_comprehensive_explanation(t, "STANDBY")
                             tier2_val = tier2_scores[i]
                             tier3_val = tier3_scores[i]
                             normalized_score = self._calculate_normalized_optimization_score(
@@ -447,19 +451,19 @@ class TrainInductionOptimizer:
                                     trainset_id=t["trainset_id"],
                                     decision="STANDBY",
                                     confidence_score=0.7,
-                                    reasons=["Standby - lower tiered score than inducted trainsets"] + explanation.get("top_reasons", []),
+                                    reasons=["Standby - lower tiered score than inducted trainsets"],
                                     score=normalized_score,
-                                    top_reasons=explanation.get("top_reasons", []),
-                                    top_risks=explanation.get("top_risks", []),
-                                    violations=explanation.get("violations", []),
-                                    shap_values=explanation.get("shap_values", [])
+                                    top_reasons=[],
+                                    top_risks=[],
+                                    violations=[],
+                                    shap_values=[],
+                                    summary=None
                                 )
                             )
                 
                 # Process critical failures (maintenance required)
                 # TIER 1: Hard Stop - Score = 0, Status = MAINTENANCE
                 for t in critical_failures:
-                    explanation = generate_comprehensive_explanation(t, "MAINTENANCE")
                     
                     # Build detailed reason for critical failure
                     failure_reasons = ["Critical failure detected - requires maintenance"]
@@ -477,13 +481,14 @@ class TrainInductionOptimizer:
                         InductionDecision(
                             trainset_id=t["trainset_id"],
                             decision="MAINTENANCE",
-                            confidence_score=1.0,
+                            confidence_score=1.0,  # High confidence for maintenance
                             reasons=failure_reasons,
                             score=0.0,  # TIER 1: Hard stop - Score = 0
-                            top_reasons=explanation["top_reasons"],
-                            top_risks=explanation["top_risks"],
-                            violations=explanation["violations"],
-                            shap_values=explanation["shap_values"]
+                            top_reasons=[],
+                            top_risks=[],
+                            violations=[],
+                            shap_values=[],
+                            summary=None
                         )
                     )
             else:
@@ -801,8 +806,10 @@ class TrainInductionOptimizer:
         for trainset, tier2_score, tier3_score, combined_score in scored_trainsets:
             if inducted < target_inductions:
                 confidence = min(1.0, max(0.5, (combined_score + 5000) / 10000))
-                explanation = generate_comprehensive_explanation(trainset, "INDUCT")
+                # explanation = await generate_comprehensive_explanation(trainset, "INDUCT")
                 reasons = self._get_tiered_induction_reasons(trainset, tier2_score, tier3_score)
+                # if explanation.get("summary"):
+                #     reasons.insert(0, explanation.get("summary"))
                 normalized_score = self._calculate_normalized_optimization_score(
                     trainset, tier2_score, tier3_score, "INDUCT"
                 )
@@ -811,16 +818,17 @@ class TrainInductionOptimizer:
                     trainset_id=trainset["trainset_id"],
                     decision="INDUCT",
                     confidence_score=confidence,
-                    reasons=reasons + explanation.get("top_reasons", []),
+                    reasons=reasons,
                     score=normalized_score,  # Use actual optimization score
-                    top_reasons=explanation.get("top_reasons", []),
-                    top_risks=explanation.get("top_risks", []),
-                    violations=explanation.get("violations", []),
-                    shap_values=explanation.get("shap_values", [])
+                    top_reasons=[], # explanation.get("top_reasons", []),
+                    top_risks=[], # explanation.get("top_risks", []),
+                    violations=[], # explanation.get("violations", []),
+                    shap_values=[], # explanation.get("shap_values", []),
+                    summary=None # explanation.get("summary")
                 ))
                 inducted += 1
             elif self._needs_maintenance(trainset):
-                explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+                # explanation = await generate_comprehensive_explanation(trainset, "MAINTENANCE")
                 normalized_score = self._calculate_normalized_optimization_score(
                     trainset, tier2_score, tier3_score, "MAINTENANCE"
                 )
@@ -828,15 +836,16 @@ class TrainInductionOptimizer:
                     trainset_id=trainset["trainset_id"],
                     decision="MAINTENANCE",
                     confidence_score=0.9,
-                    reasons=["Maintenance required - not selected for service"] + explanation.get("top_reasons", []),
+                    reasons=["Maintenance required - not selected for service"],
                     score=normalized_score,
-                    top_reasons=explanation.get("top_reasons", []),
-                    top_risks=explanation.get("top_risks", []),
-                    violations=explanation.get("violations", []),
-                    shap_values=explanation.get("shap_values", [])
+                    top_reasons=[],
+                    top_risks=[],
+                    violations=[],
+                    shap_values=[],
+                    summary=None
                 ))
             else:
-                explanation = generate_comprehensive_explanation(trainset, "STANDBY")
+                # explanation = await generate_comprehensive_explanation(trainset, "STANDBY")
                 normalized_score = self._calculate_normalized_optimization_score(
                     trainset, tier2_score, tier3_score, "STANDBY"
                 )
@@ -844,18 +853,18 @@ class TrainInductionOptimizer:
                     trainset_id=trainset["trainset_id"],
                     decision="STANDBY",
                     confidence_score=0.7,
-                    reasons=["Standby - lower tiered score than inducted trainsets"] + explanation.get("top_reasons", []),
+                    reasons=["Standby - lower tiered score than inducted trainsets"],
                     score=normalized_score,
-                    top_reasons=explanation.get("top_reasons", []),
-                    top_risks=explanation.get("top_risks", []),
-                    violations=explanation.get("violations", []),
-                    shap_values=explanation.get("shap_values", [])
+                    top_reasons=[],
+                    top_risks=[],
+                    violations=[],
+                    shap_values=[],
+                    summary=None
                 ))
         
         # Process critical failures
         # TIER 1: Hard Stop - Score = 0, Status = MAINTENANCE
-        for trainset in critical_failures:
-            explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+            explanation = {}
             
             # Build detailed reason for critical failure
             failure_reasons = ["Critical failure detected - requires maintenance"]
@@ -869,6 +878,9 @@ class TrainInductionOptimizer:
             if expired_certs:
                 failure_reasons.append(f"Expired certificates: {', '.join(expired_certs)}")
             
+            if explanation.get("summary"):
+                failure_reasons.insert(0, explanation.get("summary"))
+                
             decisions.append(InductionDecision(
                 trainset_id=trainset["trainset_id"],
                 decision="MAINTENANCE",
@@ -878,7 +890,8 @@ class TrainInductionOptimizer:
                 top_reasons=explanation["top_reasons"],
                 top_risks=explanation["top_risks"],
                 violations=explanation["violations"],
-                shap_values=explanation["shap_values"]
+                shap_values=explanation["shap_values"],
+                summary=explanation.get("summary")
             ))
         
         # FINAL SAFETY SANITY CHECK (fallback method)
@@ -1478,7 +1491,8 @@ class TrainInductionOptimizer:
 
                 confidence = min(1.0, max(0.5, (combined_score + 5000) / 10000))
 
-                explanation = generate_comprehensive_explanation(trainset, "INDUCT")
+                # explanation = generate_comprehensive_explanation(trainset, "INDUCT")
+                explanation = {}
 
                 reasons = self._get_tiered_induction_reasons(trainset, tier2_score, tier3_score)
 
@@ -1516,7 +1530,7 @@ class TrainInductionOptimizer:
 
             elif self._needs_maintenance(trainset):
 
-                explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+                explanation = {}
 
                 normalized_score = self._calculate_normalized_optimization_score(
 
@@ -1548,7 +1562,7 @@ class TrainInductionOptimizer:
 
             else:
 
-                explanation = generate_comprehensive_explanation(trainset, "STANDBY")
+                explanation = {}
 
                 normalized_score = self._calculate_normalized_optimization_score(
 
@@ -1586,7 +1600,7 @@ class TrainInductionOptimizer:
 
         for trainset in critical_failures:
 
-            explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+            explanation = {}
 
             
 
@@ -2419,7 +2433,8 @@ class TrainInductionOptimizer:
 
                 confidence = min(1.0, max(0.5, (combined_score + 5000) / 10000))
 
-                explanation = generate_comprehensive_explanation(trainset, "INDUCT")
+                # explanation = generate_comprehensive_explanation(trainset, "INDUCT")
+                explanation = {}
 
                 reasons = self._get_tiered_induction_reasons(trainset, tier2_score, tier3_score)
 
@@ -2457,7 +2472,7 @@ class TrainInductionOptimizer:
 
             elif self._needs_maintenance(trainset):
 
-                explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+                explanation = {}
 
                 normalized_score = self._calculate_normalized_optimization_score(
 
@@ -2489,7 +2504,8 @@ class TrainInductionOptimizer:
 
             else:
 
-                explanation = generate_comprehensive_explanation(trainset, "STANDBY")
+                # explanation = generate_comprehensive_explanation(trainset, "STANDBY")
+                explanation = {}
 
                 normalized_score = self._calculate_normalized_optimization_score(
 
@@ -2527,7 +2543,7 @@ class TrainInductionOptimizer:
 
         for trainset in critical_failures:
 
-            explanation = generate_comprehensive_explanation(trainset, "MAINTENANCE")
+            explanation = {}
 
             
 

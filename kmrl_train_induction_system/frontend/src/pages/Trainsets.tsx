@@ -22,8 +22,20 @@ import {
   Download,
   X,
   Info,
-  Target
+  Target,
+  Sparkles,
+  Loader2,
+  MessageSquare
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useState, useMemo } from "react";
 
 
@@ -31,8 +43,12 @@ const Trainsets = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [depotFilter, setDepotFilter] = useState<string>("all");
+  const [selectedTrainsetForChat, setSelectedTrainsetForChat] = useState<any>(null);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [isChatLoading, setIsChatLoading] = useState(false);
   const [trainsetDetails, setTrainsetDetails] = useState<any>(null);
   const [showTrainsetDetails, setShowTrainsetDetails] = useState(false);
+  const [isGeneratingExplanation, setIsGeneratingExplanation] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch trainsets data
@@ -121,6 +137,70 @@ const Trainsets = () => {
       setShowTrainsetDetails(true);
     } catch (error) {
       console.error('Error fetching trainset details:', error);
+    }
+  };
+
+
+  const handleGenerateExplanation = async () => {
+    if (!trainsetDetails) return;
+
+    setIsGeneratingExplanation(true);
+    try {
+      const response = await trainsetsApi.generateExplanation(
+        trainsetDetails.trainset_id,
+        {
+          decision: trainsetDetails.explanation?.decision || 'UNKNOWN',
+          top_reasons: trainsetDetails.explanation?.top_reasons || [],
+          top_risks: trainsetDetails.explanation?.top_risks || []
+        }
+      );
+
+      // Update local state with the new explanation
+      setTrainsetDetails((prev: any) => ({
+        ...prev,
+        explanation: {
+          ...prev.explanation,
+          ...response.data
+        }
+      }));
+    } catch (error) {
+      console.error("Failed to generate explanation", error);
+      setIsGeneratingExplanation(false);
+    }
+  };
+
+
+
+  const handleOpenChat = async (trainset: any) => {
+    setSelectedTrainsetForChat(trainset);
+    setChatMessages([]);
+    setIsChatLoading(true);
+
+    try {
+      const decision = decisionMap[trainset.trainset_id] || "UNKNOWN";
+      // Pre-fill chat with the initial explanation
+      const response = await trainsetsApi.generateExplanation(
+        trainset.trainset_id,
+        {
+          decision: decision,
+          top_reasons: [],
+          top_risks: []
+        }
+      );
+
+      const explanation = response.data;
+      setChatMessages([
+        { role: 'user', content: `Why was ${trainset.trainset_id} ranked as ${decision}?` },
+        { role: 'assistant', content: explanation.summary || "I analyzed the trainset data.", details: explanation.bullets || [] }
+      ]);
+
+    } catch (error: any) {
+      console.error("Chat error", error);
+      // Use backend provided message if available (including fallback explanation)
+      const errorMessage = error.response?.data?.detail || error.response?.data?.summary || "Analysis temporarily unavailable. Please check system logs for rule-based details.";
+      setChatMessages([{ role: 'assistant', content: errorMessage }]);
+    } finally {
+      setIsChatLoading(false);
     }
   };
 
@@ -225,12 +305,26 @@ const Trainsets = () => {
           {filteredTrainsets.map((trainset: Trainset) => (
             <Card key={trainset.trainset_id} className="hover:shadow-md transition-shadow">
               <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Train className="h-5 w-5" />
-                    {trainset.trainset_id}
-                  </CardTitle>
-                  <div className="flex items-center gap-2">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h3 className="font-bold text-lg">{trainset.trainset_id}</h3>
+                    <div className="flex items-center text-sm text-muted-foreground mt-1">
+                      <MapPin className="h-3 w-3 mr-1" />
+                      {trainset.current_location?.depot} • Bay {trainset.current_location?.lane}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 rounded-full bg-indigo-50 hover:bg-indigo-100 text-indigo-600 dark:bg-indigo-900/30 dark:text-indigo-400"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenChat(trainset);
+                      }}
+                    >
+                      <MessageSquare className="h-4 w-4" />
+                    </Button>
                     {getStatusBadge(trainset.status)}
                     {decisionMap[trainset.trainset_id] !== trainset.status && getDecisionBadge(decisionMap[trainset.trainset_id])}
                   </div>
@@ -431,6 +525,87 @@ const Trainsets = () => {
                 </Card>
               </div>
 
+              {/* AI Analysis Section */}
+              {trainsetDetails.explanation && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Sparkles className="h-5 w-5 text-indigo-500" />
+                    AI Decision Analysis
+                  </h3>
+                  <Card className="bg-indigo-50/50 dark:bg-indigo-900/10 border-indigo-100 dark:border-indigo-800">
+                    <CardContent className="p-4 space-y-4">
+                      <div className="flex items-center gap-3">
+                        <Badge variant={trainsetDetails.explanation.decision === 'INDUCT' ? 'success' : 'secondary'}>
+                          {trainsetDetails.explanation.decision}
+                        </Badge>
+                      </div>
+
+
+                      {!trainsetDetails.explanation.summary ? (
+                        <div className="flex flex-col items-center justify-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-dashed border-slate-200 dark:border-slate-700">
+                          <p className="text-sm text-slate-500 mb-4 text-center">
+                            AI analysis is available for this decision. Generating an explanation will check health, mileage, and logs in detail.
+                          </p>
+                          <Button
+                            onClick={handleGenerateExplanation}
+                            disabled={isGeneratingExplanation}
+                            className="bg-indigo-600 hover:bg-indigo-700 text-white gap-2"
+                          >
+                            {isGeneratingExplanation ? (
+                              <>
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Analyzing Train Data...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="h-4 w-4" />
+                                Ask AI to Explain This Decision
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="text-sm leading-relaxed text-slate-700 dark:text-slate-300 bg-white/50 dark:bg-slate-900/50 p-3 rounded-md border border-indigo-100/50">
+                          {trainsetDetails.explanation.summary}
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        {trainsetDetails.explanation.top_reasons?.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-bold uppercase text-green-700 dark:text-green-400 flex items-center gap-1">
+                              <CheckCircle className="h-3 w-3" /> Supporting Factors
+                            </h4>
+                            <ul className="space-y-2">
+                              {trainsetDetails.explanation.top_reasons.map((reason: string, i: number) => (
+                                <li key={i} className="text-sm flex items-start gap-2 bg-green-50/50 dark:bg-green-900/20 p-2 rounded border border-green-100 dark:border-green-900/50">
+                                  <span>{reason}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {trainsetDetails.explanation.top_risks?.length > 0 && (
+                          <div className="space-y-2">
+                            <h4 className="text-xs font-bold uppercase text-red-700 dark:text-red-400 flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" /> Risk Factors
+                            </h4>
+                            <ul className="space-y-2">
+                              {trainsetDetails.explanation.top_risks.map((risk: string, i: number) => (
+                                <li key={i} className="text-sm flex items-start gap-2 bg-red-50/50 dark:bg-red-900/20 p-2 rounded border border-red-100 dark:border-red-900/50">
+                                  <span>{risk}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Mileage */}
                 <div className="space-y-4">
@@ -549,6 +724,61 @@ const Trainsets = () => {
           </Card>
         </div>
       )}
+      {/* Chatbot Dialog */}
+      <Dialog open={!!selectedTrainsetForChat} onOpenChange={(open) => !open && setSelectedTrainsetForChat(null)}>
+        <DialogContent className="sm:max-w-[500px] h-[600px] flex flex-col p-0 gap-0">
+          <DialogHeader className="p-4 border-b">
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-indigo-500" />
+              AI Analysis: {selectedTrainsetForChat?.trainset_id}
+            </DialogTitle>
+            <DialogDescription>
+              Ask questions about this trainset's ranking and status.
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="flex-1 p-4">
+            <div className="space-y-4">
+              {chatMessages.map((msg, i) => (
+                <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  {msg.role === 'assistant' && (
+                    <Avatar className="h-8 w-8 border bg-indigo-100">
+                      <AvatarImage src="/ai-avatar.png" />
+                      <AvatarFallback className="text-indigo-700">AI</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className={`rounded-lg p-3 text-sm max-w-[85%] ${msg.role === 'user'
+                    ? 'bg-indigo-600 text-white rounded-br-none'
+                    : 'bg-slate-100 dark:bg-slate-800 rounded-bl-none'
+                    }`}>
+                    <p className="leading-relaxed">{msg.content}</p>
+                    {msg.details && msg.details.length > 0 && (
+                      <ul className="mt-2 space-y-1 list-disc pl-4 opacity-90 text-xs">
+                        {msg.details.map((d: string, j: number) => (
+                          <li key={j}>{d}</li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              ))}
+              {isChatLoading && (
+                <div className="flex gap-3 justify-start">
+                  <Avatar className="h-8 w-8 border bg-indigo-100">
+                    <AvatarFallback className="text-indigo-700">AI</AvatarFallback>
+                  </Avatar>
+                  <div className="bg-slate-100 dark:bg-slate-800 rounded-lg p-3 rounded-bl-none">
+                    <Loader2 className="h-4 w-4 animate-spin text-slate-500" />
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          <div className="p-4 border-t">
+            {/* Input removed as per request for now, or could add actual chat input later */}
+            <p className="text-xs text-center text-muted-foreground">AI analysis provided by Gemini</p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

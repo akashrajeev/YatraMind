@@ -1,0 +1,439 @@
+{
+  "optimization_id": "85240d23-c98b-431c-bf54-0fcf167aeb2b",
+  "timestamp": "2025-12-09T11:13:20.485311",
+  "diagnostics": {
+    "required_service_trains": 13,
+    "standby_buffer": 2,
+    "calculation_method": "timetable",
+    "eligible_train_count": 25,
+    "granted_train_count": 13,
+    "fleet_requirement": {
+      "required_service_trains": 13,
+      "standby_buffer": 2,
+      "total_required_trains": 15,
+      "calculation_method": "timetable",
+      "details": {
+        "cycle_time_min": 100,
+        "bands": [
+          {
+            "band": "Morning Peak",
+            "headway": 8,
+            "needed": 13
+          },
+          {
+            "band": "Evening Peak",
+            "headway": 8,
+            "needed": 13
+          },
+          {
+            "band": "Off-Peak",
+            "headway": 15,
+            "needed": 7
+          }
+        ],
+        "reserve_ratio": 0.15
+      }
+    }
+  },
+  "decisions": [
+    {
+      "trainset_id": "T-015",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "High branding obligation - wrapped train must enter service",
+        "No minor defects - optimal condition",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 1.0,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-013",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "High branding obligation - wrapped train must enter service",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.99,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-014",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "High branding obligation - wrapped train must enter service",
+        "Low mileage - good for fleet balancing",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.98,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-002",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Medium branding obligation - wrapped train",
+        "No minor defects - optimal condition",
+        "Low mileage - good for fleet balancing",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.97,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-006",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Medium branding obligation - wrapped train",
+        "No minor defects - optimal condition",
+        "Low mileage - good for fleet balancing",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.97,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-012",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Medium branding obligation - wrapped train",
+        "Low mileage - good for fleet balancing",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.96,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-003",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Medium branding obligation - wrapped train",
+        "Low mileage - good for fleet balancing",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.95,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-005",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Medium branding obligation - wrapped train",
+        "Moderate mileage - suitable for service",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.95,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-010",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Medium branding obligation - wrapped train",
+        "Moderate mileage - suitable for service",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.95,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-016",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "High branding obligation - wrapped train must enter service",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.95,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-007",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Branding obligation - wrapped train",
+        "No minor defects - optimal condition",
+        "Low mileage - good for fleet balancing",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.9400000000000001,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-011",
+      "decision": "INDUCT",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Branding obligation - wrapped train",
+        "No minor defects - optimal condition",
+        "Low mileage - good for fleet balancing",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.9400000000000001,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-008",
+      "decision": "INDUCT",
+      "confidence_score": 0.5106313,
+      "reasons": [
+        "No minor defects - optimal condition",
+        "Moderate mileage - suitable for service",
+        "No cleaning required - ready for service",
+        "No shunting complexity - easy deployment"
+      ],
+      "score": 0.806313,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-009",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets"
+      ],
+      "score": 0.641,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-017",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets"
+      ],
+      "score": 0.641,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-018",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets"
+      ],
+      "score": 0.641,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-019",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets"
+      ],
+      "score": 0.608937,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-020",
+      "decision": "STANDBY",
+      "confidence_score": 0.7,
+      "reasons": [
+        "Standby - lower tiered score than inducted trainsets"
+      ],
+      "score": 0.608583,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-001",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "Expired certificates: rolling_stock"
+      ],
+      "score": 0.0,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-004",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance"
+      ],
+      "score": 0.0,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-021",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "1 critical job cards open"
+      ],
+      "score": 0.0,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-022",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "3 critical job cards open",
+        "Expired certificates: signalling"
+      ],
+      "score": 0.0,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-023",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "3 critical job cards open",
+        "Expired certificates: rolling_stock"
+      ],
+      "score": 0.0,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-024",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "2 critical job cards open"
+      ],
+      "score": 0.0,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    },
+    {
+      "trainset_id": "T-025",
+      "decision": "MAINTENANCE",
+      "confidence_score": 1.0,
+      "reasons": [
+        "Critical failure detected - requires maintenance",
+        "2 critical job cards open"
+      ],
+      "score": 0.0,
+      "top_reasons": [],
+      "top_risks": [],
+      "violations": [],
+      "shap_values": [],
+      "summary": null
+    }
+  ]
+}
