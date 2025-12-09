@@ -13,6 +13,8 @@ from app.models.trainset import (
     FleetSummary,
     OptimizationKPIs,
     StablingGeometryResponse,
+    MaintenanceSeverity,
+    LocationType,
 )
 
 logger = logging.getLogger(__name__)
@@ -764,3 +766,4 @@ class StablingGeometryOptimizer:
                     }
                 )
         return rollout
+

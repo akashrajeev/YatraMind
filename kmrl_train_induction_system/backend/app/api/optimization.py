@@ -427,202 +427,6 @@ async def get_latest_ranked_list():
             }
         )
         
-        # Create ranked decisions for all trainsets with proper scoring
-        mock_decisions = []
-        
-        for trainset in trainsets:
-            # Calculate score based on KMRL priority factors (in order of importance)
-            score = 0.0
-            reasons = []
-            risks = []
-            
-            try:
-                # 1. FITNESS CERTIFICATES (Highest Priority - 35% weight)
-                # Check Rolling-Stock, Signalling, and Telecom certificates
-                fitness_score = 0.0
-                cert_status = trainset.get("fitness_certificates", {})
-                
-                # Rolling-Stock certificate (most critical)
-                rolling_stock = cert_status.get("rolling_stock", {})
-                if rolling_stock.get("status") == "VALID":
-                    fitness_score += 0.15
-                    reasons.append("Valid Rolling-Stock fitness certificate")
-                elif rolling_stock.get("status") == "EXPIRED":
-                    fitness_score += 0.0
-                    risks.append("Rolling-Stock certificate expired")
-                else:
-                    fitness_score += 0.05
-                    risks.append("Rolling-Stock certificate pending")
-                
-                # Signalling certificate
-                signalling = cert_status.get("signalling", {})
-                if signalling.get("status") == "VALID":
-                    fitness_score += 0.10
-                    reasons.append("Valid Signalling fitness certificate")
-                elif signalling.get("status") == "EXPIRED":
-                    fitness_score += 0.0
-                    risks.append("Signalling certificate expired")
-                else:
-                    fitness_score += 0.05
-                    risks.append("Signalling certificate pending")
-                
-                # Telecom certificate
-                telecom = cert_status.get("telecom", {})
-                if telecom.get("status") == "VALID":
-                    fitness_score += 0.10
-                    reasons.append("Valid Telecom fitness certificate")
-                elif telecom.get("status") == "EXPIRED":
-                    fitness_score += 0.0
-                    risks.append("Telecom certificate expired")
-                else:
-                    fitness_score += 0.05
-                    risks.append("Telecom certificate pending")
-                
-                score += fitness_score
-                
-                # 2. JOB-CARD STATUS (25% weight)
-                # Check for open/pending work orders in Maximo
-                job_cards = trainset.get("job_cards", {})
-                open_cards = job_cards.get("open_cards", 0)
-                critical_cards = job_cards.get("critical_cards", 0)
-                
-                if critical_cards > 0:
-                    score += 0.0
-                    risks.append(f"{critical_cards} critical job cards open")
-                elif open_cards > 0:
-                    score += 0.05
-                    risks.append(f"{open_cards} job cards open")
-                else:
-                    score += 0.25
-                    reasons.append("No critical job cards pending")
-                
-                # 3. CLEANING & DETAILING SLOTS (20% weight)
-                # Check availability of manpower and bay occupancy
-                # For now, use sensor health as proxy for cleaning readiness
-                sensor_health = trainset.get("sensor_health_score", 0.8)
-                if sensor_health > 0.9:
-                    score += 0.20
-                    reasons.append("Excellent sensor health - ready for service")
-                elif sensor_health > 0.7:
-                    score += 0.10
-                    reasons.append("Good sensor health")
-                else:
-                    score += 0.0
-                    risks.append("Poor sensor health - needs attention")
-                
-                # 4. STABLING GEOMETRY (15% weight)
-                # Physical positions of bays affect dispatch efficiency
-                # Use current location as proxy for stabling position
-                current_location = trainset.get("current_location", {})
-                depot = current_location.get("depot", "unknown")
-                if depot in ["Petta", "Vytilla"]:  # Main depots
-                    score += 0.15
-                    reasons.append("Optimal depot location for dispatch")
-                else:
-                    score += 0.10
-                    reasons.append("Good depot location")
-                
-                # 5. MILEAGE BALANCING (10% weight)
-                # Balance wear on bogies, brake pads, and HVAC systems
-                current_mileage = trainset.get("current_mileage", 0)
-                max_mileage = trainset.get("max_mileage_before_maintenance", 50000)
-                mileage_ratio = current_mileage / max_mileage if max_mileage > 0 else 0
-                
-                if mileage_ratio < 0.5:
-                    score += 0.10
-                    reasons.append("Low mileage - good for balancing wear")
-                elif mileage_ratio > 0.8:
-                    score += 0.05
-                    risks.append("High mileage - consider maintenance")
-                else:
-                    score += 0.08
-                    reasons.append("Balanced mileage")
-                
-                # 6. BRANDING PRIORITIES (5% weight - Lowest Priority)
-                # Contractual commitments for exterior wrap exposure hours
-                branding_priority = trainset.get("branding_priority", 0)
-                if branding_priority > 0.7:
-                    score += 0.05
-                    reasons.append("High branding priority")
-                elif branding_priority > 0.3:
-                    score += 0.03
-                    reasons.append("Medium branding priority")
-                else:
-                    score += 0.02
-                    reasons.append("Low branding priority")
-                
-                # Normalize score to 0-1 range
-                score = min(1.0, max(0.0, score))
-                
-            except Exception as e:
-                logger.error(f"Error calculating score for trainset {trainset.get('trainset_id', 'unknown')}: {e}")
-                # Fallback to simple scoring
-                score = 0.5
-                reasons = ["Default scoring applied"]
-                risks = ["Scoring error occurred"]
-            
-            # Determine decision based on KMRL priority factors
-            # INDUCT: All critical factors (fitness, job cards) are good
-            # STANDBY: Some issues but not critical
-            # MAINTENANCE: Critical issues that need attention
-            
-            if score >= 0.8 and len([r for r in risks if "certificate" in r.lower() or "critical" in r.lower()]) == 0:
-                decision = "INDUCT"
-            elif score >= 0.6 and len([r for r in risks if "certificate" in r.lower()]) == 0:
-                decision = "STANDBY"
-            else:
-                decision = "MAINTENANCE"
-            
-            # Calculate confidence based on score and risk factors
-            base_confidence = min(0.95, max(0.6, score))
-            risk_penalty = len(risks) * 0.05
-            confidence = round(max(0.6, base_confidence - risk_penalty), 2)
-            final_score = round(score, 3)
-            
-            mock_decision = {
-                "trainset_id": trainset["trainset_id"],
-                "decision": decision,
-                "confidence_score": confidence,
-                "score": final_score,
-                "top_reasons": reasons[:3] if reasons else ["All systems operational"],
-                "top_risks": [risk for risk in risks[:2] if risk is not None] if risks else [],
-                "violations": [],
-                "shap_values": [
-                    {"name": "Fitness Certificates", "value": fitness_score, "impact": "positive"},
-                    {"name": "Job Card Status", "value": 0.25 if critical_cards == 0 and open_cards == 0 else 0.05, "impact": "positive"},
-                    {"name": "Sensor Health", "value": trainset.get("sensor_health_score", 0.85), "impact": "positive"},
-                    {"name": "Mileage Balance", "value": 1.0 - mileage_ratio, "impact": "positive"},
-                    {"name": "Branding Priority", "value": branding_priority, "impact": "positive"}
-                ],
-                "reasons": reasons if reasons else ["Default scoring applied"]
-            }
-            mock_decisions.append(mock_decision)
-        
-        # Sort by score (highest first) - ensure proper ranking
-        mock_decisions.sort(key=lambda x: x["score"], reverse=True)
-        
-        # Take top 10 trainsets for induction list (not just 3)
-        top_decisions = mock_decisions[:10]
-        
-        logger.info(f"Created {len(mock_decisions)} ranked decisions, returning top {len(top_decisions)}")
-        
-        # Store the ranked list (only if not manually adjusted)
-        # Don't overwrite manually adjusted lists
-        existing_doc = await latest_collection.find_one(sort=[("_meta.updated_at", -1), ("created_at", -1)])
-        if not existing_doc or not existing_doc.get("_meta", {}).get("manually_adjusted", False):
-            await latest_collection.insert_one({
-                "_meta": {
-                    "updated_at": datetime.utcnow().isoformat(),
-                    "manually_adjusted": False
-                },
-                "decisions": top_decisions,
-                "created_at": datetime.utcnow().isoformat(),
-                "total_trainsets": len(mock_decisions)
-            })
-        
-        logger.info(f"Stored ranked list with {len(top_decisions)} decisions")
-        return top_decisions
-        
     except HTTPException:
         # Re-raise HTTP exceptions (like our 404 for no optimization)
         raise
@@ -730,6 +534,12 @@ async def get_shunting_schedule():
 
         operations = stabling_data.get("shunting_operations", [])
         summary = stabling_data.get("shunting_summary", {})
+        
+        # Calculate totals for shunting window feasibility
+        total_time = summary.get("total_time_min", 0)
+        available_minutes = stabling_optimizer.operational_window["minutes"]
+        buffer_minutes = summary.get("buffer_minutes", available_minutes - total_time)
+        feasible = summary.get("feasible", total_time <= available_minutes)
 
         return {
             "shunting_schedule": operations,
@@ -746,6 +556,12 @@ async def get_shunting_schedule():
                 "start_time": stabling_optimizer.operational_window["start"],
                 "end_time": stabling_optimizer.operational_window["end"],
                 "buffer_minutes": summary.get("buffer_minutes", 0),
+            },
+            "shunting_window": {
+                "available_minutes": available_minutes,
+                "required_minutes": total_time,
+                "buffer_minutes": buffer_minutes,
+                "feasible": feasible
             },
             "optimization_timestamp": datetime.now().isoformat(),
         }
