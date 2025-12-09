@@ -10,6 +10,8 @@ import { Settings, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 import { useAuth } from "@/contexts/AuthContext";
+import { LanguageToggle } from "@/components/LanguageToggle";
+import { useTranslate } from "@/contexts/LanguageContext";
 
 
 import {
@@ -28,6 +30,7 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ children }: DashboardLayoutProps) {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const t = useTranslate();
 
   const displayName = user?.name || user?.username || "User";
   const displayUsername = user?.username || "unknown";
@@ -55,16 +58,17 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                 
                 <div>
                   <h1 className="font-semibold text-lg text-foreground">
-                    KMRL Operations Center
+                    {t("kmrlTitle")}
                   </h1>
                   <p className="text-sm text-muted-foreground">
-                    Train Induction Management System
+                    {t("kmrlSubtitle")}
                   </p>
                 </div>
               </div>
 
               {/* Right Header Section */}
               <div className="flex items-center gap-3">
+                <LanguageToggle />
                 <ThemeToggle />
 
                 <Button
@@ -106,7 +110,7 @@ export function DashboardLayout({ children }: DashboardLayoutProps) {
                       className="cursor-pointer"
                     >
                       <LogOut className="mr-2 h-5 w-5" />
-                      <span>Sign Out</span>
+                      <span>{t("signOut")}</span>
                     </DropdownMenuItem>
 
                   </DropdownMenuContent>

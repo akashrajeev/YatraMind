@@ -35,11 +35,13 @@ import {
 
 import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
+import { useTranslate } from "@/contexts/LanguageContext";
 
 export function AppSidebar() {
   const { state } = useSidebar();
   const location = useLocation();
   const { user } = useAuth();
+  const t = useTranslate();
   const isCollapsed = state === "collapsed";
 
   // Fetch pending assignments count for the badge
@@ -53,40 +55,40 @@ export function AppSidebar() {
 
   const navigationItems = [
     {
-      title: "Dashboard",
+      title: t("dashboard"),
       url: "/",
       icon: LayoutDashboard,
       badge: null,
     },
     {
-      title: "Assignments",
+      title: t("assignments"),
       url: "/assignments",
       icon: ClipboardList,
       badge: pendingCount > 0 ? pendingCount.toString() : null,
       hidden: user?.role === UserRole.STATION_SUPERVISOR
     },
     {
-      title: "Trainsets",
+      title: t("trainsets"),
       url: "/trainsets",
       icon: Train,
       badge: null,
     },
     {
-      title: "Optimization",
+      title: t("optimization"),
       url: "/optimization",
       icon: Brain,
       badge: null,
       hidden: user?.role === UserRole.STATION_SUPERVISOR
     },
     {
-      title: "Multi-Depot Simulation",
+      title: t("multiDepotSimulation"),
       url: "/multi-depot-simulation",
       icon: Building2,
       badge: null,
       hidden: user?.role === UserRole.STATION_SUPERVISOR
     },
     {
-      title: "Data Ingestion",
+      title: t("dataIngestion"),
       url: "/data-ingestion",
       icon: Database,
       badge: null,
@@ -96,7 +98,7 @@ export function AppSidebar() {
 
   const reportItems = [
     {
-      title: "Reports",
+      title: t("reports"),
       url: "/reports",
       icon: BarChart3,
     },
@@ -104,13 +106,13 @@ export function AppSidebar() {
 
   const systemItems = [
     {
-      title: "User Management",
+      title: t("userManagement"),
       url: "/users",
       icon: Users,
       hidden: user?.role === UserRole.STATION_SUPERVISOR
     },
     {
-      title: "Settings",
+      title: t("settings"),
       url: "/settings",
       icon: Settings,
     },
@@ -133,7 +135,7 @@ export function AppSidebar() {
         {/* Main Navigation */}
         <SidebarGroup>
           <SidebarGroupLabel className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${isCollapsed ? "sr-only" : ""}`}>
-            Operations
+            {t("operations")}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -167,7 +169,7 @@ export function AppSidebar() {
         {/* Reports Section */}
         <SidebarGroup>
           <SidebarGroupLabel className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${isCollapsed ? "sr-only" : ""}`}>
-            Analytics
+            {t("analytics")}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -192,7 +194,7 @@ export function AppSidebar() {
         {/* System Section */}
         <SidebarGroup>
           <SidebarGroupLabel className={`text-xs font-semibold text-muted-foreground uppercase tracking-wider ${isCollapsed ? "sr-only" : ""}`}>
-            System
+            {t("system")}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
