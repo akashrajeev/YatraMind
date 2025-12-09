@@ -243,8 +243,8 @@ async def get_trainset_details(
         
         # Run optimization for this single trainset to get its score and decision details
         # The optimizer expects a list of trainsets
-        decisions = await optimizer.optimize([trainset], opt_request)
-        decision = decisions[0] if decisions else None
+        decisions_list, _ = await optimizer.optimize([trainset], opt_request)
+        decision = decisions_list[0] if decisions_list else None
         
         optimization_score = decision.score if decision else 0.0
         # Normalize score to 0-1 range if it's not already (optimizer might return large numbers)

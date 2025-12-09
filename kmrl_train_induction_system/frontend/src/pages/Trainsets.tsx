@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { trainsetsApi, optimizationApi } from "@/services/api";
 import { Trainset } from "@/types/api";
 import {
@@ -19,14 +19,20 @@ import {
   Wrench,
   Activity,
   Upload,
-  Download
+  Download,
+  X,
+  Info,
+  Target
 } from "lucide-react";
 import { useState, useMemo } from "react";
+
 
 const Trainsets = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [depotFilter, setDepotFilter] = useState<string>("all");
+  const [trainsetDetails, setTrainsetDetails] = useState<any>(null);
+  const [showTrainsetDetails, setShowTrainsetDetails] = useState(false);
   const queryClient = useQueryClient();
 
   // Fetch trainsets data
@@ -57,14 +63,7 @@ const Trainsets = () => {
     return map;
   }, [latestDecisions]);
 
-  // Update trainset mutation
-  const updateMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: any }) =>
-      trainsetsApi.update(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries(['trainsets']);
-    },
-  });
+
 
   // Filter trainsets based on search and filters
   const filteredTrainsets = trainsets.filter((trainset: Trainset) => {
@@ -113,6 +112,16 @@ const Trainsets = () => {
     if (jobCards?.critical_cards > 0) return "destructive";
     if (jobCards?.open_cards > 0) return "warning";
     return "success";
+  };
+
+  const handleViewDetails = async (trainsetId: string) => {
+    try {
+      const response = await trainsetsApi.getDetails(trainsetId);
+      setTrainsetDetails(response.data);
+      setShowTrainsetDetails(true);
+    } catch (error) {
+      console.error('Error fetching trainset details:', error);
+    }
   };
 
   return (
@@ -223,7 +232,7 @@ const Trainsets = () => {
                   </CardTitle>
                   <div className="flex items-center gap-2">
                     {getStatusBadge(trainset.status)}
-                    {getDecisionBadge(decisionMap[trainset.trainset_id])}
+                    {decisionMap[trainset.trainset_id] !== trainset.status && getDecisionBadge(decisionMap[trainset.trainset_id])}
                   </div>
                 </div>
               </CardHeader>
@@ -303,19 +312,13 @@ const Trainsets = () => {
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
-                  <Button size="sm" variant="outline" className="flex-1">
-                    View Details
-                  </Button>
                   <Button
                     size="sm"
-                    variant="secondary"
-                    onClick={() => updateMutation.mutate({
-                      id: trainset.trainset_id,
-                      data: { status: trainset.status === "ACTIVE" ? "STANDBY" : "ACTIVE" }
-                    })}
-                    disabled={updateMutation.isPending}
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => handleViewDetails(trainset.trainset_id)}
                   >
-                    {trainset.status === "ACTIVE" ? "Standby" : "Activate"}
+                    View Details
                   </Button>
                 </div>
               </CardContent>
@@ -328,6 +331,222 @@ const Trainsets = () => {
         <div className="text-center py-8">
           <Train className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
           <p className="text-muted-foreground">No trainsets found matching your criteria</p>
+        </div>
+      )}
+
+
+      {/* Trainset Details Modal */}
+      {showTrainsetDetails && trainsetDetails && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <Card className="max-w-4xl w-full max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 shadow-2xl">
+            <CardHeader className="border-b">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-2xl font-bold">
+                    Trainset Details - {trainsetDetails.trainset_id}
+                  </CardTitle>
+                  <p className="text-muted-foreground text-sm mt-1">Comprehensive fleet status and health metrics</p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setShowTrainsetDetails(false)}
+                >
+                  <X className="h-5 w-5" />
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 space-y-8">
+
+              {/* Top Row: Basic Info & Score */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2 space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Info className="h-5 w-5 text-primary" />
+                    Basic Information
+                  </h3>
+                  <div className="grid grid-cols-2 gap-x-8 gap-y-3 text-sm">
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-muted-foreground">Trainset ID:</span>
+                      <span className="font-medium">{trainsetDetails.trainset_id}</span>
+                    </div>
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-muted-foreground">Manufacturer:</span>
+                      <span className="font-medium">{trainsetDetails.basic_info.manufacturer}</span>
+                    </div>
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-muted-foreground">Model:</span>
+                      <span className="font-medium">{trainsetDetails.basic_info.model}</span>
+                    </div>
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-muted-foreground">Year of Manufacture:</span>
+                      <span className="font-medium">{trainsetDetails.basic_info.year_of_manufacture}</span>
+                    </div>
+                    <div className="flex justify-between border-b pb-2">
+                      <span className="text-muted-foreground">Status:</span>
+                      <Badge variant={trainsetDetails.basic_info.status === 'ACTIVE' ? 'success' : 'secondary'}>
+                        {trainsetDetails.basic_info.status}
+                      </Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Score Card */}
+                <Card className="bg-slate-50 dark:bg-slate-800 border-none shadow-inner flex flex-col items-center justify-center p-6">
+                  <div className="relative flex items-center justify-center">
+                    <svg className="w-32 h-32 transform -rotate-90">
+                      <circle
+                        className="text-gray-200"
+                        strokeWidth="8"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="58"
+                        cx="64"
+                        cy="64"
+                      />
+                      <circle
+                        className="text-primary"
+                        strokeWidth="8"
+                        strokeDasharray={365}
+                        strokeDashoffset={365 - (365 * (trainsetDetails.operational_metrics.optimization_score || 0.85))}
+                        strokeLinecap="round"
+                        stroke="currentColor"
+                        fill="transparent"
+                        r="58"
+                        cx="64"
+                        cy="64"
+                      />
+                    </svg>
+                    <div className="absolute flex flex-col items-center">
+                      <span className="text-3xl font-bold text-primary">
+                        {Math.round((trainsetDetails.operational_metrics.optimization_score || 0.85) * 100)}%
+                      </span>
+                      <span className="text-xs text-muted-foreground uppercase">Score</span>
+                    </div>
+                  </div>
+                  <div className="mt-4 text-center">
+                    <p className="text-sm font-medium">Optimization Score</p>
+                    <p className="text-xs text-muted-foreground">Based on health & priority</p>
+                  </div>
+                </Card>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Mileage */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Activity className="h-5 w-5 text-blue-500" />
+                    Mileage Statistics
+                  </h3>
+                  <div className="bg-slate-50 dark:bg-slate-800/50 p-4 rounded-lg space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Current Mileage</span>
+                      <span className="text-lg font-bold">{trainsetDetails.performance_data.current_mileage?.toLocaleString()} km</span>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Maintenance Limit</span>
+                        <span>{trainsetDetails.performance_data.max_mileage?.toLocaleString()} km</span>
+                      </div>
+                      <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 rounded-full"
+                          style={{ width: `${Math.min(((trainsetDetails.performance_data.current_mileage || 0) / (trainsetDetails.performance_data.max_mileage || 1)) * 100, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Certificates */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    Certificates
+                  </h3>
+                  <div className="grid grid-cols-1 gap-3">
+                    {['Rolling Stock', 'Signalling', 'Telecom'].map((cert) => {
+                      const key = cert.toLowerCase().replace(' ', '_');
+                      const certData = trainsetDetails.certificates?.[key];
+                      // Handle both string (legacy) and object (real data) formats
+                      const status = typeof certData === 'object' ? certData?.status : certData || 'VALID';
+
+                      return (
+                        <div key={cert} className="flex items-center justify-between p-3 bg-white dark:bg-slate-800 border rounded-lg shadow-sm">
+                          <span className="text-sm font-medium">{cert} Certificate</span>
+                          <Badge variant={status === 'VALID' ? 'success' : 'destructive'}>
+                            {status || 'VALID'}
+                          </Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Job Cards */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    Job Cards
+                  </h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-4 bg-orange-50 dark:bg-orange-900/20 border border-orange-100 dark:border-orange-800 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-orange-600 dark:text-orange-400">
+                        {trainsetDetails.job_cards?.open || 0}
+                      </div>
+                      <div className="text-sm text-orange-800 dark:text-orange-300">Open Job Cards</div>
+                    </div>
+                    <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-100 dark:border-red-800 rounded-lg text-center">
+                      <div className="text-2xl font-bold text-red-600 dark:text-red-400">
+                        {trainsetDetails.job_cards?.critical || 0}
+                      </div>
+                      <div className="text-sm text-red-800 dark:text-red-300">Critical Issues</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Branding */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
+                    <Target className="h-5 w-5 text-purple-500" />
+                    Branding Status
+                  </h3>
+                  <div className="bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-800 rounded-lg p-4 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Advertiser</span>
+                      <span className="font-semibold text-purple-900 dark:text-purple-100">
+                        {trainsetDetails.branding?.advertiser || 'None'}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Priority</span>
+                      <Badge variant="outline" className="border-purple-200 text-purple-700">
+                        {trainsetDetails.branding?.priority || 'LOW'}
+                      </Badge>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-muted-foreground">Status</span>
+                      <span className="text-sm font-medium">
+                        {trainsetDetails.branding?.status || 'N/A'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowTrainsetDetails(false)}>
+                  Close
+                </Button>
+                <Button onClick={() => window.print()}>
+                  <Download className="h-4 w-4 mr-2" />
+                  Export Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       )}
     </div>
