@@ -1,0 +1,112 @@
+# Depot Configuration Presets for Multi-Depot Simulation
+# Schema: depot_id, name, location_type, service_bays, maintenance_bays, standby_bays, total_bays, metadata
+
+depots:
+  - depot_id: "MUTTOM"
+    name: "Muttom Depot"
+    location_type: "FULL_DEPOT"
+    service_bays: 6
+    maintenance_bays: 4
+    standby_bays: 2
+    total_bays: 12
+    max_shunting_window_min: 120
+    is_primary_depot: true
+    coordinates:
+      lat: 9.9312
+      lon: 76.2673
+    display_order: 1
+    enrichment:
+      turnout_time_map:
+        "BAY_1": 5
+        "BAY_2": 5
+        "BAY_3": 6
+        "BAY_4": 6
+        "BAY_5": 7
+        "BAY_6": 7
+        "BAY_7": 8
+        "BAY_8": 8
+        "BAY_9": 9
+        "BAY_10": 9
+        "BAY_11": 10
+        "BAY_12": 10
+
+  - depot_id: "ALUVA_TERMINAL"
+    name: "Aluva Terminal"
+    location_type: "TERMINAL_YARD"
+    service_bays: 0
+    maintenance_bays: 0
+    standby_bays: 6
+    total_bays: 6
+    max_shunting_window_min: 90
+    is_primary_depot: false
+    coordinates:
+      lat: 10.1076
+      lon: 76.3518
+    display_order: 2
+    enrichment:
+      turnout_time_map:
+        "SIDING_1": 4
+        "SIDING_2": 4
+        "SIDING_3": 5
+        "SIDING_4": 5
+        "SIDING_5": 6
+        "SIDING_6": 6
+
+  - depot_id: "PETTA_TERMINAL"
+    name: "Petta Terminal"
+    location_type: "TERMINAL_YARD"
+    service_bays: 0
+    maintenance_bays: 0
+    standby_bays: 6
+    total_bays: 6
+    max_shunting_window_min: 90
+    is_primary_depot: false
+    coordinates:
+      lat: 9.9619
+      lon: 76.2908
+    display_order: 3
+    enrichment:
+      turnout_time_map:
+        "SIDING_1": 4
+        "SIDING_2": 4
+        "SIDING_3": 5
+        "SIDING_4": 5
+        "SIDING_5": 6
+        "SIDING_6": 6
+
+  - depot_id: "KAKKANAD"
+    name: "Kakkanad Depot"
+    location_type: "FULL_DEPOT"
+    service_bays: 6
+    maintenance_bays: 3
+    standby_bays: 2
+    total_bays: 11
+    max_shunting_window_min: 120
+    is_primary_depot: false
+    coordinates:
+      lat: 9.9815
+      lon: 76.2998
+    display_order: 4
+    enrichment:
+      turnout_time_map:
+        "BAY_1": 5
+        "BAY_2": 5
+        "BAY_3": 6
+        "BAY_4": 6
+        "BAY_5": 7
+        "BAY_6": 7
+        "BAY_7": 8
+        "BAY_8": 8
+        "BAY_9": 9
+        "BAY_10": 9
+        "BAY_11": 10
+
+# Default cost parameters for infrastructure advisor
+cost_parameters:
+  cost_per_service_bay: 5000000  # ₹5M per service bay
+  cost_per_maintenance_bay: 8000000  # ₹8M per maintenance bay
+  cost_per_standby_bay: 3000000  # ₹3M per standby bay
+  value_per_train_per_day: 50000  # ₹50K value per train per day in service
+  transfer_cost_per_km: 5000  # ₹5K per km for inter-depot transfer
+  dead_km_cost_per_km: 3000  # ₹3K per km for dead running
+

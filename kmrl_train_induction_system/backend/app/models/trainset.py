@@ -4,7 +4,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Any, Dict, List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 
 
 class TrainsetStatus(str, Enum):
@@ -36,14 +36,8 @@ class TrainsetUpdate(BaseModel):
 
 class OptimizationWeights(BaseModel):
     """Customizable weights for optimization factors"""
-    readiness: float = Field(0.35, ge=0.0, le=1.0, description="Weight for service readiness (0-1)")
-    reliability: float = Field(0.30, ge=0.0, le=1.0, description="Weight for reliability/health (0-1)")
-    branding: float = Field(0.20, ge=0.0, le=1.0, description="Weight for branding priority (0-1)")
-    shunt: float = Field(0.10, ge=0.0, le=1.0, description="Weight for shunt cost minimization (0-1)")
-    mileage_balance: float = Field(0.05, ge=0.0, le=1.0, description="Weight for mileage balance (0-1)")
-    
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "readiness": 0.35,
                 "reliability": 0.30,
@@ -52,6 +46,13 @@ class OptimizationWeights(BaseModel):
                 "mileage_balance": 0.05
             }
         }
+    )
+    
+    readiness: float = Field(0.35, ge=0.0, le=1.0, description="Weight for service readiness (0-1)")
+    reliability: float = Field(0.30, ge=0.0, le=1.0, description="Weight for reliability/health (0-1)")
+    branding: float = Field(0.20, ge=0.0, le=1.0, description="Weight for branding priority (0-1)")
+    shunt: float = Field(0.10, ge=0.0, le=1.0, description="Weight for shunt cost minimization (0-1)")
+    mileage_balance: float = Field(0.05, ge=0.0, le=1.0, description="Weight for mileage balance (0-1)")
 
 
 class OptimizationRequest(BaseModel):

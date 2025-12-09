@@ -87,7 +87,7 @@ async def run_optimization(
         }
 
         try:
-            sim_dir = Path(cfg.get("SIMULATION_SAVE_DIR", "backend/simulation_runs"))
+            sim_dir = Path(settings.SIMULATION_SAVE_DIR if hasattr(settings, "SIMULATION_SAVE_DIR") else "backend/simulation_runs")
             sim_dir.mkdir(parents=True, exist_ok=True)
             snapshot_payload = {
                 "optimization_id": str(uuid.uuid4()),

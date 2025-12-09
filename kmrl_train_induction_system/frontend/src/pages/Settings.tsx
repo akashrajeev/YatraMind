@@ -13,7 +13,6 @@ import {
   Wifi,
   Save
 } from "lucide-react";
-
 const Settings = () => {
   const settings = [
     {
@@ -50,12 +49,12 @@ const Settings = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">System Settings</h2>
-          <p className="text-muted-foreground">Configure system preferences and security settings</p>
+          <h2 className="text-3xl font-bold text-foreground">Settings</h2>
+          <p className="text-muted-foreground">Settings</p>
         </div>
         <Button variant="industrial">
           <Save className="h-4 w-4 mr-2" />
-          Save Changes
+          Save Settings
         </Button>
       </div>
 

@@ -310,7 +310,7 @@ async def run_whatif(scenario: Dict[str, Any], snapshot: Optional[Dict[str, Any]
             required_service_count=snapshot["config"].get("required_service_count"),
             weights=OptimizationWeights()  # Baseline always uses defaults
         )
-        baseline_decisions, _ = await baseline_optimizer.optimize(
+        baseline_decisions = await baseline_optimizer.optimize(
             snapshot["trainsets"], 
             baseline_request
         )
@@ -328,7 +328,7 @@ async def run_whatif(scenario: Dict[str, Any], snapshot: Optional[Dict[str, Any]
         # Run scenario optimization (in-memory, no DB writes)
         logger.info("Running scenario optimization")
         scenario_optimizer = TrainInductionOptimizer()
-        scenario_decisions, _ = await scenario_optimizer.optimize(
+        scenario_decisions = await scenario_optimizer.optimize(
             scenario_snapshot["trainsets"],
             request
         )

@@ -30,6 +30,7 @@ import {
   Target,
   Wifi,
   Activity,
+  Building2,
 } from "lucide-react";
 
 import { useAuth } from "@/contexts/AuthContext";
@@ -74,6 +75,13 @@ export function AppSidebar() {
       title: "Optimization",
       url: "/optimization",
       icon: Brain,
+      badge: null,
+      hidden: user?.role === UserRole.STATION_SUPERVISOR
+    },
+    {
+      title: "Multi-Depot Simulation",
+      url: "/multi-depot-simulation",
+      icon: Building2,
       badge: null,
       hidden: user?.role === UserRole.STATION_SUPERVISOR
     },

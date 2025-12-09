@@ -287,8 +287,8 @@ const Assignments = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Train Induction Assignments</h2>
-          <p className="text-muted-foreground">Manage and monitor train induction assignments</p>
+          <h2 className="text-3xl font-bold text-foreground">Assignments</h2>
+          <p className="text-muted-foreground">All Assignments</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline">
@@ -322,7 +322,7 @@ const Assignments = () => {
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="ranked">
             <Target className="h-4 w-4 mr-2" />
-            Ranked ({rankedList.length})
+            AI-Ranked Induction List ({rankedList.length})
           </TabsTrigger>
           <TabsTrigger value="conflicts">
             <AlertTriangle className="h-4 w-4 mr-2" />
@@ -334,11 +334,11 @@ const Assignments = () => {
           </TabsTrigger>
           <TabsTrigger value="approved">
             <CheckCircle className="h-4 w-4 mr-2" />
-            Approved ({approvedAssignments.length})
+            Approved Assignments ({approvedAssignments.length})
           </TabsTrigger>
           <TabsTrigger value="overridden">
             <AlertTriangle className="h-4 w-4 mr-2" />
-            Overridden ({overriddenAssignments.length})
+            Rejected Assignments ({overriddenAssignments.length})
           </TabsTrigger>
         </TabsList>
 

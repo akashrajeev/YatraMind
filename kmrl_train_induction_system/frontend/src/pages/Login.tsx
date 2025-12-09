@@ -98,7 +98,7 @@ const Login: React.FC = () => {
         ))}
         <div className="absolute bottom-10 left-10 text-white z-10">
           <h2 className="text-4xl font-bold mb-2">KMRL Induction System</h2>
-          <p className="text-xl text-gray-200">Advanced Train Management & Operations</p>
+          <p className="text-xl text-gray-200">Welcome to KMRL Train Induction Management System</p>
         </div>
       </div>
 
@@ -109,8 +109,8 @@ const Login: React.FC = () => {
         </div>
         <div className="max-w-md w-full space-y-8">
           <div className="text-center">
-            <h1 className="text-3xl font-bold text-foreground">Welcome Back</h1>
-            <p className="mt-2 text-muted-foreground">Sign in to your account</p>
+            <h1 className="text-3xl font-bold text-foreground">Welcome</h1>
+            <p className="mt-2 text-muted-foreground">Sign In</p>
           </div>
 
           {error && (
@@ -124,7 +124,7 @@ const Login: React.FC = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-muted-foreground mb-1">
-                  I am a...
+                  Select Role
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
@@ -156,7 +156,7 @@ const Login: React.FC = () => {
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
                     className="block w-full pl-10 bg-background border border-input rounded-md py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-input"
-                    placeholder="Enter your username"
+                    placeholder="Username"
                     required
                   />
                 </div>
@@ -175,7 +175,7 @@ const Login: React.FC = () => {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="block w-full pl-10 bg-background border border-input rounded-md py-2 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-input"
-                    placeholder="Enter your password"
+                    placeholder="Password"
                     required
                   />
                 </div>
@@ -187,7 +187,7 @@ const Login: React.FC = () => {
               disabled={loading}
               className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-primary-foreground bg-primary hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
-              {loading ? 'Signing in...' : 'Sign In'}
+              {loading ? 'Loading...' : 'Sign In'}
             </button>
           </form>
 

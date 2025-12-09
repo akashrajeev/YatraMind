@@ -120,8 +120,8 @@ const Trainsets = () => {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h2 className="text-3xl font-bold text-foreground">Fleet Management</h2>
-          <p className="text-muted-foreground">Monitor and manage trainset fleet operations</p>
+          <h2 className="text-3xl font-bold text-foreground">Trainsets</h2>
+          <p className="text-muted-foreground">All Trainsets</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline">
@@ -130,11 +130,11 @@ const Trainsets = () => {
           </Button>
           <Button variant="outline">
             <Download className="h-4 w-4 mr-2" />
-            Export
+            Download
           </Button>
           <Button variant="industrial">
             <Upload className="h-4 w-4 mr-2" />
-            Upload Data
+            Upload
           </Button>
         </div>
       </div>

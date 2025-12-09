@@ -26,7 +26,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { UserRole } from "@/types/auth";
 import { toast } from "sonner";
 import api from "@/services/api";
-
 // Tomorrow's Service Plan types and helpers
 interface ServiceData {
   id: string;
@@ -325,7 +324,7 @@ export function DashboardOverview() {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h2 className="text-4xl font-bold text-foreground tracking-tight">Operations Dashboard</h2>
-          <p className="text-muted-foreground mt-1 text-lg">Train induction system monitoring</p>
+          <p className="text-muted-foreground mt-1 text-lg">System Overview</p>
         </div>
         <div className="flex items-center gap-3">
           {user?.role === UserRole.METRO_DRIVER && (

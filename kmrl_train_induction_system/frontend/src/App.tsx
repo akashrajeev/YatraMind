@@ -10,6 +10,7 @@ import Settings from "./pages/Settings";
 import Trainsets from "./pages/Trainsets";
 import Optimization from "./pages/Optimization";
 import DataIngestion from "./pages/DataIngestion";
+import MultiDepotSimulation from "./pages/MultiDepotSimulation";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
@@ -116,6 +117,14 @@ const AppRoutes = () => (
       element={
         <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER]}>
           {withDashboardLayout(<Optimization />)}
+        </ProtectedRoute>
+      }
+    />
+    <Route
+      path="/multi-depot-simulation"
+      element={
+        <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.OPERATIONS_MANAGER]}>
+          {withDashboardLayout(<MultiDepotSimulation />)}
         </ProtectedRoute>
       }
     />

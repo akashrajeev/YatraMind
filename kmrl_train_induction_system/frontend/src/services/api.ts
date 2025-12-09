@@ -95,6 +95,15 @@ export const optimizationApi = {
     api.post('/v1/optimization/latest/reorder', data),
 };
 
+// Multi-Depot Simulation API
+export const multiDepotSimulationApi = {
+  simulate: (data: any) => api.post('/v1/simulate', data),
+  getRun: (runId: string) => api.get(`/v1/simulate/${runId}`),
+  getDepotPresets: () => api.get('/v1/depots/presets'),
+  exportJson: (runId: string) => api.get(`/v1/simulate/${runId}/export/json`),
+  exportPdf: (runId: string) => api.get(`/v1/simulate/${runId}/export/pdf`, { responseType: 'blob' }),
+};
+
 // Trainsets API
 export const trainsetsApi = {
   getAll: (params?: any) => api.get('/v1/trainsets/', { params }),
