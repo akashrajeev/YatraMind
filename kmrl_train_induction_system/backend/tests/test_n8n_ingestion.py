@@ -40,7 +40,7 @@ class TestN8NIngestion(unittest.TestCase):
                     ('files', ('test1.txt', b'content1', 'text/plain')),
                     ('files', ('test2.json', b'{"a": 1}', 'application/json'))
                 ]
-                response = self.client.post("/api/ingestion/ingest/n8n/upload", files=files)
+                response = self.client.post("/api/v1/ingestion/ingest/n8n/upload", files=files)
                 
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json()["status"], "success")
@@ -62,7 +62,7 @@ class TestN8NIngestion(unittest.TestCase):
             mock_settings.n8n_webhook_url = None
             
             files = {'file': ('test.txt', b'test content', 'text/plain')}
-            response = self.client.post("/api/ingestion/ingest/n8n/upload", files=files)
+            response = self.client.post("/api/v1/ingestion/ingest/n8n/upload", files=files)
             
             self.assertEqual(response.status_code, 500)
             self.assertIn("N8N_WEBHOOK_URL is not configured", response.json()["detail"])
@@ -96,7 +96,7 @@ class TestN8NIngestion(unittest.TestCase):
                 mock_record.side_effect = async_record
 
                 data = {"some": "data", "from": "n8n"}
-                response = self.client.post("/api/ingestion/ingest/n8n/result", json=data)
+                response = self.client.post("/api/v1/ingestion/ingest/n8n/result", json=data)
                 
                 self.assertEqual(response.status_code, 200)
                 self.assertEqual(response.json()["status"], "stored")
@@ -164,7 +164,7 @@ class TestN8NIngestion(unittest.TestCase):
                         ]
                     }
                     
-                    response = self.client.post("/api/ingestion/ingest/n8n/result", json=data)
+                    response = self.client.post("/api/v1/ingestion/ingest/n8n/result", json=data)
                     
                     self.assertEqual(response.status_code, 200)
                     self.assertEqual(response.json()["updates_processed"], 3)
