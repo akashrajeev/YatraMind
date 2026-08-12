@@ -1,6 +1,5 @@
 # backend/app/config.py
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import Field
 from dotenv import load_dotenv
 from typing import Optional
 import os
@@ -10,47 +9,47 @@ from pathlib import Path
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    mongodb_url: str = Field(default="", env="MONGODB_URL")
-    database_name: str = Field(default="kmrl_db", env="DATABASE_NAME")
-    influxdb_url: str = Field(default="", env="INFLUXDB_URL")
-    influxdb_token: str = Field(default="", env="INFLUXDB_TOKEN")
-    influxdb_org: str = Field(default="", env="INFLUXDB_ORG")
-    influxdb_bucket: str = Field(default="kmrl_sensor_data", env="INFLUXDB_BUCKET")
-    redis_url: str = Field(default="", env="REDIS_URL")
+    mongodb_url: str = ""
+    database_name: str = "kmrl_db"
+    influxdb_url: str = ""
+    influxdb_token: str = ""
+    influxdb_org: str = ""
+    influxdb_bucket: str = "kmrl_sensor_data"
+    redis_url: str = ""
 
-    mqtt_broker: str = Field(default="", env="MQTT_BROKER")
-    mqtt_broker_host: Optional[str] = Field(default=None, env="MQTT_BROKER_HOST")
-    mqtt_broker_port: Optional[str] = Field(default=None, env="MQTT_BROKER_PORT")
-    mqtt_use_tls: Optional[str] = Field(default=None, env="MQTT_USE_TLS")
-    mqtt_port: int = Field(default=1883, env="MQTT_PORT")
+    mqtt_broker: str = ""
+    mqtt_broker_host: Optional[str] = None
+    mqtt_broker_port: Optional[str] = None
+    mqtt_use_tls: Optional[str] = None
+    mqtt_port: int = 1883
     mqtt_username: Optional[str] = None
     mqtt_password: Optional[str] = None
 
-    api_host: str = Field(default="127.0.0.1", env="API_HOST")
-    api_port: int = Field(default=8000, env="API_PORT")
-    api_key: Optional[str] = Field(default=None, env="API_KEY")
-    secret_key: Optional[str] = Field(default=None, env="SECRET_KEY")
-    environment: str = Field(default="development", env="ENVIRONMENT")
-    debug: bool = Field(default=False, env="DEBUG")
-    cors_origins: str = Field(default="http://localhost:5173,http://127.0.0.1:5173", env="CORS_ORIGINS")
+    api_host: str = "127.0.0.1"
+    api_port: int = 8000
+    api_key: Optional[str] = None
+    secret_key: Optional[str] = None
+    environment: str = "development"
+    debug: bool = False
+    cors_origins: str = "http://localhost:5173,http://127.0.0.1:5173"
 
-    gemini_api_key: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
-    model_path: str = Field(default="models/", env="MODEL_PATH")
-    confidence_threshold: float = Field(default=0.8, env="CONFIDENCE_THRESHOLD")
+    gemini_api_key: Optional[str] = None
+    model_path: str = "models/"
+    confidence_threshold: float = 0.8
 
-    maximo_base_url: Optional[str] = Field(default=None, env="MAXIMO_BASE_URL")
-    maximo_api_key: Optional[str] = Field(default=None, env="MAXIMO_API_KEY")
-    maximo_username: Optional[str] = Field(default=None, env="MAXIMO_USERNAME")
-    maximo_password: Optional[str] = Field(default=None, env="MAXIMO_PASSWORD")
-    drools_service_url: Optional[str] = Field(default=None, env="DROOLS_SERVICE_URL")
-    n8n_webhook_url: Optional[str] = Field(default=None, env="N8N_WEBHOOK_URL")
+    maximo_base_url: Optional[str] = None
+    maximo_api_key: Optional[str] = None
+    maximo_username: Optional[str] = None
+    maximo_password: Optional[str] = None
+    drools_service_url: Optional[str] = None
+    n8n_webhook_url: Optional[str] = None
 
-    default_hours_per_train: float = Field(default=2.0, env="DEFAULT_HOURS_PER_TRAIN")
-    max_hours_warning_threshold_multiplier: int = Field(default=24, env="MAX_HOURS_WARNING_THRESHOLD_MULTIPLIER")
-    dev_mock_seed: int = Field(default=0, env="DEV_MOCK_SEED")
-    ml_deterministic_seed: int = Field(default=42, env="ML_DETERMINISTIC_SEED")
-    warn_on_unknown_depot: bool = Field(default=True, env="WARN_ON_UNKNOWN_DEPOT")
-    warn_on_capacity_exceeded: bool = Field(default=True, env="WARN_ON_CAPACITY_EXCEEDED")
+    default_hours_per_train: float = 2.0
+    max_hours_warning_threshold_multiplier: int = 24
+    dev_mock_seed: int = 0
+    ml_deterministic_seed: int = 42
+    warn_on_unknown_depot: bool = True
+    warn_on_capacity_exceeded: bool = True
 
     model_config = SettingsConfigDict(
         env_file=".env",
