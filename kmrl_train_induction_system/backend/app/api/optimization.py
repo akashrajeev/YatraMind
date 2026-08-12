@@ -1,7 +1,8 @@
 """Canonical optimization API with legacy-route compatibility.
 
 All existing optimization routes are retained from the legacy router except
-POST /run, which now uses the application service and repository boundaries.
+POST /run and GET /constraints/check, which now use application/domain
+boundaries directly.
 """
 from __future__ import annotations
 
@@ -14,23 +15,22 @@ from typing import Any, Dict
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
+from app.api import optimization_legacy
 from app.config import settings
-from app.models.trainset import InductionDecision, OptimizationRequest
+from app.domain.optimization.constraints import validate_trainset_safety
+from app.models.trainset import OptimizationRequest
 from app.models.user import User, UserRole
 from app.repositories.mongo import MongoTrainsetRepository
 from app.repositories.mongo_optimization import MongoOptimizationRepository
 from app.security import require_role
 from app.services.optimization_service import OptimizationService
-from app.api import optimization_legacy
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter()
 
-# Preserve all legacy endpoints other than the optimization entrypoint. The
-# existing route objects retain their dependencies, response models, and URLs.
+
 for route in optimization_legacy.router.routes:
-    if getattr(route, "path", None) != "/run":
+    if getattr(route, "path", None) not in {"/run", "/constraints/check"}:
         router.routes.append(route)
 
 
@@ -51,7 +51,6 @@ async def run_optimization(
         decisions = result.decisions
         fleet_req = result.fleet_requirement
         granted = result.inducted_count
-
         diagnostics: Dict[str, Any] = {
             "required_service_trains": fleet_req.required_service_trains,
             "standby_buffer": fleet_req.standby_buffer,
@@ -79,7 +78,6 @@ async def run_optimization(
         if hasattr(optimization_legacy, "write_optimization_metrics"):
             background_tasks.add_task(optimization_legacy.write_optimization_metrics, decisions)
 
-        # Runtime snapshots remain local application state, not source control.
         try:
             sim_dir = Path(getattr(settings, "SIMULATION_SAVE_DIR", "backend/simulation_runs"))
             sim_dir.mkdir(parents=True, exist_ok=True)
@@ -114,9 +112,34 @@ async def run_optimization(
             "decisions": [d.dict() for d in decisions],
             "stabling_geometry": result.stabling_geometry,
         }
-
     except HTTPException:
         raise
     except Exception as exc:
         logger.error("Optimization failed: %s", exc, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Optimization failed: {exc}")
+
+
+@router.get("/constraints/check")
+async def check_constraints(current_user: User = Depends(require_role(UserRole.ADMIN))):
+    """Validate current trainsets through the canonical structured safety rules."""
+    del current_user
+    trainsets = [dict(item) for item in await MongoTrainsetRepository().list_all()]
+    violations: list[dict[str, Any]] = []
+    valid_count = 0
+
+    for trainset in trainsets:
+        found = validate_trainset_safety(trainset)
+        if found:
+            violations.append({
+                "trainset_id": trainset.get("trainset_id"),
+                "violations": [item.model_dump() if hasattr(item, "model_dump") else item.dict() for item in found],
+            })
+        else:
+            valid_count += 1
+
+    return {
+        "total_trainsets": len(trainsets),
+        "valid_trainsets": valid_count,
+        "trainsets_with_violations": len(violations),
+        "violations": violations,
+    }
