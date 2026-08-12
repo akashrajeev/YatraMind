@@ -1,6 +1,6 @@
 from datetime import datetime
 import logging
-from fastapi import FastAPI, Header, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.api import (
@@ -53,10 +53,6 @@ app = FastAPI(
 sio = None
 socket_manager = None
 app.add_middleware(GZipMiddleware, minimum_size=1024)
-
-async def _require_api_key(x_api_key: str | None = Header(default=None)):
-    if settings.api_key and x_api_key != settings.api_key:
-        raise HTTPException(status_code=401, detail="Invalid API key")
 
 cors_origins = [origin.strip() for origin in settings.cors_origins.split(",") if origin.strip()]
 app.add_middleware(
