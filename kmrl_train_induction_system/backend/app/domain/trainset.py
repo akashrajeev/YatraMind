@@ -4,31 +4,37 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping
 
+
 class TrainsetStatus(str, Enum):
     ACTIVE = "ACTIVE"
     STANDBY = "STANDBY"
     MAINTENANCE = "MAINTENANCE"
+
 
 @dataclass(frozen=True)
 class FitnessCertificate:
     status: str
     expires_at: str | None = None
 
+
 @dataclass(frozen=True)
 class JobCardSummary:
     open_cards: int = 0
     critical_cards: int = 0
+
 
 @dataclass(frozen=True)
 class BrandingObligation:
     advertiser: str | None = None
     priority: str = "LOW"
 
+
 @dataclass(frozen=True)
 class CleaningRequirement:
     required: bool = False
     available: bool = False
     due_date: str | None = None
+
 
 @dataclass(frozen=True)
 class Trainset:
@@ -41,6 +47,22 @@ class Trainset:
     branding: BrandingObligation = field(default_factory=BrandingObligation)
     cleaning: CleaningRequirement = field(default_factory=CleaningRequirement)
 
+    @staticmethod
+    def _as_int(value: Any, default: int = 0) -> int:
+        if value is None:
+            return default
+        try:
+            return int(float(str(value).strip()))
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _as_float(value: Any, default: float = 0.0) -> float:
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return default
+
     @classmethod
     def from_legacy_dict(cls, raw: Mapping[str, Any]) -> "Trainset":
         certs: dict[str, FitnessCertificate] = {}
@@ -48,21 +70,44 @@ class Trainset:
         if isinstance(raw_certs, Mapping):
             for name, value in raw_certs.items():
                 if isinstance(value, Mapping):
-                    certs[str(name)] = FitnessCertificate(status=str(value.get("status", "")), expires_at=value.get("expires_at"))
+                    certs[str(name)] = FitnessCertificate(
+                        status=str(value.get("status", "")),
+                        expires_at=value.get("expires_at"),
+                    )
+
         raw_cards = raw.get("job_cards") or {}
-        if not isinstance(raw_cards, Mapping): raw_cards = {}
+        if not isinstance(raw_cards, Mapping):
+            raw_cards = {}
         raw_branding = raw.get("branding") or {}
-        if not isinstance(raw_branding, Mapping): raw_branding = {}
+        if not isinstance(raw_branding, Mapping):
+            raw_branding = {}
         status_raw = str(raw.get("status", TrainsetStatus.STANDBY.value)).upper()
-        try: status = TrainsetStatus(status_raw)
-        except ValueError: status = TrainsetStatus.STANDBY
+        try:
+            status = TrainsetStatus(status_raw)
+        except ValueError:
+            status = TrainsetStatus.STANDBY
+
         return cls(
             trainset_id=str(raw.get("trainset_id", "UNKNOWN")),
             status=status,
-            current_mileage=float(raw.get("current_mileage", 0.0) or 0.0),
-            max_mileage_before_maintenance=(float(raw["max_mileage_before_maintenance"]) if raw.get("max_mileage_before_maintenance") not in (None, "", 0) else None),
+            current_mileage=cls._as_float(raw.get("current_mileage"), 0.0),
+            max_mileage_before_maintenance=(
+                cls._as_float(raw.get("max_mileage_before_maintenance"))
+                if raw.get("max_mileage_before_maintenance") not in (None, "", 0)
+                else None
+            ),
             fitness_certificates=certs,
-            job_cards=JobCardSummary(open_cards=int(float(str(raw_cards.get("open_cards", 0)).strip() or 0)), critical_cards=int(float(str(raw_cards.get("critical_cards", 0)).strip() or 0))),
-            branding=BrandingObligation(advertiser=raw_branding.get("current_advertiser"), priority=str(raw_branding.get("priority", "LOW")).upper()),
-            cleaning=CleaningRequirement(required=bool(raw.get("requires_cleaning", False)), available=bool(raw.get("has_cleaning_slot", False)), due_date=raw.get("cleaning_due_date")),
+            job_cards=JobCardSummary(
+                open_cards=cls._as_int(raw_cards.get("open_cards")),
+                critical_cards=cls._as_int(raw_cards.get("critical_cards")),
+            ),
+            branding=BrandingObligation(
+                advertiser=raw_branding.get("current_advertiser"),
+                priority=str(raw_branding.get("priority", "LOW")).upper(),
+            ),
+            cleaning=CleaningRequirement(
+                required=bool(raw.get("requires_cleaning", False)),
+                available=bool(raw.get("has_cleaning_slot", False)),
+                due_date=raw.get("cleaning_due_date"),
+            ),
         )
