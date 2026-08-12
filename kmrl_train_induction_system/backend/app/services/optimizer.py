@@ -4,6 +4,7 @@ from __future__ import annotations
 import math
 from typing import Any, Dict, List
 
+from app.domain.optimization.constraints import validate_trainset_safety
 from app.models.trainset import InductionDecision, OptimizationRequest
 from app.services.optimization_engine import CanonicalOptimizationEngine
 from app.services.fleet_planning import FleetRequirementResult
@@ -32,6 +33,10 @@ class TrainInductionOptimizer:
 
     def __init__(self, engine: CanonicalOptimizationEngine | None = None) -> None:
         self.engine = engine or CanonicalOptimizationEngine()
+
+    def _has_critical_failure(self, trainset: Dict[str, Any]) -> bool:
+        """Compatibility predicate backed by the canonical safety validator."""
+        return any(violation.is_blocking for violation in validate_trainset_safety(trainset))
 
     async def optimize(
         self,
