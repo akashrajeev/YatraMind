@@ -11,18 +11,15 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "react-jsx",
-
     "baseUrl": ".",
-    "paths": {
-      "@/*": ["src/*"]
-    },
-    "types": ["vite/client"],
-
+    "paths": { "@/*": ["src/*"] },
+    "types": ["vite/client", "node"],
     "strict": false,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
     "noFallthroughCasesInSwitch": true
   },
   "include": ["src"],
+  "exclude": ["src/__tests__", "src/**/__tests__"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }
