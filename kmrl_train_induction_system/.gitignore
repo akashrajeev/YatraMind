@@ -3,69 +3,69 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
-*.sqlite3
-*.db
 *.egg-info/
-.env
-.venv
-.vscode/
-venv/
-env/
-pip-log.txt
-*.log
-
-# VSCode
-.vscode/
-
-# MacOS
-.DS_Store
-
-# Node modules (for React frontend)
-frontend/node_modules/
-
-# Build/Dist folders
-frontend/build/
-dist/
-tmp/
-
-# IDE files
-.idea/
-*.iml
-
-# Python virtual environments
+.venv/
 venv/
 ENV/
 env/
-.venv/
-**/.venv/
 
+# Environment / secrets
+.env
+.env.*
+!.env.example
+credentials.json
 
+# Databases / local state
+*.sqlite3
+*.db
+.mongo/
 
-# Jupyter Notebook checkpoints
-.ipynb_checkpoints
-
-# Coverage reports
-htmlcov/
-.coverage
-.tox/
-.nosetests.xml
-coverage.xml
-*.cover
-*.py,cover
-.cache
-
-# Logs and temp files
+# Logs / coverage / caches
 *.log
 *.pot
 *.mo
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+coverage.xml
+.tox/
 
-# Misc
+# IDE / OS
+.vscode/
+.idea/
+*.iml
+.DS_Store
 *.swp
 *~
+.ipynb_checkpoints/
 
-# MongoDB config
-.mongo/
+# Frontend
+frontend/node_modules/
+frontend/dist/
+frontend/build/
 
-# Credentials files
-credentials.json
+# General build/temp output
+dist/
+build/
+tmp/
 
+# Runtime/generated application data
+**/simulation_runs/
+**/optimization_runs/
+**/runtime_data/
+**/generated_data/
+**/logs/
+
+# Model/runtime artifacts
+*.pt
+*.pth
+*.onnx
+*.joblib
+*.pkl
+
+# Local test/debug exports
+**/debug_output/
+**/test_output/
