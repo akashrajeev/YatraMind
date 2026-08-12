@@ -2,6 +2,7 @@
 from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form, Depends
 from typing import Dict, Any, List, Optional, Union
 from app.services.data_ingestion import DataIngestionService
+from app.services.n8n_ingestion_compat import N8NDataIngestionService
 from app.services.mqtt_client import iot_streamer
 from app.security import require_api_key
 from app.services.auth_service import require_role
@@ -176,7 +177,7 @@ async def upload_to_n8n(
 ):
     """Inbound n8n webhook upload; machine-to-machine auth is handled by n8n itself."""
     try:
-        svc = DataIngestionService()
+        svc = N8NDataIngestionService()
         selected = list(files)
         if file is not None:
             selected.append(file)
@@ -200,7 +201,7 @@ async def receive_n8n_result(
 ):
     """Inbound n8n webhook result; optional updates are applied to system state."""
     try:
-        svc = DataIngestionService()
+        svc = N8NDataIngestionService()
         return await svc.process_n8n_result(data, apply_updates=apply_updates)
     except Exception as e:
         logger.error(f"N8N result ingestion failed: {e}")
