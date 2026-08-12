@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, refactor-phase-1-baseline-cleanup]
   pull_request:
     branches: [main]
 
