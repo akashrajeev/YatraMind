@@ -67,11 +67,14 @@ class StablingGeometryOptimizer(_LegacyStablingGeometryOptimizer):
                 inbound = 0.0 if current_depot in {depot_key, "muttom", "muttom depot"} else 5.0
                 outbound = 0.0
                 total = inbound + outbound
+                reason_code = "DEADKM_MIN" if total == 0 else "DEADKM_MIN_WITH_REPOSITION"
                 out.append(bay.model_copy(update={
                     "dead_km": {"in": inbound, "out": outbound, "total": total},
                     "dead_km_in": inbound,
                     "dead_km_out": outbound,
                     "stabled_at": depot_name,
+                    "placement_reason_code": reason_code,
+                    "placement_reason_text": "Placed to minimize dead-kilometre movement.",
                 }))
             enriched[depot_name] = out
         return enriched
@@ -79,7 +82,6 @@ class StablingGeometryOptimizer(_LegacyStablingGeometryOptimizer):
     async def optimize_stabling_geometry(self, trainsets: List[Dict[str, Any]], induction_decisions: List[Dict[str, Any]], fleet_req: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         result = await super().optimize_stabling_geometry(trainsets, induction_decisions, fleet_req)
         layout = self.depot_layouts["Muttom Depot"]
-        optimized_bays = result.get("optimized_bay_layout", {}).get("Muttom Depot", [])
         enriched_layout = self._enrich_dead_km(result.get("optimized_bay_layout", {}), trainsets)
         result["optimized_bay_layout"] = enriched_layout
         assigned = sum(1 for bay in enriched_layout.get("Muttom Depot", []) if getattr(bay, "trainset_id", None))
@@ -93,7 +95,7 @@ class StablingGeometryOptimizer(_LegacyStablingGeometryOptimizer):
         maintenance_queue = result.get("maintenance_queue") or []
         if len(maintenance) > maintenance_capacity:
             maintenance_queue = [
-                {"trainset_id": d.get("trainset_id"), "reason": "MAINTENANCE_BAY_CAPACITY", "severity": d.get("maintenance_severity", "LIGHT")}
+                {"trainset_id": d.get("trainset_id"), "reason": "No bay capacity", "severity": d.get("maintenance_severity", "LIGHT")}
                 for d in maintenance[maintenance_capacity:]
             ]
         elif not maintenance_queue:
