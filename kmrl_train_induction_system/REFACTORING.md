@@ -19,15 +19,19 @@ The refactor is being performed on a dedicated branch and merged through a draft
 - Explainability moved behind a non-critical service boundary.
 - Optimization and assignments pages moved into feature modules without route changes.
 - Legacy API-key path changed to fail closed when unconfigured.
-- Stabling implementation isolated behind a compatibility adapter while preserving the original algorithm.
-- Legacy `/api/v1/simulate` restored as an adapter over the canonical simulation coordinator.
-- N8N inbound webhook compatibility restored without weakening the general API-key path.
+- Backend test import/async fixture configuration made deterministic.
+- Credential-shaped database defaults removed from application configuration.
+- Production-safe DEBUG and CORS defaults introduced.
+- Background task enqueue endpoints restricted to administrators.
+- Health endpoint stopped exposing raw dependency exceptions and stale timestamps.
+- Fleet-count tests reconciled with the bounded-fleet contract.
 
 ## Remaining
 
+- Expand canonical models for depots, bays, stabling and operational constraints.
 - Remove remaining direct database access from legacy endpoints.
 - Consolidate the legacy rule engine and role-assignment solver where no longer needed.
-- Decompose result construction and remaining legacy API adapters.
+- Decompose stabling and result construction.
 - Configure a supported frontend test runner instead of excluding legacy Jest tests.
 - Remove obsolete setup/debug/output files after reference audit.
 - Reduce duplicate database implementations to adapters behind repository interfaces.
