@@ -1,6 +1,6 @@
 from datetime import datetime
 import logging
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from app.api import (
@@ -21,6 +21,8 @@ from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.celery_app import celery_app
 from app.tasks import nightly_run_optimization, ingestion_refresh_all, train_model
+from app.models.user import User, UserRole
+from app.security import require_role
 
 try:
     from fastapi_socketio import SocketManager
@@ -52,8 +54,6 @@ sio = None
 socket_manager = None
 app.add_middleware(GZipMiddleware, minimum_size=1024)
 
-# API-key dependency retained for legacy callers. Protected endpoints should
-# use the centralized security dependencies rather than this helper.
 async def _require_api_key(x_api_key: str | None = Header(default=None)):
     if settings.api_key and x_api_key != settings.api_key:
         raise HTTPException(status_code=401, detail="Invalid API key")
@@ -200,19 +200,19 @@ async def health_check():
         }
 
 @app.post("/tasks/optimization/run")
-async def trigger_optimization_task():
+async def trigger_optimization_task(_user: User = Depends(require_role(UserRole.ADMIN))):
     """Enqueue nightly optimization task to Celery."""
     res = celery_app.send_task("optimization.nightly_run")
     return {"status": "queued", "task_id": res.id}
 
 @app.post("/tasks/ingestion/refresh")
-async def trigger_ingestion_refresh():
+async def trigger_ingestion_refresh(_user: User = Depends(require_role(UserRole.ADMIN))):
     """Enqueue ingestion refresh task."""
     res = celery_app.send_task("ingestion.refresh_all")
     return {"status": "queued", "task_id": res.id}
 
 @app.post("/tasks/ml/train")
-async def trigger_ml_training():
+async def trigger_ml_training(_user: User = Depends(require_role(UserRole.ADMIN))):
     """Enqueue ML model training task."""
     res = celery_app.send_task("ml.train_models")
     return {"status": "queued", "task_id": res.id}
