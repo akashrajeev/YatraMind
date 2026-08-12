@@ -7,11 +7,9 @@ from app.services.optimization_engine import CanonicalOptimizationEngine
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.services.fleet_planning import FleetRequirementResult, compute_required_trains
 
-
 class Optimizer(Protocol):
     async def optimize(self, trainsets: List[Dict[str, Any]], request: OptimizationRequest):
         ...
-
 
 @dataclass(frozen=True)
 class OptimizationResult:
@@ -28,7 +26,6 @@ class OptimizationResult:
     def eligible_count(self) -> int:
         return self.eligible_train_count
 
-
 class OptimizationService:
     """Coordinate fleet planning, induction optimization and stabling."""
 
@@ -40,7 +37,7 @@ class OptimizationService:
         decisions, fleet_requirement = await self.optimizer.optimize(trainsets, request)
         serialized = [d.model_dump() if hasattr(d, "model_dump") else d.dict() for d in decisions]
         stabling_geometry = await self.stabling_optimizer.optimize_stabling_geometry(trainsets, serialized)
-        return OptimizationResult(decisions, fleet_requirement, stabling_geometry, eligible_train_count=len(trainsets))
+        return OptimizationResult(decisions, fleet_requirement, stabling_geometry, eligible_train_count=len(decisions))
 
     @staticmethod
     def compute_fleet_requirement(request: OptimizationRequest) -> FleetRequirementResult:
