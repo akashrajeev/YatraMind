@@ -19,17 +19,17 @@ The refactor is being performed on a dedicated branch and merged through a draft
 - Explainability moved behind a non-critical service boundary.
 - Optimization and assignments pages moved into feature modules without route changes.
 - Legacy API-key path changed to fail closed when unconfigured.
+- Stabling implementation isolated behind a compatibility adapter while preserving the original algorithm.
 
 ## Remaining
 
-- Expand canonical models for depots, bays, stabling and operational constraints.
 - Remove remaining direct database access from legacy endpoints.
 - Consolidate the legacy rule engine and role-assignment solver where no longer needed.
-- Decompose stabling and result construction.
+- Decompose result construction and remaining legacy API adapters.
 - Configure a supported frontend test runner instead of excluding legacy Jest tests.
 - Remove obsolete setup/debug/output files after reference audit.
 - Reduce duplicate database implementations to adapters behind repository interfaces.
-- Standardize configuration and infrastructure dependencies.
+- Standardize remaining dependency/configuration deprecations.
 - Complete authentication/security audit and production hardening.
 - Finish frontend decomposition of the remaining large pages/components.
 
@@ -40,6 +40,6 @@ The refactor is being performed on a dedicated branch and merged through a draft
 3. API contract tests green.
 4. Frontend typecheck/build green.
 5. No tracked runtime/generated artifacts.
-6. No active legacy optimizer path.
+6. No active legacy optimizer path for the primary optimization path.
 7. No safety decision based on human-readable reason strings.
 8. Main branch remains behavior-compatible until the migration is explicitly approved.
