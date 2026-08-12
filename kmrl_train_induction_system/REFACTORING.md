@@ -20,6 +20,8 @@ The refactor is being performed on a dedicated branch and merged through a draft
 - Optimization and assignments pages moved into feature modules without route changes.
 - Legacy API-key path changed to fail closed when unconfigured.
 - Stabling implementation isolated behind a compatibility adapter while preserving the original algorithm.
+- Legacy `/api/v1/simulate` restored as an adapter over the canonical simulation coordinator.
+- N8N inbound webhook compatibility restored without weakening the general API-key path.
 
 ## Remaining
 
