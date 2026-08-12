@@ -20,6 +20,7 @@ from app.security import require_role, require_api_key
 from app.services.optimization_service import OptimizationService
 from app.services.optimization_store import get_latest_decisions, get_decisions_from_history
 from app.services.stabling_optimizer import StablingGeometryOptimizer
+from app.utils.cloud_database import cloud_db_manager
 from app.api import optimization_legacy
 
 logger = logging.getLogger(__name__)
