@@ -1,8 +1,11 @@
 from datetime import datetime
 import logging
+from dataclasses import asdict
+from typing import Any, Dict, Optional
 from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
+from pydantic import BaseModel, Field
 from app.api import (
     trainsets,
     optimization,
@@ -20,7 +23,6 @@ from app.utils.cloud_database import cloud_db_manager
 from app.config import settings
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from app.celery_app import celery_app
-from app.tasks import nightly_run_optimization, ingestion_refresh_all, train_model
 from app.models.user import User, UserRole
 from app.security import require_role
 
@@ -109,7 +111,6 @@ scheduler = None
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize cloud database connections and periodic ingestion jobs."""
     try:
         logger.info("Starting KMRL Train Induction System...")
         if settings.mongodb_url:
@@ -119,7 +120,6 @@ async def startup_event():
 
         global scheduler
         scheduler = AsyncIOScheduler()
-
         from app.services.data_ingestion import DataIngestionService
         svc = DataIngestionService()
         scheduler.add_job(svc._ingest_maximo_data, "interval", minutes=15, id="maximo_ingest", max_instances=1, coalesce=True)
@@ -138,7 +138,6 @@ async def startup_event():
             await assignments_col.create_index("created_at")
             trainsets_col = await cloud_db_manager.get_collection("trainsets")
             await trainsets_col.create_index("trainset_id", unique=True)
-            logger.info("MongoDB indexes created successfully")
         except Exception as e:
             logger.error("Failed to create MongoDB indexes: %s", e)
     except Exception as e:
@@ -146,74 +145,112 @@ async def startup_event():
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Close cloud database connections on shutdown."""
     try:
         if scheduler:
             scheduler.shutdown(wait=False)
         await cloud_db_manager.close_all()
-        logger.info("Cloud database connections closed")
     except Exception as e:
         logger.error("Shutdown error: %s", e)
 
 @app.get("/")
 async def root():
-    return {
-        "message": "KMRL Train Induction System API",
-        "version": "1.0.0",
-        "status": "operational",
-        "docs": "/docs",
-        "health": "/health"
-    }
+    return {"message": "KMRL Train Induction System API", "version": "1.0.0", "status": "operational", "docs": "/docs", "health": "/health"}
 
 @app.get("/health")
 async def health_check():
-    """Return dependency connectivity status without exposing exception details."""
     try:
         checks = {}
         if settings.mongodb_url:
-            await cloud_db_manager.connect_mongodb()
-            checks["mongodb"] = "connected"
+            await cloud_db_manager.connect_mongodb(); checks["mongodb"] = "connected"
         else:
             checks["mongodb"] = "not_configured"
         if settings.influxdb_url:
-            await cloud_db_manager.connect_influxdb()
-            checks["influxdb"] = "connected"
+            await cloud_db_manager.connect_influxdb(); checks["influxdb"] = "connected"
         else:
             checks["influxdb"] = "not_configured"
-        return {
-            "status": "healthy",
-            "dependencies": checks,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }
+        return {"status": "healthy", "dependencies": checks, "timestamp": datetime.utcnow().isoformat() + "Z"}
     except Exception as e:
         logger.error("Health check failed: %s", e)
-        return {
-            "status": "unhealthy",
-            "dependencies": {"mongodb": "unavailable", "influxdb": "unavailable"},
-            "timestamp": datetime.utcnow().isoformat() + "Z",
-        }
+        return {"status": "unhealthy", "dependencies": {"mongodb": "unavailable", "influxdb": "unavailable"}, "timestamp": datetime.utcnow().isoformat() + "Z"}
+
+class LegacySimulationRequest(BaseModel):
+    fleet: int = Field(..., ge=1)
+    depots: list[Dict[str, Any]] = Field(..., min_length=1)
+    required_service: Optional[int] = Field(default=None, ge=0)
+    required_service_count: Optional[int] = Field(default=None, ge=0)
+    service_requirement: Optional[int] = Field(default=None, ge=0)
+    seed: Optional[int] = None
+    sim_days: int = Field(default=1, ge=1)
+    ai_mode: bool = True
+
+@app.post("/api/v1/simulate")
+async def legacy_simulate(payload: LegacySimulationRequest):
+    """Compatibility endpoint backed by the canonical multi-depot simulator."""
+    try:
+        from app.models.depot import DepotConfig, LocationType
+        from app.services.simulation.coordinator import run_simulation
+        from app.services.ml_health import check_ai_services_available
+
+        requested_requirement = payload.required_service
+        if requested_requirement is None:
+            requested_requirement = payload.required_service_count
+        if requested_requirement is None:
+            requested_requirement = payload.service_requirement
+
+        depots = []
+        for index, raw in enumerate(payload.depots):
+            name = str(raw.get("name") or raw.get("depot_id") or f"DEPOT_{index + 1}")
+            depot_id = str(raw.get("depot_id") or name.upper().replace(" ", "_"))
+            depots.append(DepotConfig(
+                depot_id=depot_id,
+                name=name,
+                location_type=LocationType(str(raw.get("location_type", "FULL_DEPOT")).upper()),
+                service_bays=int(raw.get("service_bays", 0)),
+                maintenance_bays=int(raw.get("maintenance_bays", 0)),
+                standby_bays=int(raw.get("standby_bays", 0)),
+                total_bays=raw.get("total_bays"),
+                coordinates=raw.get("coordinates"),
+                is_primary_depot=bool(raw.get("is_primary_depot", index == 0)),
+            ))
+
+        used_ai = bool(payload.ai_mode and check_ai_services_available())
+        result = run_simulation(
+            depots=depots,
+            fleet_count=payload.fleet,
+            service_requirement=requested_requirement,
+            seed=payload.seed,
+            sim_days=payload.sim_days,
+            ai_mode=used_ai,
+        )
+        response = asdict(result)
+        response["used_ai"] = used_ai
+        if payload.ai_mode and not used_ai:
+            response.setdefault("warnings", []).append("AI services unavailable; using deterministic fallback")
+        response.setdefault("global_summary", {})["used_ai"] = used_ai
+        return response
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception as exc:
+        logger.error("Legacy simulation failed: %s", exc, exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Simulation failed: {exc}")
 
 @app.post("/tasks/optimization/run")
 async def trigger_optimization_task(_user: User = Depends(require_role(UserRole.ADMIN))):
-    """Enqueue nightly optimization task to Celery."""
     res = celery_app.send_task("optimization.nightly_run")
     return {"status": "queued", "task_id": res.id}
 
 @app.post("/tasks/ingestion/refresh")
 async def trigger_ingestion_refresh(_user: User = Depends(require_role(UserRole.ADMIN))):
-    """Enqueue ingestion refresh task."""
     res = celery_app.send_task("ingestion.refresh_all")
     return {"status": "queued", "task_id": res.id}
 
 @app.post("/tasks/ml/train")
 async def trigger_model_training(_user: User = Depends(require_role(UserRole.ADMIN))):
-    """Enqueue model training task."""
     res = celery_app.send_task("ml.train_model")
     return {"status": "queued", "task_id": res.id}
 
 @app.get("/tasks/status/{task_id}")
 async def get_task_status(task_id: str):
-    """Return Celery task status/result."""
     try:
         async_result = celery_app.AsyncResult(task_id)
         payload = {"task_id": task_id, "state": async_result.state}
