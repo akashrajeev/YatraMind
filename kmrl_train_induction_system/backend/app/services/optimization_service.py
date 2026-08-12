@@ -37,7 +37,9 @@ class OptimizationService:
         decisions, fleet_requirement = await self.optimizer.optimize(trainsets, request)
         serialized = [d.model_dump() if hasattr(d, "model_dump") else d.dict() for d in decisions]
         stabling_geometry = await self.stabling_optimizer.optimize_stabling_geometry(trainsets, serialized)
-        return OptimizationResult(decisions, fleet_requirement, stabling_geometry, eligible_train_count=len(decisions))
+        # Eligibility describes the input fleet available for optimization, not the
+        # number of decisions the optimizer happens to return.
+        return OptimizationResult(decisions, fleet_requirement, stabling_geometry, eligible_train_count=len(trainsets))
 
     @staticmethod
     def compute_fleet_requirement(request: OptimizationRequest) -> FleetRequirementResult:
