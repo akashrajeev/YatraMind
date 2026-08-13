@@ -134,6 +134,7 @@ export interface Trainset {
   current_location: {
     depot: string;
     platform?: string;
+    lane?: string | number;
   };
   fitness_certificates: Record<string, {
     status: 'VALID' | 'EXPIRED' | 'EXPIRING_SOON';
