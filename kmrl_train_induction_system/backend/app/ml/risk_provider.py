@@ -21,7 +21,7 @@ class RiskProvider(Protocol):
 
 
 class LegacyPredictorRiskProvider:
-    """Adapter around the current predictor so optimization no longer imports it directly."""
+    """Compatibility adapter around predictor primitives."""
 
     async def predict(self, trainsets: Sequence[Mapping[str, Any]]) -> list[RiskPrediction]:
         from app.ml.predictor import batch_predict, predict_maintenance_health
@@ -30,7 +30,11 @@ class LegacyPredictorRiskProvider:
         for trainset in trainsets:
             features.append({
                 "trainset_id": trainset.get("trainset_id"),
-                **{key: value for key, value in trainset.items() if isinstance(value, (int, float))},
+                **{
+                    key: value
+                    for key, value in trainset.items()
+                    if isinstance(value, (int, float))
+                },
             })
 
         predictions = await batch_predict(features)
@@ -44,14 +48,15 @@ class LegacyPredictorRiskProvider:
                 health = float(predict_maintenance_health(dict(trainset)))
             except Exception:
                 health = float(trainset.get("ml_health_score", 0.85) or 0.85)
-            top_features = tuple(str(x) for x in raw.get("top_features", [])[:5])
-            result.append(RiskPrediction(
-                trainset_id=trainset_id,
-                risk_probability=risk,
-                health_score=health,
-                top_features=top_features,
-                provider="legacy-predictor",
-            ))
+            result.append(
+                RiskPrediction(
+                    trainset_id=trainset_id,
+                    risk_probability=risk,
+                    health_score=health,
+                    provider=str(raw.get("provider", "legacy-predictor")),
+                    model_version=raw.get("model_version"),
+                )
+            )
         return result
 
 
@@ -78,7 +83,7 @@ class HeuristicRiskProvider:
                     health_score=1.0 - risk,
                     top_features=("mileage", "critical_job_cards") if critical_cards else ("mileage",),
                     provider=self.provider_name,
-                    model_version="1",
+                    model_version="heuristic-v1",
                 )
             )
         return predictions
