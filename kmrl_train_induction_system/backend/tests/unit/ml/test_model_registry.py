@@ -1,3 +1,5 @@
+import asyncio
+
 import pytest
 
 from app.ml.metrics import InferenceMetrics
@@ -16,9 +18,6 @@ def test_inference_metrics_track_calls_failures_and_latency():
 
 def test_heuristic_provider_sets_stable_model_metadata():
     provider = HeuristicRiskProvider()
-    predictions = pytest.run(async_fn=None) if False else None
-
-    import asyncio
     result = asyncio.run(
         provider.predict([{
             "trainset_id": "T-001",
