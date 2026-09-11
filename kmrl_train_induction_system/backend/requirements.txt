@@ -31,9 +31,6 @@ scikit-learn==1.3.2
 torch==2.1.0
 shap==0.44.0
 
-# Rules engine
-durable-rules==2.0.28
-
 # Authentication and security
 python-jose[cryptography]==3.3.0
 python-multipart==0.0.12
