@@ -1,4 +1,3 @@
-# backend/app/api/multi_depot_simulation.py
 """
 Multi-Depot Simulation API Endpoints
 """
@@ -15,6 +14,8 @@ from app.ml.multi_depot.explainability import AIExplainability
 from app.services.auth_service import require_role, get_current_user
 from app.models.user import UserRole, User
 from app.security import require_api_key
+from app.repositories.mongo import MongoTrainsetRepository
+from app.services.policy_status_service import PolicyStatusService
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -22,6 +23,8 @@ logger = logging.getLogger(__name__)
 simulation_engine = MultiDepotSimulationEngine()
 feedback_loop = MultiDepotFeedbackLoop()
 explainability = AIExplainability()
+trainset_repository = MongoTrainsetRepository()
+policy_status_service = PolicyStatusService()
 
 # In-memory run registry for lightweight retrieval/export without a database dependency
 _RUN_REGISTRY: Dict[str, Dict[str, Any]] = {}
@@ -105,7 +108,6 @@ async def run_simulation(
     Returns full multi-depot plan with AI decisions, allocations, transfers, schedules
     """
     try:
-        # Minimal, robust fallback simulation to avoid 500s
         logger.info("Running multi-depot simulation (fallback lightweight path)")
         depot_configs = [DepotConfig(**dc) for dc in request.depot_configs]
         depots = [dc.depot_id for dc in depot_configs]
@@ -126,7 +128,6 @@ async def run_simulation(
             ],
             "run_id": f"md-{int(datetime.utcnow().timestamp()*1000)}",
         }
-        # Store lightweight run result for follow-up retrieval/export
         _RUN_REGISTRY[resp["run_id"]] = resp
         return resp
     except Exception as e:
@@ -192,26 +193,14 @@ async def explain_decision(
     decision_type: str,
     current_user: User = Depends(get_current_user),
 ):
-    """
-    Get AI explanation for a decision
-    
-    Returns SHAP-style attribution with top-3 contributing features
-    """
+    """Get AI explanation for a decision."""
     try:
-        # Load train data
-        from app.utils.cloud_database import cloud_db_manager
-        collection = await cloud_db_manager.get_collection("trainsets")
-        train_doc = await collection.find_one({"trainset_id": train_id})
-        
+        train_doc = await trainset_repository.get(train_id)
         if not train_doc:
             raise HTTPException(status_code=404, detail=f"Train {train_id} not found")
-        
-        train_doc.pop("_id", None)
-        
-        # Generate explanation based on decision type
+
         if decision_type == "service_selection":
-            # Would use service selector model
-            explanation = {
+            return {
                 "train_id": train_id,
                 "decision_type": decision_type,
                 "explanation": "Service selection based on AI model. Top factors: low failure risk, high branding priority, recent maintenance OK.",
@@ -221,8 +210,8 @@ async def explain_decision(
                     {"feature": "sensor_health", "value": 0.92, "impact": "increases_score"},
                 ],
             }
-        elif decision_type == "stabling":
-            explanation = {
+        if decision_type == "stabling":
+            return {
                 "train_id": train_id,
                 "decision_type": decision_type,
                 "explanation": "Stabling allocation based on RL policy. Factors: risk score, turnout time, branding load.",
@@ -231,68 +220,26 @@ async def explain_decision(
                     {"feature": "turnout_time", "value": 8.5, "impact": "influences_location"},
                 ],
             }
-        else:
-            explanation = {
-                "train_id": train_id,
-                "decision_type": decision_type,
-                "explanation": "Decision explanation not available.",
-            }
-        
-        return explanation
-        
+        return {
+            "train_id": train_id,
+            "decision_type": decision_type,
+            "explanation": "Decision explanation not available.",
+        }
     except HTTPException:
         raise
-    except Exception as e:
-        logger.error(f"Error generating explanation: {e}")
-        raise HTTPException(status_code=500, detail=f"Error generating explanation: {str(e)}")
+    except Exception as exc:
+        logger.error("Error generating explanation: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Error generating explanation: {exc}")
 
 
 @router.get("/policy-status")
-async def get_policy_status(
-    current_user: User = Depends(get_current_user),
-):
-    """Get status of all AI models and policies"""
+async def get_policy_status(current_user: User = Depends(get_current_user)):
+    """Get status of all AI models and policies."""
     try:
-        from app.utils.cloud_database import cloud_db_manager
-        
-        models_status = {}
-        
-        # Failure risk model
-        collection = await cloud_db_manager.get_collection("failure_risk_models")
-        doc = await collection.find_one(sort=[("meta.created_at", -1)])
-        models_status["failure_risk"] = {
-            "loaded": doc is not None,
-            "version": doc.get("meta", {}).get("version") if doc else None,
-            "created_at": doc.get("meta", {}).get("created_at") if doc else None,
-        }
-        
-        # Service selection model
-        collection = await cloud_db_manager.get_collection("service_selection_models")
-        doc = await collection.find_one(sort=[("meta.created_at", -1)])
-        models_status["service_selection"] = {
-            "loaded": doc is not None,
-            "version": doc.get("meta", {}).get("version") if doc else None,
-            "created_at": doc.get("meta", {}).get("created_at") if doc else None,
-        }
-        
-        # RL stabling policy
-        collection = await cloud_db_manager.get_collection("rl_stabling_policies")
-        doc = await collection.find_one(sort=[("meta.created_at", -1)])
-        models_status["rl_stabling"] = {
-            "loaded": doc is not None,
-            "version": doc.get("meta", {}).get("version") if doc else None,
-            "created_at": doc.get("meta", {}).get("created_at") if doc else None,
-        }
-        
-        return {
-            "status": "ok",
-            "models": models_status,
-            "timestamp": datetime.now().isoformat(),
-        }
-        
-    except Exception as e:
-        logger.error(f"Error getting policy status: {e}")
-        raise HTTPException(status_code=500, detail=f"Error getting status: {str(e)}")
+        return await policy_status_service.get_status()
+    except Exception as exc:
+        logger.error("Error getting policy status: %s", exc)
+        raise HTTPException(status_code=500, detail=f"Error getting status: {exc}")
 
 
 @router.post("/feedback/log")
@@ -325,9 +272,7 @@ async def process_feedback(
             days_back=days_back,
             incremental=incremental,
         )
-        return {"status": "started", "message": f"Feedback processing started"}
+        return {"status": "started", "message": "Feedback processing started"}
     except Exception as e:
         logger.error(f"Error starting feedback processing: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to start processing: {str(e)}")
-
-
