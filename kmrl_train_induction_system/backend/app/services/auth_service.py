@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 import logging
 import uuid
+import secrets
 from passlib.context import CryptContext
 from jose import JWTError, jwt
 from fastapi import HTTPException, Depends, status
@@ -16,7 +17,13 @@ logger = logging.getLogger(__name__)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 from app.config import settings
-SECRET_KEY = settings.secret_key or "your-secret-key-here-change-in-production"
+
+if settings.environment.lower() in {"production", "prod"} and not settings.secret_key:
+    raise RuntimeError("SECRET_KEY must be configured in production")
+
+# Development/test processes receive an ephemeral secret instead of a predictable
+# hard-coded JWT key. Production must provide SECRET_KEY explicitly.
+SECRET_KEY = settings.secret_key or secrets.token_urlsafe(32)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
