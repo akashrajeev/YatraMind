@@ -9,17 +9,18 @@ from typing import Any, Dict
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app.models.trainset import OptimizationRequest
-from app.models.user import User, UserRole
+from app.models.user import User
 from app.repositories.mongo import MongoTrainsetRepository
 from app.repositories.mongo_optimization import MongoOptimizationRepository
 from app.security import require_role, require_api_key
 from app.services.optimization_service import OptimizationService
-from app.services.optimization_store import get_latest_decisions, get_decisions_from_history
 from app.services.stabling_optimizer import StablingGeometryOptimizer
 from app.api import optimization_legacy
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
+trainset_repository = MongoTrainsetRepository()
+optimization_repository = MongoOptimizationRepository()
 
 
 def _deterministic_value_from_id(trainset_id: str, field: str | None = None) -> float:
@@ -33,11 +34,11 @@ def _deterministic_value_from_id(trainset_id: str, field: str | None = None) -> 
 async def run_optimization(
     background_tasks: BackgroundTasks,
     request: OptimizationRequest,
-    current_user: User = Depends(require_role(UserRole.ADMIN)),
+    current_user: User = Depends(require_role("ADMIN")),
 ):
     del current_user
     try:
-        trainsets = [dict(item) for item in await MongoTrainsetRepository().list_all()]
+        trainsets = [dict(item) for item in await trainset_repository.list_all()]
         if not trainsets:
             raise HTTPException(status_code=404, detail="No trainsets found")
         result = await OptimizationService().optimize(trainsets, request)
@@ -54,7 +55,7 @@ async def run_optimization(
             "granted_train_count": granted,
             "fleet_requirement": fleet_payload,
         }
-        await MongoOptimizationRepository().save_run({
+        await optimization_repository.save_run({
             "timestamp": datetime.utcnow().isoformat(),
             "target_date": request.target_date.isoformat(),
             "required_service_count": request.required_service_count,
@@ -94,7 +95,20 @@ async def run_optimization(
 
 
 async def _load_trainsets() -> list[Dict[str, Any]]:
-    return [dict(item) for item in await MongoTrainsetRepository().list_all()]
+    return [dict(item) for item in await trainset_repository.list_all()]
+
+
+async def get_latest_decisions() -> list[Dict[str, Any]] | None:
+    """Compatibility seam for callers/tests while using the repository implementation."""
+    decisions = await optimization_repository.get_latest_decisions()
+    return [dict(item) for item in decisions] if decisions else None
+
+
+async def get_decisions_from_history() -> list[Dict[str, Any]] | None:
+    """Compatibility seam for callers/tests while using the repository implementation."""
+    document = await optimization_repository.get_latest_history()
+    decisions = document.get("decisions") if document else None
+    return [dict(item) for item in decisions] if isinstance(decisions, list) and decisions else None
 
 
 async def _get_decisions_for_geometry() -> list[Dict[str, Any]] | None:
