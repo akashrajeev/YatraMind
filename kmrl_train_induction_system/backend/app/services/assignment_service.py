@@ -1,4 +1,4 @@
-"""Application service for assignment reads and state transitions."""
+"""Application service for assignment reads, conflicts, and state transitions."""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -7,17 +7,25 @@ from typing import Any, Mapping, Sequence
 from app.models.assignment import Assignment, AssignmentSummary, AssignmentStatus
 from app.models.trainset import InductionDecision
 from app.repositories.mongo_assignments import MongoAssignmentRepository
+from app.repositories.mongo import MongoTrainsetRepository
+from app.utils.explainability import generate_maintenance_reasons
 
 
 class AssignmentService:
     """Coordinate assignment persistence and API-facing domain models."""
 
-    def __init__(self, repository: MongoAssignmentRepository | None = None) -> None:
+    def __init__(
+        self,
+        repository: MongoAssignmentRepository | None = None,
+        trainset_repository: MongoTrainsetRepository | None = None,
+    ) -> None:
         self.repository = repository or MongoAssignmentRepository()
+        self.trainset_repository = trainset_repository or MongoTrainsetRepository()
 
     @staticmethod
     def to_model(document: Mapping[str, Any]) -> Assignment:
         doc = dict(document)
+        doc.pop("_id", None)
         trainset_id = str(doc.get("trainset_id", ""))
         decision = dict(doc.get("decision") or {})
         decision.setdefault("trainset_id", trainset_id)
@@ -97,16 +105,72 @@ class AssignmentService:
             last_updated=datetime.now(timezone.utc),
         )
 
+    async def conflicts(self) -> list[Assignment]:
+        """Build maintenance conflict assignments without exposing DB access to the API."""
+        trainsets = await self.trainset_repository.list_all()
+        result: list[Assignment] = []
+        for trainset_document in trainsets:
+            trainset = dict(trainset_document)
+            trainset_id = str(trainset.get("trainset_id", ""))
+            if not trainset_id or not self._needs_maintenance(trainset):
+                continue
+
+            maintenance_info = generate_maintenance_reasons(trainset)
+            existing = await self.repository.get_by_trainset(trainset_id)
+            if existing:
+                assignment = self.to_model(existing)
+                assignment.decision.decision = "MAINTENANCE"
+                assignment.decision.top_reasons = maintenance_info.get("top_reasons", [])
+                assignment.decision.top_risks = maintenance_info.get("top_risks", [])
+                assignment.decision.score = 0.0
+                assignment.decision.confidence_score = 1.0
+            else:
+                assignment = Assignment(
+                    id=f"maintenance-{trainset_id}",
+                    trainset_id=trainset_id,
+                    decision=InductionDecision(
+                        trainset_id=trainset_id,
+                        decision="MAINTENANCE",
+                        confidence_score=1.0,
+                        reasons=maintenance_info.get("top_reasons", []),
+                        top_reasons=maintenance_info.get("top_reasons", []),
+                        top_risks=maintenance_info.get("top_risks", []),
+                        score=0.0,
+                        violations=[],
+                        shap_values=[],
+                    ),
+                    status=AssignmentStatus.PENDING,
+                    created_by="system",
+                    priority=5,
+                )
+            result.append(assignment)
+        result.sort(key=lambda item: item.priority, reverse=True)
+        return result
+
+    @staticmethod
+    def _needs_maintenance(trainset: Mapping[str, Any]) -> bool:
+        cards = trainset.get("job_cards", {})
+        if not isinstance(cards, Mapping):
+            cards = {}
+        try:
+            critical_cards = int(cards.get("critical_cards", 0) or 0)
+        except (TypeError, ValueError):
+            critical_cards = 0
+        try:
+            current_mileage = float(trainset.get("current_mileage", 0.0) or 0.0)
+        except (TypeError, ValueError):
+            current_mileage = 0.0
+        try:
+            max_mileage = float(trainset.get("max_mileage_before_maintenance", float("inf")))
+        except (TypeError, ValueError):
+            max_mileage = float("inf")
+        return critical_cards > 0 or (max_mileage > 0 and current_mileage >= max_mileage * 0.95)
+
     async def create(self, assignment: Assignment) -> Assignment:
         await self.repository.insert(assignment.dict())
         return assignment
 
-    async def approve(
-        self,
-        assignment_ids: Sequence[str],
-        user_id: str,
-        comments: str | None,
-    ) -> int:
+    async def approve(self, assignment_ids: Sequence[str], user_id: str, comments: str | None) -> int:
         return await self.repository.approve_pending(
             assignment_ids=assignment_ids,
             user_id=user_id,
